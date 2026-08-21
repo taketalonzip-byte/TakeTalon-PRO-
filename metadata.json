@@ -1,0 +1,6 @@
+{
+  "name": "TakeTalon PRO",
+  "description": "Sports betting and provably fair simulation platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

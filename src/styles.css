@@ -1,0 +1,245 @@
+/*
+ * TakeTalon PRO — Global styles
+ *
+ * Note: Fonts are loaded via <link> in index.html (Tailwind v4 + Lightning CSS
+ * does not resolve remote @import). Design tokens live in @theme; utility
+ * classes below are polish helpers used across the app. Preserves original
+ * class names / layout — only refines typography, rhythm, focus, and motion.
+ */
+@import "tailwindcss";
+
+:root {
+  /* Rangi za Msingi za Mfumo (Theme Colors) - Deep Slate Blue (Original Midnight Premium Navy) */
+  --app-bg:            #0c1425;   /* Background kuu ya mfumo (Deep Slate Blue) */
+  --surface:           #090e1a;   /* Kadi na Paneli za Glass (Cards / Panels) */
+  --surface-2:         #050912;   /* Upau wa Chini wa Navigation (Bottom Nav) */
+  --surface-3:         #121c33;   /* Chips, Vitu vya duara (Pills) na Hover states */
+  --border:            #172540;   /* Mipaka membamba (Hairline borders) */
+  --border-strong:     #1e355c;   /* Mipaka thabiti ya fomu na vichwa vya habari */
+  
+  /* Mitindo ya Maandishi (Typography Colors) */
+  --text-primary:      #ffffff;   /* Maandishi makuu (White) */
+  --text-secondary:    #cbd5e1;   /* Maandishi ya ziada (Slate 300) */
+  --text-muted:        #94a3b8;   /* Maandishi yaliyofifishwa (Slate 400) */
+  
+  /* Vitendo na Vibandiko (Actions & Badges) */
+  --accent:            #38bdf8;   /* Rangi ya msisitizo, Progress bar na viungo */
+  --btn-bet-bg:        #101e3d;   /* Kitufe kikuu cha Vitendo ("Bet Now" primary) */
+  --btn-bet-hover:     #172c57;   /* Kikipitishwa panya juu ya kitufe (Hover) */
+  --btn-bet-active:    #0a1429;   /* Kikitofautishwa wakati kimebonyezwa (Active) */
+  --odds-selected:     #121c33;   /* Chaguzi lililochaguliwa */
+  
+  /* Hali za Miamala (Transaction Status Badges) */
+  --badge-live:        #a34a4a;   /* LIVE Nyekundu iliyofifishwa kwa usalama wa macho */
+  --badge-elite:       #a07a2b;   /* Dhahabu ya mawakala iliyofifishwa (Muted Gold) */
+  --badge-premium:     #121c33;   /* Bluu ya kwanza kabisa ya kifalme */
+  --status-win:        #3f7a63;   /* Kijani kibichi kilichotulia cha mafanikio (Win) */
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-app-bg: var(--app-bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border-subtle: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-btn-bet-bg: var(--btn-bet-bg);
+  --color-btn-bet-hover: var(--btn-bet-hover);
+  --color-btn-bet-active: var(--btn-bet-active);
+  --color-odds-selected: var(--odds-selected);
+  --color-badge-live: var(--badge-live);
+  --color-badge-elite: var(--badge-elite);
+  --color-badge-premium: var(--badge-premium);
+  --color-status-win: var(--status-win);
+}
+
+/* --- Base ------------------------------------------------------------- */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01", "ss03";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.005em;
+}
+
+/* Tabular figures for anything numeric-heavy: odds, scores, balances, timers.
+   Improves vertical alignment across rows without touching component code. */
+.font-mono,
+[class*="tabular"],
+button, input, select, textarea {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Consistent, accessible focus ring across the whole app.
+   Only visible on keyboard focus — mouse clicks stay clean. */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.75);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Respect users who ask for less motion — kills shimmer/bounces safely. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --- Shimmer effects (toned down for eye comfort) --------------------- */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.shimmer-gold {
+  background: linear-gradient(90deg, #b45309 0%, #f59e0b 25%, #fbbf24 50%, #f59e0b 75%, #b45309 100%);
+  background-size: 200% 100%;
+  animation: shimmer 5s infinite linear;
+}
+
+.shimmer-cyan {
+  background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 25%, #06b6d4 50%, #3b82f6 75%, #1e3a8a 100%);
+  background-size: 200% 100%;
+  animation: shimmer 6s infinite linear;
+}
+
+/* --- Glassmorphism panels -------------------------------------------- */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.glass-panel-light {
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(15, 23, 42, 0.09);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px -8px rgba(15, 23, 42, 0.08);
+}
+
+.glass-nav {
+  background: rgba(10, 15, 30, 0.88);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-nav-light {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(15, 23, 42, 0.07);
+  box-shadow: 0 -4px 20px -4px rgba(0, 0, 0, 0.05);
+}
+
+/* --- Card rings / accent glows (softer, more premium) ---------------- */
+.premium-ring-light {
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.07),
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 20px -6px rgba(15, 23, 42, 0.06);
+}
+
+.premium-ring-dark {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 12px 28px -10px rgba(0, 0, 0, 0.45);
+}
+
+.neon-glow-blue    { box-shadow: 0 0 14px -3px rgba(37, 99, 235, 0.22); }
+.neon-glow-emerald { box-shadow: 0 0 14px -3px rgba(16, 185, 129, 0.22); }
+.neon-glow-amber   { box-shadow: 0 0 14px -3px rgba(245, 158, 11, 0.22); }
+
+/* --- Scrollbar helpers ---------------------------------------------- */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* --- Primary action buttons ----------------------------------------- */
+.bet-now-btn {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 4px 12px -2px rgba(37, 99, 235, 0.35);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+  letter-spacing: 0.02em;
+}
+
+.bet-now-btn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 8px 20px -4px rgba(37, 99, 235, 0.5);
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+}
+
+.bet-now-btn:active {
+  transform: translateY(0);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 2px 6px -1px rgba(37, 99, 235, 0.4);
+}
+
+/* Custom right-to-left marquee animation for comments */
+@keyframes marquee-r2l {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee-r2l {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee-r2l 14s linear infinite;
+}
+
+@keyframes marquee-l2r {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-marquee-l2r {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee-l2r 14s linear infinite;
+}
+
+
+
+
