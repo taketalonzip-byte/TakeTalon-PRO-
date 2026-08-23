@@ -76,7 +76,7 @@ const dictionary = {
     forgotDesc: "Enter your email to receive a password reset link.",
     enterEmail: "Email Address",
     loadingForgot: "Sending...",
-    sendForgotBtn: "Send Reset Link",
+    sendForgotBtn: "Send Code",
     backToLogin: "Back to Log In",
 
     // Validation & Messages
@@ -129,7 +129,7 @@ const dictionary = {
     forgotDesc: "Weka barua pepe yako kupokea kiungo cha nywila.",
     enterEmail: "Barua Pepe",
     loadingForgot: "Inatuma...",
-    sendForgotBtn: "Tuma Kiungo",
+    sendForgotBtn: "Tuma Namba",
     backToLogin: "Rudi Kuingia",
 
     // Validation & Messages
@@ -182,7 +182,7 @@ const dictionary = {
     forgotDesc: "Saisissez votre e-mail pour recevoir un lien.",
     enterEmail: "Adresse e-mail",
     loadingForgot: "Envoi...",
-    sendForgotBtn: "Envoyer le lien",
+    sendForgotBtn: "Envoyer le code",
     backToLogin: "Retour à la connexion",
 
     // Validation & Messages
