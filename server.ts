@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
 import dotenv from "dotenv";
 import crypto from "crypto";
+import { syncEspnCompetition, ESPN_LEAGUE_SLUGS } from "./src/lib/espnService";
 
 dotenv.config();
 
@@ -566,6 +567,259 @@ app.post("/api/team-sports/sync", async (req, res) => {
       error_message: err?.message || String(err),
     });
     return res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FOOTBALL API — ESPN primary, Supabase (football_*) as cache/store & fallback.
+// Read model: for each competition code, pick ONE provider's competition_id to
+// read fixtures from (prefer 'espn' once it has synced rows, else
+// 'football-data.org'). This guarantees a fixture is never returned twice for
+// the same code — no cross-provider merge, no duplicate display.
+// Writes only ever touch provider='espn' rows (see espnService.ts). Existing
+// football-data.org rows (1752 fixtures) are never modified or deleted here.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FOOTBALL_LIVE_STATUSES = new Set(["IN_PLAY", "PAUSED", "LIVE"]);
+
+/** Parse ESPN displayClock (e.g. "45'", "45+2'", "HT") into a numeric minute, or null. */
+function parseDisplayClockMinute(displayClock: string | null | undefined): number | null {
+  if (!displayClock) return null;
+  const m = displayClock.match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/**
+ * Decide which provider's competition row to read fixtures from for a given code.
+ * Prefers 'espn' once it has at least one synced fixture; otherwise falls back
+ * to 'football-data.org'. Never mixes both in a single response.
+ */
+async function resolveCompetitionForRead(
+  code: string
+): Promise<{ id: string; provider: string; name: string; emblem_url: string | null } | null> {
+  if (!supabaseAdmin) return null;
+
+  const { data: comps } = await supabaseAdmin
+    .from("football_competitions")
+    .select("id, provider, name, emblem_url")
+    .eq("code", code);
+
+  if (!comps || comps.length === 0) return null;
+
+  const espnComp = comps.find((c: any) => c.provider === "espn");
+  const fdComp = comps.find((c: any) => c.provider === "football-data.org");
+
+  if (espnComp) {
+    const { count } = await supabaseAdmin
+      .from("football_fixtures")
+      .select("id", { count: "exact", head: true })
+      .eq("competition_id", espnComp.id);
+    if ((count || 0) > 0) return espnComp as any;
+  }
+
+  return (fdComp as any) || (espnComp as any) || null;
+}
+
+/**
+ * Fetch normalized matches for one competition code.
+ * Plan A: best-effort ESPN sync (only for codes we have a slug for). Failure is swallowed —
+ *         Plan B (existing Supabase rows) still applies.
+ * Plan B: read whichever provider has data for this code from Supabase.
+ * Plan C: if nothing at all, return an empty result (never a crash).
+ */
+async function getMatchesForCode(
+  code: string,
+  opts: { dateFrom?: string; dateTo?: string; status?: string } = {}
+): Promise<{ matches: any[]; source: string }> {
+  if (!supabaseAdmin) return { matches: [], source: "empty" };
+
+  let liveClocks: Record<number, string> = {};
+  let espnSyncOk = false;
+
+  // Plan A — ESPN (best effort, isolated failure per competition)
+  if (ESPN_LEAGUE_SLUGS[code]) {
+    try {
+      const result = await syncEspnCompetition(supabaseAdmin, code);
+      liveClocks = result.liveClocks;
+      espnSyncOk = true;
+    } catch (e: any) {
+      console.warn(`[football] ESPN sync failed for ${code}, falling back to cached data:`, e?.message);
+    }
+  }
+
+  // Plan B — read from whichever provider has data
+  const comp = await resolveCompetitionForRead(code);
+  if (!comp) return { matches: [], source: "empty" };
+
+  let query = supabaseAdmin
+    .from("football_fixtures")
+    .select(
+      `
+        external_id, utc_kickoff, status, home_score, away_score, winner, matchday, provider,
+        home_team:football_teams!football_fixtures_home_team_id_fkey ( external_id, name, short_name, tla, crest_url ),
+        away_team:football_teams!football_fixtures_away_team_id_fkey ( external_id, name, short_name, tla, crest_url )
+      `
+    )
+    .eq("competition_id", comp.id)
+    .order("utc_kickoff", { ascending: true })
+    .limit(200);
+
+  if (opts.dateFrom) query = query.gte("utc_kickoff", opts.dateFrom);
+  if (opts.dateTo) query = query.lte("utc_kickoff", opts.dateTo);
+  if (opts.status) query = query.eq("status", opts.status.toUpperCase());
+
+  const { data: rows, error } = await query;
+  if (error || !rows) return { matches: [], source: "empty" };
+
+  const matches = rows.map((r: any) => {
+    const isLive = FOOTBALL_LIVE_STATUSES.has(r.status);
+    const displayClock = isLive ? liveClocks[r.external_id] ?? null : null;
+    return {
+      id: r.external_id,
+      utcDate: r.utc_kickoff,
+      status: r.status,
+      minute: isLive ? parseDisplayClockMinute(displayClock) : null,
+      matchday: r.matchday ?? null,
+      competition: { id: 0, name: comp.name, code, emblem: comp.emblem_url || "" },
+      homeTeam: {
+        id: r.home_team?.external_id ?? 0,
+        name: r.home_team?.name ?? "Home Team",
+        shortName: r.home_team?.short_name || r.home_team?.name || "Home",
+        tla: r.home_team?.tla || "HOM",
+        crest: r.home_team?.crest_url || "",
+      },
+      awayTeam: {
+        id: r.away_team?.external_id ?? 0,
+        name: r.away_team?.name ?? "Away Team",
+        shortName: r.away_team?.short_name || r.away_team?.name || "Away",
+        tla: r.away_team?.tla || "AWY",
+        crest: r.away_team?.crest_url || "",
+      },
+      score: {
+        winner: r.winner,
+        fullTime: { home: r.home_score, away: r.away_score },
+        halfTime: { home: null, away: null },
+      },
+    };
+  });
+
+  const source = comp.provider === "espn" ? (espnSyncOk ? "espn" : "cache") : "cache";
+  return { matches, source };
+}
+
+// GET /api/football/matches?competitions=PL,PD,SA&dateFrom=&dateTo=
+app.get("/api/football/matches", async (req: Request, res: Response) => {
+  const codesParam = (req.query.competitions as string) || "";
+  const codes = codesParam
+    .split(",")
+    .map((c) => c.trim().toUpperCase())
+    .filter(Boolean);
+
+  if (codes.length === 0) {
+    return res.json({ matches: [], source: "empty" });
+  }
+
+  const dateFrom = req.query.dateFrom as string | undefined;
+  const dateTo = req.query.dateTo as string | undefined;
+
+  const results = await Promise.all(
+    codes.map((code) =>
+      getMatchesForCode(code, { dateFrom, dateTo }).catch(() => ({ matches: [], source: "empty" }))
+    )
+  );
+
+  const matches = results.flatMap((r) => r.matches);
+  const anyLive = results.some((r) => r.source === "espn");
+  const source = matches.length === 0 ? "empty" : anyLive ? "espn" : "cache";
+
+  res.json({ matches, source });
+});
+
+// GET /api/football/competitions/:code/matches?status=SCHEDULED|FINISHED
+app.get("/api/football/competitions/:code/matches", async (req: Request, res: Response) => {
+  const code = (req.params.code || "").toUpperCase();
+  const status = req.query.status as string | undefined;
+
+  const result = await getMatchesForCode(code, { status }).catch(() => ({
+    matches: [] as any[],
+    source: "empty",
+  }));
+
+  res.json(result);
+});
+
+// GET /api/football/competitions/:code/standings
+// Pure Supabase read — ESPN scoreboard does not carry standings, so this is not
+// synced from ESPN in this pass (see REMAINING notes). Reads whichever provider
+// has standings rows for this code, same single-provider-per-response rule.
+app.get("/api/football/competitions/:code/standings", async (req: Request, res: Response) => {
+  const code = (req.params.code || "").toUpperCase();
+
+  if (!supabaseAdmin) return res.json({ standings: [], source: "empty" });
+
+  try {
+    const { data: comps } = await supabaseAdmin
+      .from("football_competitions")
+      .select("id, provider")
+      .eq("code", code);
+
+    if (!comps || comps.length === 0) return res.json({ standings: [], source: "empty" });
+
+    // Prefer whichever provider actually has standings rows for this competition.
+    let chosenCompId: string | null = null;
+    for (const c of comps as any[]) {
+      const { count } = await supabaseAdmin
+        .from("football_standings")
+        .select("id", { count: "exact", head: true })
+        .eq("competition_id", c.id);
+      if ((count || 0) > 0) {
+        chosenCompId = c.id;
+        break;
+      }
+    }
+
+    if (!chosenCompId) return res.json({ standings: [], source: "empty" });
+
+    const { data: rows, error } = await supabaseAdmin
+      .from("football_standings")
+      .select(
+        `
+          position, played, won, draw, lost, points, goals_for, goals_against, goal_difference, form, season,
+          team:football_teams!football_standings_team_id_fkey ( id, external_id, name, short_name, tla, crest_url, logo_storage_path )
+        `
+      )
+      .eq("competition_id", chosenCompId)
+      .order("position", { ascending: true });
+
+    if (error || !rows) return res.json({ standings: [], source: "empty" });
+
+    const standings = rows.map((r: any) => ({
+      position: r.position,
+      played: r.played,
+      won: r.won,
+      draw: r.draw,
+      lost: r.lost,
+      points: r.points,
+      goals_for: r.goals_for,
+      goals_against: r.goals_against,
+      goal_difference: r.goal_difference,
+      form: r.form,
+      season: r.season,
+      team: {
+        id: r.team?.id,
+        external_id: String(r.team?.external_id ?? ""),
+        name: r.team?.name,
+        short_name: r.team?.short_name,
+        tla: r.team?.tla,
+        crest_url: r.team?.crest_url,
+        logo_storage_path: r.team?.logo_storage_path,
+      },
+    }));
+
+    res.json({ standings, source: "cache" });
+  } catch (e: any) {
+    console.warn("[football] standings error:", e?.message);
+    res.json({ standings: [], source: "empty" });
   }
 });
 
