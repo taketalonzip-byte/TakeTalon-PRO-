@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Coins,
@@ -11,6 +11,11 @@ import {
   CheckCircle2,
   Sparkles,
   Zap,
+  Bot,
+  Send,
+  AlertCircle,
+  FileWarning,
+  Hash,
 } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 
@@ -25,6 +30,9 @@ interface DepositPageProps {
   currentUser?: { isLoggedIn: boolean; username: string; phone?: string; email?: string } | null;
   profileId?: string | null;
 }
+
+const VERIFY_TOTAL_WAIT_SECONDS = 60;
+const VERIFY_POLL_INTERVAL_MS = 5000;
 
 export default function DepositPage({
   userBalance,
@@ -51,6 +59,24 @@ export default function DepositPage({
     status: "success" | "pending" | "error" | null;
     message?: string;
   }>({ status: null });
+
+  // Countdown / polling state for the "up to 60s" verification wait
+  const [verifyCountdown, setVerifyCountdown] = useState<number | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Report-an-incomplete-transaction state
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportNumber, setReportNumber] = useState("");
+  const [reportDescription, setReportDescription] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportSubmitted, setReportSubmitted] = useState(false);
+
+  // Gemini AI Q&A state
+  const [geminiQuestion, setGeminiQuestion] = useState("");
+  const [geminiAnswer, setGeminiAnswer] = useState("");
+  const [geminiLoading, setGeminiLoading] = useState(false);
+  const [geminiError, setGeminiError] = useState("");
 
   // Agents data for each method
   const agentsMap = {
@@ -121,6 +147,130 @@ export default function DepositPage({
     setTimeout(() => setCopiedNumber(null), 2500);
   };
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Verification timers helpers
+  // ─────────────────────────────────────────────────────────────────────────
+  const clearVerifyTimers = () => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearVerifyTimers();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  type DepositCheckResult =
+    | { status: "success"; amount: number; methodName: string }
+    | { status: "pending" }
+    | { status: "error"; message: string };
+
+  // Single "did the deposit land yet?" check — reused by the polling loop below
+  const checkDepositStatus = async (): Promise<DepositCheckResult> => {
+    try {
+      // Query recent sms_messages in Supabase database to verify real deposit
+      let query = supabase.from("sms_messages").select("*").order("created_at", { ascending: false }).limit(10);
+      const { data, error } = await query;
+
+      if (error) {
+        console.warn("[DepositPage] verification db check warning:", error.message);
+      }
+
+      const matchedSms = (data || []).find((msg: any) => {
+        const body = (msg.message || msg.body || "").toLowerCase();
+        const sender = (msg.sender || msg.sender_phone || "").toLowerCase();
+        const ref = transactionRef.trim().toLowerCase();
+        const phone = senderPhone.trim().toLowerCase();
+
+        if (ref && body.includes(ref)) return true;
+        if (phone && sender.includes(phone)) return true;
+        return false;
+      });
+
+      if (matchedSms) {
+        const amount = matchedSms.amount || 1000;
+        const methodName = selectedMethod ? agentsMap[selectedMethod].title : "Mobile Money";
+        return { status: "success", amount, methodName };
+      }
+
+      // If not immediately found in DB, trigger backend SMS poll sync check
+      const syncRes = await fetch("/api/sms").then((r) => r.json()).catch(() => null);
+
+      if (syncRes && syncRes.data && syncRes.data.length > 0) {
+        const freshMatched = syncRes.data.find((m: any) => {
+          const b = (m.message || "").toLowerCase();
+          const ref = transactionRef.trim().toLowerCase();
+          return ref && b.includes(ref);
+        });
+
+        if (freshMatched) {
+          const amount = freshMatched.amount || 1000;
+          const methodName = selectedMethod ? agentsMap[selectedMethod].title : "Mobile Money";
+          return { status: "success", amount, methodName };
+        }
+      }
+
+      return { status: "pending" };
+    } catch (err: any) {
+      console.error("[DepositPage] Verification error:", err);
+      return {
+        status: "error",
+        message:
+          lang === "sw"
+            ? "Imefeli kuhakiki muamala. Hakikisha umetuma pesa kwenda kwa Wakala kwanza."
+            : "Failed to verify transaction. Please send funds to the Agent first.",
+      };
+    }
+  };
+
+  // Applies a confirmed deposit: refresh balance from DB + record transaction + notify
+  const applySuccessResult = async (amount: number, methodName: string) => {
+    const cAny = currentUser as any;
+    const lookupId = cAny?.id || cAny?.authUserId || cAny?.email || cAny?.username;
+    if (lookupId) {
+      try {
+        const res = await fetch(`/api/auth/profile-lookup?id=${encodeURIComponent(lookupId)}`);
+        if (res.ok) {
+          const pData = await res.json();
+          if (pData?.wallet?.available_balance !== undefined) {
+            setUserBalance(Number(pData.wallet.available_balance));
+          }
+        }
+      } catch (err) {
+        console.warn("[DepositPage] balance refresh warning:", err);
+      }
+    }
+
+    onAddTransaction(
+      "DEPOSIT",
+      amount,
+      lang === "sw" ? `Amana Halisi kupitia ${methodName}` : `Real Deposit via ${methodName}`
+    );
+
+    setVerificationResult({
+      status: "success",
+      message:
+        lang === "sw"
+          ? `Muamala umethibitishwa kwenye database! Salio lako limesasishwa.`
+          : `Transaction verified in database! Your balance was updated.`,
+    });
+
+    onAddNotification(
+      lang === "sw"
+        ? `Amana ya FBU ${amount.toLocaleString()} imethibitishwa vyema kwenye database!`
+        : `Deposit of FBU ${amount.toLocaleString()} verified successfully in database!`,
+      "success"
+    );
+  };
+
   const handleVerifyDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!transactionRef.trim() && !senderPhone.trim()) {
@@ -135,143 +285,221 @@ export default function DepositPage({
       return;
     }
 
+    clearVerifyTimers();
     setIsVerifying(true);
     setVerificationResult({ status: null });
+    setShowReportForm(false);
+    setReportSubmitted(false);
+    setVerifyCountdown(VERIFY_TOTAL_WAIT_SECONDS);
 
-    try {
-      // Query recent sms_messages in Supabase database to verify real deposit
-      let query = supabase.from("sms_messages").select("*").order("created_at", { ascending: false }).limit(10);
+    // Purely visual 1s countdown ticker
+    countdownIntervalRef.current = setInterval(() => {
+      setVerifyCountdown((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
-      const { data, error } = await query;
+    const startTime = Date.now();
+    let resolved = false;
 
-      if (error) {
-        console.warn("[DepositPage] verification db check warning:", error.message);
+    const finishSuccess = async (amount: number, methodName: string) => {
+      resolved = true;
+      clearVerifyTimers();
+      setVerifyCountdown(null);
+      await applySuccessResult(amount, methodName);
+      setIsVerifying(false);
+    };
+
+    const finishError = (message: string) => {
+      resolved = true;
+      clearVerifyTimers();
+      setVerifyCountdown(null);
+      setVerificationResult({ status: "error", message });
+      setIsVerifying(false);
+    };
+
+    const finishTimeout = () => {
+      resolved = true;
+      clearVerifyTimers();
+      setVerifyCountdown(null);
+      const rNum = `RPT-${Date.now().toString(36).toUpperCase()}`;
+      setReportNumber(rNum);
+      setShowReportForm(true);
+      setVerificationResult({
+        status: "pending",
+        message: tr(
+          "Muda wa sekunde 60 umeisha bila majibu ya moja kwa moja kutoka kwa mfumo. Bado mfumo huu wa uhakiki unajengwa na mchakato huu bado unaigwa (simulated) kwa sasa, kwa hiyo majibu halisi ya deposit yako huenda yakachukua muda zaidi. Kama umeshatuma Unités na kuhakiki lakini muamala haujakamilika, tafadhali jaza fomu ya ripoti hapa chini ili tuisimamie.",
+          "Le délai de 60 secondes s'est écoulé sans réponse directe du système. Ce système de vérification est encore en construction et ce processus est actuellement simulé, une réponse réelle peut donc prendre plus de temps. Si vous avez déjà envoyé les unités et vérifié mais que la transaction n'est pas terminée, veuillez remplir le formulaire de rapport ci-dessous.",
+          "The 60 second wait ended without a direct answer from the system. This verification system is still being built and this process is currently simulated, so a real response may take longer. If you've already sent the units and verified but the transaction isn't complete, please fill out the report form below."
+        ),
+      });
+      setIsVerifying(false);
+    };
+
+    const pollLoop = async () => {
+      if (resolved) return;
+
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= VERIFY_TOTAL_WAIT_SECONDS * 1000) {
+        finishTimeout();
+        return;
       }
 
-      // Filter matching SMS by ref or sender
-      const matchedSms = (data || []).find((msg: any) => {
-        const body = (msg.message || msg.body || "").toLowerCase();
-        const sender = (msg.sender || msg.sender_phone || "").toLowerCase();
-        const ref = transactionRef.trim().toLowerCase();
-        const phone = senderPhone.trim().toLowerCase();
+      const result = await checkDepositStatus();
+      if (resolved) return;
 
-        if (ref && body.includes(ref)) return true;
-        if (phone && sender.includes(phone)) return true;
-        return false;
+      if (result.status === "success") {
+        await finishSuccess(result.amount, result.methodName);
+        return;
+      }
+
+      if (result.status === "error") {
+        finishError(result.message);
+        return;
+      }
+
+      // Still pending — no need to wait the full 60s once a real answer shows up,
+      // but keep the reassurance message live while we wait for one.
+      setVerificationResult({
+        status: "pending",
+        message: tr(
+          "Ujumbe wako wa SMS unapokelewa na kuhakikiwa na mfumo wa TakeTalon. Ukishapokewa, salio lako litaongezeka kiotomatiki. Bado mfumo huu unajengwa, kwa hiyo hii ni sehemu ya mchakato unaoigwa (simulated) kwa sasa.",
+          "Votre transaction SMS est en cours de traitement et de vérification par le système TakeTalon. Une fois reçue, votre solde sera mis à jour automatiquement. Ce système est encore en construction, il s'agit donc actuellement d'une partie simulée du processus.",
+          "Your SMS transaction is being processed and verified by the TakeTalon system. Once received, your balance will update automatically. This system is still being built, so this is currently a simulated part of the process."
+        ),
       });
 
-      if (matchedSms) {
-        // Amount extracted
-        const amount = matchedSms.amount || 1000;
-        const methodName = selectedMethod ? agentsMap[selectedMethod].title : "Mobile Money";
+      const remainingMs = VERIFY_TOTAL_WAIT_SECONDS * 1000 - (Date.now() - startTime);
+      if (remainingMs <= 0) {
+        finishTimeout();
+        return;
+      }
 
-        // Fetch fresh balance directly from database
-        const cAny = currentUser as any;
-        const lookupId = cAny?.id || cAny?.authUserId || cAny?.email || cAny?.username;
-        if (lookupId) {
-          try {
-            const res = await fetch(`/api/auth/profile-lookup?id=${encodeURIComponent(lookupId)}`);
-            if (res.ok) {
-              const pData = await res.json();
-              if (pData?.wallet?.available_balance !== undefined) {
-                setUserBalance(Number(pData.wallet.available_balance));
-              }
-            }
-          } catch (err) {
-            console.warn("[DepositPage] balance refresh warning:", err);
-          }
-        }
+      pollTimeoutRef.current = setTimeout(pollLoop, Math.min(VERIFY_POLL_INTERVAL_MS, remainingMs));
+    };
 
-        onAddTransaction(
-          "DEPOSIT",
-          amount,
-          lang === "sw" ? `Amana Halisi kupitia ${methodName}` : `Real Deposit via ${methodName}`
+    pollLoop();
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Gemini AI Q&A (server-side call — never expose GEMINI_API_KEY client-side)
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleAskGemini = async () => {
+    if (!geminiQuestion.trim() || geminiLoading) return;
+    setGeminiLoading(true);
+    setGeminiError("");
+    setGeminiAnswer("");
+    try {
+      const res = await fetch("/api/deposit/gemini-ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: geminiQuestion.trim(),
+          lang,
+          context: {
+            method: selectedMethod ? agentsMap[selectedMethod].title : null,
+            verificationStatus: verificationResult.status,
+          },
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.ok && data?.answer) {
+        setGeminiAnswer(data.answer);
+      } else {
+        setGeminiError(
+          tr(
+            "Gemini AI haikuweza kujibu kwa sasa. Jaribu tena baadaye.",
+            "Gemini AI n'a pas pu répondre pour le moment. Réessayez plus tard.",
+            "Gemini AI couldn't answer right now. Please try again later."
+          )
         );
+      }
+    } catch (err) {
+      setGeminiError(
+        tr("Hitilafu ya mtandao. Jaribu tena.", "Erreur réseau. Réessayez.", "Network error. Please try again.")
+      );
+    } finally {
+      setGeminiLoading(false);
+    }
+  };
 
-        setVerificationResult({
-          status: "success",
-          message:
-            lang === "sw"
-              ? `Muamala umethibitishwa kwenye database! Salio lako limesasishwa.`
-              : `Transaction verified in database! Your balance was updated.`,
-        });
-
+  // ─────────────────────────────────────────────────────────────────────────
+  // Report an incomplete transaction
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleSubmitReport = async () => {
+    if (!reportDescription.trim()) {
+      onAddNotification(
+        tr(
+          "Tafadhali eleza tatizo lako kabla ya kutuma ripoti",
+          "Veuillez décrire votre problème avant d'envoyer le rapport",
+          "Please describe your issue before submitting the report"
+        ),
+        "error"
+      );
+      return;
+    }
+    setReportSubmitting(true);
+    try {
+      const res = await fetch("/api/deposit/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportNumber,
+          method: selectedMethod ? agentsMap[selectedMethod].title : null,
+          phone: senderPhone,
+          transactionRef,
+          description: reportDescription.trim(),
+          username: currentUser?.username || null,
+          lang,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.ok) {
+        setReportSubmitted(true);
         onAddNotification(
-          lang === "sw"
-            ? `Amana ya FBU ${amount.toLocaleString()} imethibitishwa vyema kwenye database!`
-            : `Deposit of FBU ${amount.toLocaleString()} verified successfully in database!`,
+          tr(
+            `Ripoti namba ${reportNumber} imetumwa kikamilifu. Timu yetu itaifanyia kazi.`,
+            `Le rapport n°${reportNumber} a été envoyé avec succès. Notre équipe le traitera.`,
+            `Report number ${reportNumber} was submitted successfully. Our team will look into it.`
+          ),
           "success"
         );
       } else {
-        // If not immediately found in DB, trigger backend SMS poll sync check
-        const syncRes = await fetch("/api/sms").then((r) => r.json()).catch(() => null);
-
-        if (syncRes && syncRes.data && syncRes.data.length > 0) {
-          const freshMatched = syncRes.data.find((m: any) => {
-            const b = (m.message || "").toLowerCase();
-            const ref = transactionRef.trim().toLowerCase();
-            return ref && b.includes(ref);
-          });
-
-          if (freshMatched) {
-            const amount = freshMatched.amount || 1000;
-            const methodName = selectedMethod ? agentsMap[selectedMethod].title : "Mobile Money";
-
-            // Fetch fresh balance directly from database
-            const cAny = currentUser as any;
-            const lookupId = cAny?.id || cAny?.authUserId || cAny?.email || cAny?.username;
-            if (lookupId) {
-              try {
-                const res = await fetch(`/api/auth/profile-lookup?id=${encodeURIComponent(lookupId)}`);
-                if (res.ok) {
-                  const pData = await res.json();
-                  if (pData?.wallet?.available_balance !== undefined) {
-                    setUserBalance(Number(pData.wallet.available_balance));
-                  }
-                }
-              } catch (err) {
-                console.warn("[DepositPage] balance refresh warning:", err);
-              }
-            }
-
-            onAddTransaction(
-              "DEPOSIT",
-              amount,
-              lang === "sw" ? `Amana Halisi kupitia ${methodName}` : `Real Deposit via ${methodName}`
-            );
-
-            setVerificationResult({
-              status: "success",
-              message:
-                lang === "sw"
-                  ? `Muamala umethibitishwa kwenye database! Salio lako limesasishwa.`
-                  : `Transaction verified in database! Your balance was updated.`,
-            });
-            setIsVerifying(false);
-            return;
-          }
-        }
-
-        setVerificationResult({
-          status: "pending",
-          message:
-            lang === "sw"
-              ? "Ujumbe wako wa SMS unapokelewa na kuhakikiwa na mfumo wa TakeTalon. Ukishapokewa, salio lako litaongezeka kiotomatiki."
-              : "Your SMS transaction is being processed and verified by TakeTalon system. Salio litaongezeka mara moja.",
-        });
+        onAddNotification(
+          tr(
+            "Imefeli kutuma ripoti. Jaribu tena.",
+            "Échec de l'envoi du rapport. Réessayez.",
+            "Failed to submit report. Please try again."
+          ),
+          "error"
+        );
       }
-    } catch (err: any) {
-      console.error("[DepositPage] Verification error:", err);
-      setVerificationResult({
-        status: "error",
-        message:
-          lang === "sw"
-            ? "Imefeli kuhakiki muamala. Hakikisha umetuma pesa kwenda kwa Wakala kwanza."
-            : "Failed to verify transaction. Please send funds to the Agent first.",
-      });
+    } catch (err) {
+      onAddNotification(
+        tr(
+          "Hitilafu ya mtandao wakati wa kutuma ripoti.",
+          "Erreur réseau lors de l'envoi du rapport.",
+          "Network error while submitting the report."
+        ),
+        "error"
+      );
     } finally {
-      setIsVerifying(false);
+      setReportSubmitting(false);
     }
+  };
+
+  const openReportFormManually = () => {
+    const rNum = reportNumber || `RPT-${Date.now().toString(36).toUpperCase()}`;
+    setReportNumber(rNum);
+    setShowReportForm(true);
   };
 
   return (
@@ -627,6 +855,14 @@ export default function DepositPage({
               </h4>
             </div>
 
+            <p className="text-[10px] text-slate-500 leading-relaxed -mt-1.5">
+              {tr(
+                "Kumbuka: mfumo huu bado unajengwa na mchakato wa uhakiki bado unaigwa (simulated). Tutakupa majibu haraka iwezekanavyo, kwa kiwango cha juu cha sekunde 60.",
+                "Remarque : ce système est encore en construction et le processus de vérification est actuellement simulé. Nous vous répondrons le plus rapidement possible, en 60 secondes maximum.",
+                "Note: this system is still being built and the verification process is currently simulated. We'll respond as fast as possible, within 60 seconds max."
+              )}
+            </p>
+
             <div className="space-y-2">
               <div>
                 <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
@@ -671,7 +907,15 @@ export default function DepositPage({
               {isVerifying ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Inahakiki Kwenye Database...</span>
+                  <span>
+                    {verifyCountdown !== null
+                      ? tr(
+                          `Inasubiri Majibu... ${verifyCountdown}s`,
+                          `En attente de réponse... ${verifyCountdown}s`,
+                          `Waiting for response... ${verifyCountdown}s`
+                        )
+                      : tr("Inahakiki Kwenye Database...", "Vérification en cours...", "Verifying...")}
+                  </span>
                 </>
               ) : (
                 <>
@@ -705,7 +949,213 @@ export default function DepositPage({
                 </div>
               </div>
             )}
+
+            {/* Manual trigger to report an incomplete transaction */}
+            {verificationResult.status && verificationResult.status !== "success" && !showReportForm && (
+              <button
+                type="button"
+                onClick={openReportFormManually}
+                className="text-[11px] font-bold text-amber-500 underline underline-offset-2 cursor-pointer"
+              >
+                {tr(
+                  "Muamala haujakamilika? Bonyeza hapa kutuma ripoti",
+                  "Transaction non terminée ? Cliquez ici pour signaler",
+                  "Transaction not complete? Click here to report"
+                )}
+              </button>
+            )}
           </form>
+
+          {/* GEMINI AI HELP BOX */}
+          <div
+            className={`p-3.5 rounded-xl border space-y-3 ${
+              theme === "light"
+                ? "bg-indigo-50/50 border-indigo-200"
+                : "bg-slate-950/80 border-slate-800"
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <Bot className="w-4 h-4 text-indigo-400" />
+              <h4
+                className={`text-xs font-black uppercase ${
+                  theme === "light" ? "text-slate-800" : "text-slate-200"
+                }`}
+              >
+                {tr(
+                  "Uliza Gemini AI kuhusu Amana Yako",
+                  "Demandez à Gemini AI à propos de votre dépôt",
+                  "Ask Gemini AI about your deposit"
+                )}
+              </h4>
+            </div>
+
+            <p className="text-[10.5px] text-slate-400 leading-relaxed">
+              {tr(
+                "Bado mfumo huu unajengwa na mchakato wa uhakiki bado unaigwa (simulated) kwa sasa. Gemini AI anaweza kukusaidia kuelewa hatua zinazofuata, lakini haundishi wala kuthibitisha muamala kwa niaba ya mfumo.",
+                "Ce système est encore en construction et le processus de vérification est actuellement simulé. Gemini AI peut vous aider à comprendre les prochaines étapes, mais ne confirme pas la transaction à la place du système.",
+                "This system is still being built and the verification process is currently simulated. Gemini AI can help you understand next steps, but it doesn't confirm the transaction on the system's behalf."
+              )}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={geminiQuestion}
+                onChange={(e) => setGeminiQuestion(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAskGemini();
+                  }
+                }}
+                placeholder={tr(
+                  "mf. Nifanye nini kama sijapokea majibu?",
+                  "ex. Que faire si je n'ai pas de réponse ?",
+                  "e.g. What should I do if I get no response?"
+                )}
+                className={`flex-1 px-3 py-2 text-xs rounded-xl border focus:outline-none ${
+                  theme === "light"
+                    ? "bg-white border-slate-300 text-slate-900"
+                    : "bg-slate-900 border-slate-800 text-slate-100"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={handleAskGemini}
+                disabled={geminiLoading || !geminiQuestion.trim()}
+                className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black flex items-center space-x-1.5 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {geminiLoading ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Send className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
+
+            {geminiAnswer && (
+              <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs leading-relaxed flex items-start space-x-2">
+                <Bot className="w-4 h-4 shrink-0 mt-0.5" />
+                <p>{geminiAnswer}</p>
+              </div>
+            )}
+            {geminiError && (
+              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[11px]">
+                {geminiError}
+              </div>
+            )}
+          </div>
+
+          {/* REPORT AN INCOMPLETE TRANSACTION */}
+          {showReportForm && (
+            <div
+              className={`p-3.5 rounded-xl border space-y-3 ${
+                theme === "light"
+                  ? "bg-amber-50/60 border-amber-200"
+                  : "bg-slate-950/80 border-amber-900/40"
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <FileWarning className="w-4 h-4 text-amber-400" />
+                <h4
+                  className={`text-xs font-black uppercase ${
+                    theme === "light" ? "text-slate-800" : "text-slate-200"
+                  }`}
+                >
+                  {tr(
+                    "Ripoti Muamala Usiokamilika",
+                    "Signaler une transaction incomplète",
+                    "Report an incomplete transaction"
+                  )}
+                </h4>
+              </div>
+
+              <p className="text-[10.5px] text-slate-400 leading-relaxed">
+                {tr(
+                  "Kama umetuma Unités na kuhakiki lakini muamala haujakamilika, jaza maelezo hapa chini. Timu yetu itafuatilia ripoti yako kwa kutumia namba iliyotolewa.",
+                  "Si vous avez envoyé les unités et vérifié mais que la transaction n'est pas terminée, remplissez les détails ci-dessous. Notre équipe suivra votre rapport à l'aide du numéro fourni.",
+                  "If you've sent the units and verified but the transaction isn't complete, fill in the details below. Our team will follow up using the provided number."
+                )}
+              </p>
+
+              <div
+                className={`p-2.5 rounded-xl border flex items-center justify-between ${
+                  theme === "light" ? "bg-white border-slate-200" : "bg-slate-900 border-slate-800"
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <Hash className="w-3.5 h-3.5 text-amber-400" />
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-500 block">
+                      {tr("Namba ya Ripoti", "Numéro de rapport", "Report Number")}
+                    </span>
+                    <span className="text-xs font-mono font-black text-amber-400">{reportNumber}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(reportNumber)}
+                  className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-[10px] font-bold flex items-center space-x-1 active:scale-95 transition-all cursor-pointer"
+                >
+                  {copiedNumber === reportNumber ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  <span>{tr("Nakili", "Copier", "Copy")}</span>
+                </button>
+              </div>
+
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                  {tr("Maelezo ya Tatizo", "Description du problème", "Issue Description")}
+                </label>
+                <textarea
+                  value={reportDescription}
+                  onChange={(e) => setReportDescription(e.target.value)}
+                  rows={3}
+                  placeholder={tr(
+                    "Eleza kwa ufupi ulichofanya na tatizo lililotokea...",
+                    "Décrivez brièvement ce que vous avez fait et le problème rencontré...",
+                    "Briefly describe what you did and the issue you're facing..."
+                  )}
+                  className={`w-full px-3 py-2 text-xs rounded-xl border focus:outline-none resize-none ${
+                    theme === "light"
+                      ? "bg-white border-slate-300 text-slate-900"
+                      : "bg-slate-900 border-slate-800 text-slate-100"
+                  }`}
+                />
+              </div>
+
+              {reportSubmitted ? (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-start space-x-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                  <p>
+                    {tr(
+                      `Ripoti namba ${reportNumber} imetumwa. Tutawasiliana nawe hivi karibuni.`,
+                      `Rapport n°${reportNumber} envoyé. Nous vous contacterons bientôt.`,
+                      `Report number ${reportNumber} submitted. We'll be in touch soon.`
+                    )}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSubmitReport}
+                  disabled={reportSubmitting}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs uppercase tracking-wider shadow-md active:scale-95 transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-60"
+                >
+                  {reportSubmitting ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>{tr("Inatuma Ripoti...", "Envoi en cours...", "Submitting...")}</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span>{tr("TUMA RIPOTI", "ENVOYER LE RAPPORT", "SUBMIT REPORT")}</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
