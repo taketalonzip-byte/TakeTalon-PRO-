@@ -15,16 +15,27 @@
 
 const CACHE_PREFIX = "tt_fd_";
 
-// TTL per data category (milliseconds)
+// TTL per data category (milliseconds).
+// LIVE matches always use the short `live` TTL regardless of category — see hasLiveMatch()
+// below — because a single "fixtures" response commonly mixes live + scheduled + finished
+// matches, and the old flat 24h TTL here meant live scores never refreshed in-session.
 const TTL = {
-  fixtures: 24 * 60 * 60_000, // 24 h   — upcoming/live matches (1 request/day limit)
-  finished: 24 * 60 * 60_000, // 24 h   — completed matches
+  fixtures: 60 * 60_000, // 1 h    — upcoming matches (matches football_sync_config.fixtures_refresh_minutes)
+  finished: 6 * 60 * 60_000, // 6 h    — completed matches
   competition: 24 * 60 * 60_000, // 24 h   — static competition info
   teams: 24 * 60 * 60_000, // 24 h   — static team info
-  standings: 24 * 60 * 60_000, // 24 h   — standings
+  standings: 6 * 60 * 60_000, // 6 h    — standings (matches football_sync_config.standings_refresh_minutes)
+  live: 20_000, // 20 s   — matches football_sync_config.espn_live_refresh_seconds
 };
 
 type TTLKey = keyof typeof TTL;
+
+/** True if any match in this payload is currently live — forces the short `live` TTL. */
+function hasLiveMatch(data: unknown): boolean {
+  const matches = (data as any)?.matches;
+  if (!Array.isArray(matches)) return false;
+  return matches.some((m: any) => m?.status === "IN_PLAY" || m?.status === "PAUSED" || m?.status === "LIVE");
+}
 
 interface CacheEntry<T> {
   data: T;
@@ -547,6 +558,10 @@ async function cachedFetch<T>(
     (entry.data as any).matches = (entry.data as any).matches.map(normalizeAndCorrectMatch);
   }
 
+  // A response containing any LIVE/IN_PLAY/PAUSED match must use the short live TTL,
+  // even if this cache entry's category is "fixtures" (which mixes live + scheduled).
+  const effectiveTtlMs = entry && hasLiveMatch(entry.data) ? TTL.live : ttlMs;
+
   const isMockOrFallback =
     (entry?.data as any)?.source === "built_in_fallback" ||
     (entry?.data as any)?.source === "local_storage_fallback" ||
@@ -554,7 +569,7 @@ async function cachedFetch<T>(
     ((entry?.data as any)?.matches?.some((m: any) => m.id >= 600000) ?? false);
 
   // ── Case 1: Fresh real cache → return immediately ──────────────────────────
-  if (entry && !isMockOrFallback && isFresh(entry, ttlMs)) {
+  if (entry && !isMockOrFallback && isFresh(entry, effectiveTtlMs)) {
     return { data: entry.data, fromCache: true, stale: false };
   }
 
