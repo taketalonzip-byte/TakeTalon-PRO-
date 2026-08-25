@@ -37,6 +37,8 @@ function hasLiveMatch(data: unknown): boolean {
   return matches.some((m: any) => m?.status === "IN_PLAY" || m?.status === "PAUSED" || m?.status === "LIVE");
 }
 
+import { getLeagueLogoUrl } from "./leagueLogos";
+
 interface CacheEntry<T> {
   data: T;
   ts: number;
@@ -59,7 +61,12 @@ export function normalizeAndCorrectMatch(m: any): FootballMatch {
 
   // Logo self-correction for competition emblem
   const compCode = m.competition?.code || "PL";
-  const compEmblem = m.competition?.emblem || `https://crests.football-data.org/${compCode}.png`;
+  // Logo priority: 1) ESPN official (modern branding, e.g. new LALIGA crest)
+  //                 2) football-data.org emblem (legacy fallback only)
+  const compEmblem =
+    getLeagueLogoUrl(compCode) ||
+    m.competition?.emblem ||
+    `https://crests.football-data.org/${compCode}.png`;
 
   // Odds calculation if missing
   let odds = m.odds;
@@ -173,7 +180,7 @@ function getBuiltInFallbackMatches(cacheKey?: string): FootballMatch[] {
         id: 2014,
         name: "La Liga",
         code: "PD",
-        emblem: "https://crests.football-data.org/PD.png",
+        emblem: "https://a.espncdn.com/i/leaguelogos/soccer/500/15.png",
       },
       area: {
         id: 2224,
@@ -211,7 +218,7 @@ function getBuiltInFallbackMatches(cacheKey?: string): FootballMatch[] {
         id: 2014,
         name: "La Liga",
         code: "PD",
-        emblem: "https://crests.football-data.org/PD.png",
+        emblem: "https://a.espncdn.com/i/leaguelogos/soccer/500/15.png",
       },
       area: {
         id: 2224,
@@ -249,7 +256,7 @@ function getBuiltInFallbackMatches(cacheKey?: string): FootballMatch[] {
         id: 2014,
         name: "La Liga",
         code: "PD",
-        emblem: "https://crests.football-data.org/PD.png",
+        emblem: "https://a.espncdn.com/i/leaguelogos/soccer/500/15.png",
       },
       area: {
         id: 2224,
@@ -289,7 +296,7 @@ function getBuiltInFallbackMatches(cacheKey?: string): FootballMatch[] {
         id: 2021,
         name: "Premier League",
         code: "PL",
-        emblem: "https://crests.football-data.org/PL.png",
+        emblem: "https://a.espncdn.com/i/leaguelogos/soccer/500/23.png",
       },
       area: {
         id: 2072,
@@ -327,7 +334,7 @@ function getBuiltInFallbackMatches(cacheKey?: string): FootballMatch[] {
         id: 2021,
         name: "Premier League",
         code: "PL",
-        emblem: "https://crests.football-data.org/PL.png",
+        emblem: "https://a.espncdn.com/i/leaguelogos/soccer/500/23.png",
       },
       area: {
         id: 2072,
@@ -367,7 +374,7 @@ function getBuiltInFallbackMatches(cacheKey?: string): FootballMatch[] {
         id: 2002,
         name: "Bundesliga",
         code: "BL1",
-        emblem: "https://crests.football-data.org/BL1.png",
+        emblem: "https://a.espncdn.com/i/leaguelogos/soccer/500/10.png",
       },
       area: {
         id: 2088,
@@ -407,7 +414,7 @@ function getBuiltInFallbackMatches(cacheKey?: string): FootballMatch[] {
         id: 2019,
         name: "Serie A",
         code: "SA",
-        emblem: "https://crests.football-data.org/SA.png",
+        emblem: "https://a.espncdn.com/i/leaguelogos/soccer/500/12.png",
       },
       area: {
         id: 2114,
@@ -447,7 +454,7 @@ function getBuiltInFallbackMatches(cacheKey?: string): FootballMatch[] {
         id: 2015,
         name: "Ligue 1",
         code: "FL1",
-        emblem: "https://crests.football-data.org/FL1.png",
+        emblem: "https://a.espncdn.com/i/leaguelogos/soccer/500/9.png",
       },
       area: {
         id: 2081,
