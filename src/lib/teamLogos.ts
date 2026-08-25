@@ -18,10 +18,10 @@ export const TEAM_LOGO_MAP: { [key: string]: string } = {
   "man united": "https://crests.football-data.org/66.png",
   "manchester united": "https://crests.football-data.org/66.png",
   tottenham: "https://crests.football-data.org/73.png",
-  realmadrid: "https://crests.football-data.org/86.png",
-  "real madrid": "https://crests.football-data.org/86.png",
-  barcelona: "https://crests.football-data.org/81.png",
-  fcbarcelona: "https://crests.football-data.org/81.png",
+  realmadrid: "https://a.espncdn.com/i/teamlogos/soccer/500/86.png",
+  "real madrid": "https://a.espncdn.com/i/teamlogos/soccer/500/86.png",
+  barcelona: "https://a.espncdn.com/i/teamlogos/soccer/500/83.png",
+  fcbarcelona: "https://a.espncdn.com/i/teamlogos/soccer/500/83.png",
   bayern: "https://crests.football-data.org/5.png",
   "bayern munich": "https://crests.football-data.org/5.png",
   psg: "https://crests.football-data.org/524.png",
@@ -32,8 +32,8 @@ export const TEAM_LOGO_MAP: { [key: string]: string } = {
   acmilan: "https://crests.football-data.org/98.png",
   "ac milan": "https://crests.football-data.org/98.png",
   dortmund: "https://crests.football-data.org/4.png",
-  atlético: "https://crests.football-data.org/78.png",
-  "atletico madrid": "https://crests.football-data.org/78.png",
+  atlético: "https://a.espncdn.com/i/teamlogos/soccer/500/1068.png",
+  "atletico madrid": "https://a.espncdn.com/i/teamlogos/soccer/500/1068.png",
 };
 
 export const getTeamLogoUrl = (teamName: string): string | null => {
