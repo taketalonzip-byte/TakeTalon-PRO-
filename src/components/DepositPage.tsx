@@ -982,18 +982,18 @@ export default function DepositPage({
                 }`}
               >
                 {tr(
-                  "Uliza Gemini AI kuhusu Amana Yako",
-                  "Demandez à Gemini AI à propos de votre dépôt",
-                  "Ask Gemini AI about your deposit"
+                  "Uliza Gemini AI",
+                  "Demandez à Gemini AI",
+                  "Ask Gemini AI"
                 )}
               </h4>
             </div>
 
             <p className="text-[10.5px] text-slate-400 leading-relaxed">
               {tr(
-                "Bado mfumo huu unajengwa na mchakato wa uhakiki bado unaigwa (simulated) kwa sasa. Gemini AI anaweza kukusaidia kuelewa hatua zinazofuata, lakini haundishi wala kuthibitisha muamala kwa niaba ya mfumo.",
-                "Ce système est encore en construction et le processus de vérification est actuellement simulé. Gemini AI peut vous aider à comprendre les prochaines étapes, mais ne confirme pas la transaction à la place du système.",
-                "This system is still being built and the verification process is currently simulated. Gemini AI can help you understand next steps, but it doesn't confirm the transaction on the system's behalf."
+                "Unaweza kuuliza swali lolote kuhusu TakeTalon, michezo, sheria, au hatua za miamala.",
+                "Vous pouvez poser n'importe quelle question sur TakeTalon, les jeux, les règles ou les transactions.",
+                "You can ask any question about TakeTalon, games, rules, or transactions."
               )}
             </p>
 
@@ -1009,9 +1009,9 @@ export default function DepositPage({
                   }
                 }}
                 placeholder={tr(
-                  "mf. Nifanye nini kama sijapokea majibu?",
-                  "ex. Que faire si je n'ai pas de réponse ?",
-                  "e.g. What should I do if I get no response?"
+                  "mf. Andika swali lako hapa...",
+                  "ex. Posez votre question ici...",
+                  "e.g. Type your question here..."
                 )}
                 className={`flex-1 px-3 py-2 text-xs rounded-xl border focus:outline-none ${
                   theme === "light"

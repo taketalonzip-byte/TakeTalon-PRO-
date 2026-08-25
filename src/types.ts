@@ -18,6 +18,14 @@ export interface MatchTip {
   time: string;
   status: "LIVE" | "UPCOMING" | "ENDED";
   liveMinutes?: string;
+  liveScore?: string;
+  homeScore?: number | null;
+  awayScore?: number | null;
+  liveClock?: string | null;
+  score?: {
+    home: number;
+    away: number;
+  };
   confidence: number;
   homeTeam: Team;
   awayTeam: Team;

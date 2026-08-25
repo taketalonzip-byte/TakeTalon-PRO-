@@ -85,6 +85,7 @@ export function normalizeAndCorrectMatch(m: any): FootballMatch {
     utcDate: m.utcDate || new Date().toISOString(),
     status: m.status || "SCHEDULED",
     minute: m.minute ?? null,
+    displayClock: m.displayClock ?? (m.minute ? `${m.minute}'` : null),
     matchday: m.matchday ?? 1,
     competition: {
       id: m.competition?.id || 0,
@@ -154,7 +155,7 @@ function getAnyCachedMatches(cacheKey?: string): FootballMatch[] {
     /* ignore */
   }
 
-  return getBuiltInFallbackMatches(cacheKey);
+  return [];
 }
 
 function getBuiltInFallbackMatches(cacheKey?: string): FootballMatch[] {
@@ -617,6 +618,7 @@ export interface FootballMatch {
   utcDate: string;
   status: string;
   minute?: number | null;
+  displayClock?: string | null;
   matchday?: number | null;
   competition: { id: number; name: string; code: string; emblem: string };
   area: { id: number; name: string; code: string; flag: string };

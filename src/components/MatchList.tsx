@@ -463,6 +463,16 @@ function getMatchPlayers(teamName: string, isHome: boolean, matchId: string) {
       ? { scorers: "⚽ Lautaro (44')", assists: "Barella" }
       : { scorers: "⚽ Thuram (69')", assists: "Dimarco" };
   }
+  if (nameLower.includes("valencia")) {
+    return isHome
+      ? { scorers: "⚽ Hugo Duro (38')", assists: "D. López" }
+      : { scorers: "⚽ J. Guerra (81')", assists: "Gayà" };
+  }
+  if (nameLower.includes("betis")) {
+    return isHome
+      ? { scorers: "⚽ Isco (24')", assists: "Fornals" }
+      : { scorers: "⚽ Ayoze Pérez (53')", assists: "Isco" };
+  }
   if (nameLower.includes("gor mahia")) {
     return isHome
       ? { scorers: "⚽ Benson (35')", assists: "Austin" }
@@ -679,8 +689,96 @@ export default function MatchList({
     Math.floor((elapsedSeconds % 12) / 2) % 6
   ];
 
+  const isMatchLive = (m: any) => {
+    if (!m) return false;
+    const s = String(m.status || "").toUpperCase();
+    return s === "LIVE" || s === "IN_PLAY" || s === "PAUSED" || s === "HALFTIME" || !!m.liveMinutes || !!m.liveScore;
+  };
+
+  const getMatchLiveScore = (m: any): string => {
+    if (!m) return "0 - 0";
+    if (m.liveScore && typeof m.liveScore === "string" && m.liveScore.trim().length > 0) {
+      return m.liveScore;
+    }
+    if (m.homeScore != null && m.awayScore != null) {
+      return `${m.homeScore} - ${m.awayScore}`;
+    }
+    if (m.score?.fullTime?.home != null && m.score?.fullTime?.away != null) {
+      return `${m.score.fullTime.home} - ${m.score.fullTime.away}`;
+    }
+    if (m.score?.home != null && m.score?.away != null) {
+      return `${m.score.home} - ${m.score.away}`;
+    }
+    if (m.id && String(m.id).startsWith("live-g-1")) {
+      return ftScore;
+    }
+    // Deterministic live score based on match id
+    const seed = String(m.id || m.homeTeam?.name || "")
+      .split("")
+      .reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
+    const homeGoals = (seed % 3);
+    const awayGoals = ((seed >> 2) % 2);
+    return `${homeGoals} - ${awayGoals}`;
+  };
+
+  const getMatchLiveTimerDisplay = (m: any): string => {
+    if (!m) return "00:00";
+    if (m.liveClock) return String(m.liveClock);
+    if (m.displayClock) return String(m.displayClock);
+    if (m.liveMinutes) {
+      const numMatch = String(m.liveMinutes).match(/\d+/);
+      const baseMin = numMatch ? parseInt(numMatch[0], 10) : 45;
+      const secOffset = (elapsedSeconds * 4) % 60;
+      const currentMin = Math.min(90, baseMin + Math.floor((elapsedSeconds * 4) / 60));
+      return `${currentMin}':${String(secOffset).padStart(2, "0")}"`;
+    }
+    const seed = String(m.id || "1")
+      .split("")
+      .reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
+    const totalMatchSeconds = (elapsedSeconds * 25 + (seed % 60) * 15) % 5400;
+    const mins = Math.max(1, Math.floor(totalMatchSeconds / 60));
+    const secs = totalMatchSeconds % 60;
+    return `${mins}':${String(secs).padStart(2, "0")}"`;
+  };
+
+  const getMatchLiveMinute = (m: any): string => {
+    if (m.liveMinutes) {
+      const numMatch = String(m.liveMinutes).match(/\d+/);
+      const baseMin = numMatch ? parseInt(numMatch[0], 10) : 45;
+      const currentMin = Math.min(90, baseMin + Math.floor((elapsedSeconds * 4) / 60));
+      return `${currentMin}'`;
+    }
+    const seed = String(m.id || "")
+      .split("")
+      .reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
+    const totalMatchSeconds = (elapsedSeconds * 25 + (seed % 60) * 15) % 5400;
+    const mins = Math.max(1, Math.floor(totalMatchSeconds / 60));
+    return `${mins}'`;
+  };
+
   const mappedLiveMatches = [
     // --- ESPAGNE ---
+    {
+      id: "live-g-valencia-betis",
+      sport: "Football",
+      category: "Espagne",
+      league: "LaLiga",
+      gender: "Man",
+      homeTeam: { name: "Valencia", bgGlow: "rgba(249, 115, 22, 0.4)" },
+      awayTeam: { name: "Real Betis", bgGlow: "rgba(16, 185, 129, 0.4)" },
+      time: "Leo, 20:30 EAT",
+      confidence: 88,
+      predictionTip: "Valencia Kushinda au Sare (1X) & Magoli > 1.5",
+      odds: { home: 2.3, draw: 3.1, away: 2.95 },
+      status: "LIVE" as const,
+      liveMinutes: "74'",
+      liveScore: "2 - 1",
+      payoutBadge: "LALIGA LIVE",
+      tipster: { name: "TakeTalon Pro", avatarLetter: "T", isOfficial: true, badge: "PRO" },
+      isPremium: false,
+      analysisText:
+        "Valencia wako mbele kwa 2-1 Mestalla kwa mashambulizi ya kasi kupitia mabawa, huku Real Betis wakisaka bao la kusawazisha.",
+    },
     {
       id: "live-g-1",
       sport: "V-Football",
@@ -1765,6 +1863,11 @@ export default function MatchList({
         ? false
         : match.isPremium && !isPro && !match.tipster?.isOfficial;
 
+    const isLive = isMatchLive(match);
+    const currentLiveScore = getMatchLiveScore(match);
+    const currentLiveTimer = getMatchLiveTimerDisplay(match);
+    const currentLiveMinute = getMatchLiveMinute(match);
+
     const isSwahili =
       (t.prediction || "").includes("Doti") || (t.prediction || "").includes("Ushindi");
 
@@ -1776,31 +1879,13 @@ export default function MatchList({
           : "text-slate-200 font-extrabold bg-neutral-900/80 border border-neutral-800";
 
     const getMatchCalendarDisplay = (m: any) => {
-      if (m.status === "LIVE") {
-        const mins = m.liveMinutes || "";
-        if (
-          mins.includes("45") ||
-          mins.toLowerCase().includes("ht") ||
-          mins.toLowerCase().includes("half")
-        ) {
-          return "Half Time";
-        }
-        if (m.id === "live-g-1") {
-          const elapsedMin = Math.min(90, Math.floor((elapsedSeconds / 180) * 90));
-          if (elapsedMin === 45) {
-            return "Half Time";
-          }
-        }
-        return `Live  ${m.liveMinutes || "18:00"}`;
-      }
-
       if (m.status === "ENDED") {
         return "Full Time";
       }
 
       const timeStr = m.time || "";
       const timeMatch = timeStr.match(/(\d{2}:\d{2})/);
-      const timePart = timeMatch ? timeMatch[1] : "18:00";
+      const timePart = timeMatch ? timeMatch[1] : "20:00";
 
       if (timeStr.toLowerCase().includes("leo") || timeStr.toLowerCase().includes("today")) {
         return `Today  ${timePart}`;
@@ -2360,7 +2445,7 @@ export default function MatchList({
         >
           {/* Status badge */}
           <div className="flex items-center space-x-1.5 mr-2">
-            {match.status === "LIVE" ? null : match.status === "COMING_SOON" ? (
+            {isLive ? null : match.status === "COMING_SOON" ? (
               isOtherBet ? null : (
                 <span className="text-[7.5px] font-black text-amber-550 bg-amber-550/10 border border-amber-500/15 px-2 py-0.5 rounded-full tracking-wider uppercase animate-pulse">
                   COMING SOON
@@ -2470,7 +2555,7 @@ export default function MatchList({
                   </div>
 
                   {/* Yellow and Red cards underneath logo */}
-                  {match.sport === "Football" && match.status === "LIVE" && (
+                  {match.sport === "Football" && isLive && (
                     <div className="flex items-center space-x-1 mt-1 text-[7px] font-mono font-bold select-none leading-none">
                       <div className="flex items-center space-x-0.5 bg-yellow-500/10 px-0.5 rounded border border-yellow-500/20">
                         <span className="w-1.5 h-2 rounded-[1px] bg-yellow-400 inline-block shadow-sm shadow-yellow-500/30" />
@@ -2487,8 +2572,8 @@ export default function MatchList({
 
               {/* Player scorers and assists */}
               {match.sport === "Football" &&
-                match.status === "LIVE" &&
-                getScoreValue(match.liveScore, true) > 0 && (
+                isLive &&
+                getScoreValue(currentLiveScore, true) > 0 && (
                   <div className="text-[7.5px] font-medium tracking-tight text-right mt-1 truncate w-full pr-9 text-slate-400 leading-none select-none">
                     <span>{getMatchPlayers(match.homeTeam.name, true, match.id).scorers}</span>
                     <span className="opacity-60 font-normal ml-1">
@@ -2499,15 +2584,19 @@ export default function MatchList({
             </div>
 
             {/* VS Divider or Score Display with high-end glassmorphic vibe */}
-            <div className="flex flex-col items-center gap-1 shrink-0">
-              {match.status === "LIVE" && match.liveScore ? (
+            <div className="flex flex-col items-center justify-center gap-0.5 shrink-0 min-w-[58px]">
+              {isLive ? (
                 <>
-                  <span className="text-[11.5px] font-mono font-black text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg animate-pulse tracking-wider">
-                    {match.liveScore}
-                  </span>
-                  <span className="text-[9.5px] font-mono font-bold text-emerald-400/90 tracking-widest animate-pulse leading-none">
-                    {getLiveTimerString(match.id)}
-                  </span>
+                  <div className="flex items-center justify-center bg-gradient-to-r from-emerald-500/15 via-emerald-500/25 to-emerald-500/15 border border-emerald-500/35 px-2.5 py-0.5 rounded-lg shadow-sm">
+                    <span className="text-[12px] font-mono font-black text-emerald-500 dark:text-emerald-400 tracking-wider">
+                      {currentLiveScore}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-center mt-0.5">
+                    <span className="text-[9.5px] font-mono font-extrabold text-emerald-500 dark:text-emerald-400 tracking-tight leading-none">
+                      {currentLiveTimer}
+                    </span>
+                  </div>
                 </>
               ) : (
                 <span
@@ -2564,7 +2653,7 @@ export default function MatchList({
                   </div>
 
                   {/* Yellow and Red cards underneath logo */}
-                  {match.sport === "Football" && match.status === "LIVE" && (
+                  {match.sport === "Football" && isLive && (
                     <div className="flex items-center space-x-1 mt-1 text-[7px] font-mono font-bold select-none leading-none">
                       <div className="flex items-center space-x-0.5 bg-yellow-500/10 px-0.5 rounded border border-yellow-500/20">
                         <span className="w-1.5 h-2 rounded-[1px] bg-yellow-400 inline-block shadow-sm shadow-yellow-500/30" />
@@ -2586,8 +2675,8 @@ export default function MatchList({
 
               {/* Player scorers and assists */}
               {match.sport === "Football" &&
-                match.status === "LIVE" &&
-                getScoreValue(match.liveScore, false) > 0 && (
+                isLive &&
+                getScoreValue(currentLiveScore, false) > 0 && (
                   <div className="text-[7.5px] font-medium tracking-tight text-left mt-1 truncate w-full pl-9 text-slate-400 leading-none select-none">
                     <span>{getMatchPlayers(match.awayTeam.name, false, match.id).scorers}</span>
                     <span className="opacity-60 font-normal ml-1">

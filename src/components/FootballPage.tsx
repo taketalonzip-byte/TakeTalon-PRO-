@@ -20,6 +20,7 @@ import {
 import { MatchTip, CartItem } from "../types";
 import { FootballMatchSkeleton } from "./skeletons";
 import { getCompetitionFixtures } from "../lib/footballCache";
+import { ESPN_LEAGUE_LOGOS, getLeagueLogoUrl } from "../lib/leagueLogos";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -51,6 +52,8 @@ interface ApiMatch {
   id: number;
   utcDate: string;
   status: string;
+  minute?: number | null;
+  displayClock?: string | null;
   matchday: number;
   competition: { id: number; name: string; code: string; emblem: string };
   area: { id: number; name: string; code: string; flag: string };
@@ -237,6 +240,19 @@ const BrazilFlag = () => (
     <circle cx="12" cy="12" r="3.2" fill="#002776" />
   </svg>
 );
+const ScotlandFlag = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
+    <rect width="24" height="18" y="3" fill="#005eb8" rx="1" />
+    <path stroke="#fff" strokeWidth="2.5" d="M0 3l24 18M24 3L0 21" />
+  </svg>
+);
+const SaudiFlag = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
+    <rect width="24" height="18" y="3" fill="#006c35" rx="1" />
+    <path fill="#fff" d="M4 14h16v1.5H4z" />
+    <path fill="#fff" d="M6 10h12v1.5H6z" />
+  </svg>
+);
 const WorldFlag = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
     <circle cx="12" cy="12" r="9" fill="#1a56db" />
@@ -258,32 +274,30 @@ const SouthAmericaFlag = () => (
 // Countries & Leagues data — na logo za ligi
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FD = "https://crests.football-data.org"; // football-data.org crests CDN
-
 const FOOTBALL_COUNTRIES: Country[] = [
   {
     id: "world",
     name: "Dunia (World)",
     flag: <WorldFlag />,
     leagues: [
-      { id: "world-cup", name: "FIFA World Cup 2026", apiCode: "WC", logo: `${FD}/WC.png` },
-      {
-        id: "champions-league",
-        name: "UEFA Champions League",
-        apiCode: "CL",
-        logo: `${FD}/CL.png`,
-      },
+      { id: "world-cup", name: "FIFA World Cup 2026", apiCode: "WC", logo: ESPN_LEAGUE_LOGOS.WC },
+      { id: "champions-league", name: "UEFA Champions League", apiCode: "CL", logo: ESPN_LEAGUE_LOGOS.CL },
+      { id: "europa-league", name: "UEFA Europa League", apiCode: "UEL", logo: ESPN_LEAGUE_LOGOS.UEL },
+      { id: "conference-league", name: "UEFA Conference League", apiCode: "UECL", logo: ESPN_LEAGUE_LOGOS.UECL },
     ],
   },
   {
-    id: "england",
-    name: "England",
+    id: "uk",
+    name: "United Kingdom (UK / Uingereza & Uskoti)",
     flag: <EnglandFlag />,
     leagues: [
-      { id: "epl", name: "Premier League", apiCode: "PL", logo: `${FD}/PL.png` },
-      { id: "championship", name: "Championship", apiCode: "ELC", logo: `${FD}/ELC.png` },
-      { id: "fa-cup", name: "FA Cup" },
-      { id: "efl-cup", name: "EFL Cup (Carabao Cup)" },
+      { id: "epl", name: "Premier League (EPL)", apiCode: "PL", logo: ESPN_LEAGUE_LOGOS.PL },
+      { id: "championship", name: "Championship (ELC)", apiCode: "ELC", logo: ESPN_LEAGUE_LOGOS.ELC },
+      { id: "efl-cup", name: "Carabao Cup (EFL Cup)", apiCode: "EFL", logo: ESPN_LEAGUE_LOGOS.EFL },
+      { id: "fa-cup", name: "FA Cup", apiCode: "FAC", logo: ESPN_LEAGUE_LOGOS.FAC },
+      { id: "league-one", name: "League One", apiCode: "ENG3", logo: ESPN_LEAGUE_LOGOS.ENG3 },
+      { id: "league-two", name: "League Two", apiCode: "ENG4", logo: ESPN_LEAGUE_LOGOS.ENG4 },
+      { id: "scottish-prem", name: "Scottish Premiership", apiCode: "SCO1", logo: ESPN_LEAGUE_LOGOS.SCO1 },
     ],
   },
   {
@@ -291,9 +305,9 @@ const FOOTBALL_COUNTRIES: Country[] = [
     name: "España",
     flag: <SpainFlag />,
     leagues: [
-      { id: "la-liga", name: "La Liga", apiCode: "PD", logo: `${FD}/PD.png` },
-      { id: "copa-del-rey", name: "Copa del Rey" },
-      { id: "super-copa", name: "Super Copa de España" },
+      { id: "la-liga", name: "La Liga (LALIGA EA SPORTS)", apiCode: "PD", logo: ESPN_LEAGUE_LOGOS.PD },
+      { id: "copa-del-rey", name: "Copa del Rey", apiCode: "CDR", logo: ESPN_LEAGUE_LOGOS.CDR },
+      { id: "super-copa", name: "Super Copa de España", logo: ESPN_LEAGUE_LOGOS.PD },
     ],
   },
   {
@@ -301,9 +315,9 @@ const FOOTBALL_COUNTRIES: Country[] = [
     name: "Deutschland",
     flag: <GermanyFlag />,
     leagues: [
-      { id: "bundesliga", name: "Bundesliga", apiCode: "BL1", logo: `${FD}/BL1.png` },
-      { id: "dfb-pokal", name: "DFB-Pokal" },
-      { id: "2-bundesliga", name: "2. Bundesliga" },
+      { id: "bundesliga", name: "Bundesliga", apiCode: "BL1", logo: ESPN_LEAGUE_LOGOS.BL1 },
+      { id: "dfb-pokal", name: "DFB-Pokal", apiCode: "DFB", logo: ESPN_LEAGUE_LOGOS.DFB },
+      { id: "2-bundesliga", name: "2. Bundesliga", logo: ESPN_LEAGUE_LOGOS.BL1 },
     ],
   },
   {
@@ -311,8 +325,8 @@ const FOOTBALL_COUNTRIES: Country[] = [
     name: "France",
     flag: <FranceFlag />,
     leagues: [
-      { id: "ligue1", name: "Ligue 1", apiCode: "FL1", logo: `${FD}/FL1.png` },
-      { id: "coupe-de-france", name: "Coupe de France" },
+      { id: "ligue1", name: "Ligue 1 (Ligue 1 McDonald's)", apiCode: "FL1", logo: ESPN_LEAGUE_LOGOS.FL1 },
+      { id: "coupe-de-france", name: "Coupe de France", apiCode: "CDF", logo: ESPN_LEAGUE_LOGOS.CDF },
     ],
   },
   {
@@ -320,8 +334,16 @@ const FOOTBALL_COUNTRIES: Country[] = [
     name: "Italia",
     flag: <ItalyFlag />,
     leagues: [
-      { id: "serie-a", name: "Serie A", apiCode: "SA", logo: `${FD}/SA.png` },
-      { id: "coppa-italia", name: "Coppa Italia" },
+      { id: "serie-a", name: "Serie A (Serie A Enilive)", apiCode: "SA", logo: ESPN_LEAGUE_LOGOS.SA },
+      { id: "coppa-italia", name: "Coppa Italia", apiCode: "CIT", logo: ESPN_LEAGUE_LOGOS.CIT },
+    ],
+  },
+  {
+    id: "saudi",
+    name: "Saudi Arabia",
+    flag: <SaudiFlag />,
+    leagues: [
+      { id: "saudi-pro", name: "Saudi Pro League (Roshn Saudi League)", apiCode: "KSA1", logo: ESPN_LEAGUE_LOGOS.KSA1 },
     ],
   },
   {
@@ -329,8 +351,8 @@ const FOOTBALL_COUNTRIES: Country[] = [
     name: "Portugal",
     flag: <PortugalFlag />,
     leagues: [
-      { id: "primeira-liga", name: "Primeira Liga", apiCode: "PPL", logo: `${FD}/PPL.png` },
-      { id: "taca-portugal", name: "Taça de Portugal" },
+      { id: "primeira-liga", name: "Primeira Liga (Liga Portugal Betclic)", apiCode: "PPL", logo: ESPN_LEAGUE_LOGOS.PPL },
+      { id: "taca-portugal", name: "Taça de Portugal", logo: ESPN_LEAGUE_LOGOS.PPL },
     ],
   },
   {
@@ -338,8 +360,8 @@ const FOOTBALL_COUNTRIES: Country[] = [
     name: "Nederland",
     flag: <NetherlandsFlag />,
     leagues: [
-      { id: "eredivisie", name: "Eredivisie", apiCode: "DED", logo: `${FD}/DED.png` },
-      { id: "knvb-cup", name: "KNVB Cup" },
+      { id: "eredivisie", name: "Eredivisie", apiCode: "DED", logo: ESPN_LEAGUE_LOGOS.DED },
+      { id: "knvb-cup", name: "KNVB Cup", logo: ESPN_LEAGUE_LOGOS.DED },
     ],
   },
   {
@@ -347,7 +369,7 @@ const FOOTBALL_COUNTRIES: Country[] = [
     name: "Brasil",
     flag: <BrazilFlag />,
     leagues: [
-      { id: "brasileirao", name: "Brasileirão Série A", apiCode: "BSA", logo: `${FD}/BSA.png` },
+      { id: "brasileirao", name: "Brasileirão Série A (Betano)", apiCode: "BSA", logo: ESPN_LEAGUE_LOGOS.BSA },
     ],
   },
   {
@@ -355,7 +377,7 @@ const FOOTBALL_COUNTRIES: Country[] = [
     name: "South America",
     flag: <SouthAmericaFlag />,
     leagues: [
-      { id: "copa-libertadores", name: "Copa Libertadores", apiCode: "CLI", logo: `${FD}/CLI.png` },
+      { id: "copa-libertadores", name: "CONMEBOL Libertadores", apiCode: "CLI", logo: ESPN_LEAGUE_LOGOS.CLI },
     ],
   },
 ];
@@ -485,12 +507,43 @@ const MatchRow: React.FC<{
 }> = ({ match, leagueName, theme, selectedOdd, onPlaceBet, onBetNow, onBuyNow }) => {
   const tip = toMatchTip(match, leagueName);
   const odds = tip.odds;
+  const isEnded =
+    match.status === "FINISHED" ||
+    match.status === "AWARDED" ||
+    match.status === "ENDED" ||
+    match.status === "STATUS_FINAL" ||
+    match.status === "FT";
+
+  const isHalfTime =
+    !isEnded &&
+    (match.status === "PAUSED" ||
+      match.status === "HALFTIME" ||
+      match.status === "STATUS_HALFTIME" ||
+      match.status === "HT" ||
+      match.displayClock?.toLowerCase().includes("ht") ||
+      match.displayClock?.toLowerCase().includes("half"));
+
   const isLive =
-    match.status === "IN_PLAY" || match.status === "PAUSED" || match.status === "HALFTIME";
-  const isEnded = match.status === "FINISHED";
-  const score = isEnded
-    ? `${match.score.fullTime.home ?? 0} - ${match.score.fullTime.away ?? 0}`
-    : null;
+    !isEnded &&
+    (match.status === "IN_PLAY" ||
+      match.status === "STATUS_FIRST_HALF" ||
+      match.status === "STATUS_SECOND_HALF" ||
+      isHalfTime ||
+      (match as any).status === "LIVE");
+
+  const scoreHome = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? 0;
+  const scoreAway = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? 0;
+  const scoreStr = `${scoreHome} - ${scoreAway}`;
+
+  const displayTimeMovement = isEnded
+    ? "FT"
+    : isHalfTime
+      ? "HT"
+      : match.displayClock
+        ? match.displayClock
+        : match.minute
+          ? `${match.minute}'`
+          : "LIVE";
 
   return (
     <div
@@ -498,51 +551,87 @@ const MatchRow: React.FC<{
     >
       {/* Teams row */}
       <div className="flex items-center justify-between gap-2">
-        {/* Time / Score */}
-        <div className="shrink-0 text-center w-12">
-          {isLive && (
-            <span className="flex items-center justify-center gap-1 mb-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-[9px] font-bold text-green-400">LIVE</span>
+        {/* Time / Score - Parti ya Kwanza */}
+        <div className="shrink-0 text-center w-16">
+          {isEnded ? (
+            <span className="inline-flex items-center justify-center mb-0.5 bg-neutral-500/15 border border-neutral-500/30 px-1.5 py-0.5 rounded-full">
+              <span className="text-[8px] font-mono font-black text-neutral-400 dark:text-neutral-300 uppercase tracking-tight">
+                Full Time
+              </span>
+            </span>
+          ) : isHalfTime ? (
+            <span className="inline-flex items-center justify-center gap-1 mb-0.5 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded-full">
+              <span className="text-[8px] font-mono font-black text-amber-500 dark:text-amber-400 uppercase tracking-tight">
+                Half Time
+              </span>
+            </span>
+          ) : isLive ? (
+            <span className="inline-flex items-center justify-center gap-1 mb-0.5 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-[8.5px] font-mono font-black text-emerald-400 uppercase">
+                LIVE
+              </span>
+            </span>
+          ) : (
+            <span className={`block text-[11px] font-black ${textPrimary(theme)}`}>
+              {fmtTime(match.utcDate)}
             </span>
           )}
-          {isEnded ? (
-            <span className={`text-[11px] font-black ${textPrimary(theme)}`}>{score}</span>
-          ) : !isLive ? (
-            <>
-              <span className={`block text-[11px] font-black ${textPrimary(theme)}`}>
-                {fmtTime(match.utcDate)}
-              </span>
-            </>
-          ) : null}
           <span className={`block text-[9px] ${textSecondary(theme)}`}>
             {fmtDate(match.utcDate)}
           </span>
         </div>
 
         {/* Home Team */}
-        <div className="flex-1 flex items-center justify-end gap-1.5 max-w-[38%]">
+        <div className="flex-1 flex items-center justify-end gap-1.5 max-w-[36%]">
           <span className={`text-[11px] font-black truncate text-right ${textPrimary(theme)}`}>
             {match.homeTeam.shortName || match.homeTeam.name}
           </span>
           <Crest src={match.homeTeam.crest} name={match.homeTeam.shortName} size={20} />
         </div>
 
-        {/* VS badge */}
-        <span
-          className={`shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded-lg border ${
-            theme === "light"
-              ? "bg-slate-100 text-slate-800 border-slate-200"
-              : theme === "blue"
-                ? "bg-white/10 text-white border-white/20"
-                : "bg-neutral-800 text-slate-200 border-neutral-700"
-          }`}
-        >
-          VS
-        </span>
+        {/* VS or Live / Ended Score Badge */}
+        {isLive || isEnded ? (
+          <div className="flex flex-col items-center justify-center shrink-0 min-w-[48px]">
+            <span
+              className={`text-[11.5px] font-mono font-black px-2 py-0.5 rounded-lg shadow-sm ${
+                isEnded
+                  ? "text-slate-200 bg-neutral-800 border border-neutral-700"
+                  : isHalfTime
+                    ? "text-amber-400 bg-amber-500/15 border border-amber-500/30"
+                    : "text-emerald-400 bg-emerald-500/15 border border-emerald-500/30"
+              }`}
+            >
+              {scoreStr}
+            </span>
+            <span
+              className={`text-[8.5px] font-mono font-bold mt-0.5 ${
+                isEnded
+                  ? "text-neutral-400"
+                  : isHalfTime
+                    ? "text-amber-400"
+                    : "text-emerald-300 animate-pulse"
+              }`}
+            >
+              {displayTimeMovement}
+            </span>
+          </div>
+        ) : (
+          <span
+            className={`shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded-lg border ${
+              theme === "light"
+                ? "bg-slate-100 text-slate-800 border-slate-200"
+                : theme === "blue"
+                  ? "bg-white/10 text-white border-white/20"
+                  : "bg-neutral-800 text-slate-200 border-neutral-700"
+            }`}
+          >
+            VS
+          </span>
+        )}
 
         {/* Away Team */}
-        <div className="flex-1 flex items-center gap-1.5 max-w-[38%]">
+        <div className="flex-1 flex items-center gap-1.5 max-w-[36%]">
           <Crest src={match.awayTeam.crest} name={match.awayTeam.shortName} size={20} />
           <span className={`text-[11px] font-black truncate ${textPrimary(theme)}`}>
             {match.awayTeam.shortName || match.awayTeam.name}
@@ -614,43 +703,51 @@ function useLeagueMatches(apiCode: string | undefined) {
   const [matches, setMatches] = useState<ApiMatch[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
-  const cacheRef = useRef<ApiMatch[] | null>(null);
 
-  const fetch_ = useCallback(async () => {
-    if (cacheRef.current) {
-      setMatches(cacheRef.current);
-      return;
-    }
+  const fetch_ = useCallback(async (isBackground = false) => {
     if (!apiCode) {
       setFetched(true);
       return;
     }
-    setLoading(true);
+    if (!isBackground) setLoading(true);
     try {
-      const [r1, r2] = await Promise.allSettled([
-        getCompetitionFixtures(apiCode, "SCHEDULED"),
-        getCompetitionFixtures(apiCode, "FINISHED"),
-      ]);
-      let all: ApiMatch[] = [];
-      if (r1.status === "fulfilled" && r1.value?.matches) {
-        all = [...all, ...(r1.value.matches as unknown as ApiMatch[])];
-      }
-      if (all.length === 0 && r2.status === "fulfilled" && r2.value?.matches) {
-        all = ((r2.value.matches as unknown as ApiMatch[]) ?? []).slice(-20);
-      }
-      all.sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime());
-      cacheRef.current = all;
+      const res = await getCompetitionFixtures(apiCode);
+      const all: ApiMatch[] = (res?.matches as unknown as ApiMatch[]) ?? [];
+      
+      // Intelligent sorting:
+      // 1. Live matches first (IN_PLAY, PAUSED, LIVE)
+      // 2. Scheduled matches next (chronological by kickoff)
+      // 3. Finished matches next (by date)
+      all.sort((a, b) => {
+        const aLive = a.status === "IN_PLAY" || a.status === "PAUSED" || (a as any).status === "LIVE";
+        const bLive = b.status === "IN_PLAY" || b.status === "PAUSED" || (b as any).status === "LIVE";
+        if (aLive && !bLive) return -1;
+        if (!aLive && bLive) return 1;
+
+        const aEnded = a.status === "FINISHED" || a.status === "AWARDED" || a.status === "ENDED";
+        const bEnded = b.status === "FINISHED" || b.status === "AWARDED" || b.status === "ENDED";
+        if (!aEnded && bEnded) return -1;
+        if (aEnded && !bEnded) return 1;
+
+        return new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime();
+      });
+
       setMatches(all);
     } catch {
       /* silent */
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
       setFetched(true);
     }
   }, [apiCode]);
 
   useEffect(() => {
     fetch_();
+    // Auto-refresh interval (every 30s) to keep live scores and time movements updated
+    const interval = setInterval(() => {
+      fetch_(true);
+    }, 30000);
+    return () => clearInterval(interval);
   }, [fetch_]);
 
   return { matches, loading, fetched };

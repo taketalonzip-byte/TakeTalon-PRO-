@@ -23,11 +23,27 @@ const ESPN_TIMEOUT_MS = 8000;
 // ksa.1 confirmed via live search 2026-08-25 (multiple espn.com /league/ksa.1/ URLs).
 export const ESPN_LEAGUE_SLUGS: Record<string, string> = {
   PL: "eng.1",
+  ELC: "eng.2",
+  FAC: "eng.fa",
+  EFL: "eng.league_cup",
+  ENG3: "eng.3",
+  ENG4: "eng.4",
+  SCO1: "sco.1",
   PD: "esp.1",
+  CDR: "esp.copa_del_rey",
   SA: "ita.1",
+  CIT: "ita.coppa_italia",
   BL1: "ger.1",
+  DFB: "ger.dfb_pokal",
   FL1: "fra.1",
+  CDF: "fra.coupe_de_france",
+  DED: "ned.1",
+  PPL: "por.1",
+  BSA: "bra.1",
+  TUR1: "tur.1",
   CL: "uefa.champions",
+  UEL: "uefa.europa",
+  UECL: "uefa.europa.conf",
   KSA1: "ksa.1",
 };
 
@@ -112,23 +128,72 @@ function safeNum(v: unknown): number | null {
 
 /**
  * Fetch + map a single competition's scoreboard from ESPN.
+ * Supports date range (e.g. "20260818-20260908") to get full matchday fixtures.
  * Throws on network/HTTP failure — caller is responsible for fallback (Plan B/C).
  */
-export async function fetchEspnScoreboard(code: string): Promise<EspnScoreboardResult> {
+export async function fetchEspnScoreboard(code: string, dateRange?: string): Promise<EspnScoreboardResult> {
   const slug = ESPN_LEAGUE_SLUGS[code];
   if (!slug) throw new Error(`No ESPN slug mapping configured for competition code "${code}"`);
+
+  // Default window: past 7 days to next 14 days for full round of fixtures
+  const defaultDates = (() => {
+    const d = new Date();
+    const past = new Date(d.getTime() - 7 * 24 * 3600 * 1000);
+    const future = new Date(d.getTime() + 14 * 24 * 3600 * 1000);
+    const fmt = (dt: Date) =>
+      dt.getUTCFullYear() +
+      String(dt.getUTCMonth() + 1).padStart(2, "0") +
+      String(dt.getUTCDate()).padStart(2, "0");
+    return `${fmt(past)}-${fmt(future)}`;
+  })();
+
+  const targetDates = dateRange !== undefined ? dateRange : defaultDates;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ESPN_TIMEOUT_MS);
 
   try {
-    const res = await fetch(`${ESPN_BASE}/${slug}/scoreboard`, {
+    const url = targetDates
+      ? `${ESPN_BASE}/${slug}/scoreboard?dates=${targetDates}`
+      : `${ESPN_BASE}/${slug}/scoreboard`;
+
+    let res = await fetch(url, {
       signal: controller.signal,
       headers: { accept: "application/json" },
     });
+
+    if (!res.ok && targetDates) {
+      // Retry without date parameter if date query errored
+      res = await fetch(`${ESPN_BASE}/${slug}/scoreboard`, {
+        signal: controller.signal,
+        headers: { accept: "application/json" },
+      });
+    }
+
     if (!res.ok) throw new Error(`ESPN HTTP ${res.status} for ${slug}`);
 
-    const json: any = await res.json();
+    let json: any = await res.json();
+    let events: any[] = Array.isArray(json?.events) ? json.events : [];
+
+    // If date range returned 0 events, try default scoreboard
+    if (events.length === 0 && targetDates) {
+      try {
+        const fallbackRes = await fetch(`${ESPN_BASE}/${slug}/scoreboard`, {
+          signal: controller.signal,
+          headers: { accept: "application/json" },
+        });
+        if (fallbackRes.ok) {
+          const fallbackJson = await fallbackRes.json();
+          if (Array.isArray(fallbackJson?.events) && fallbackJson.events.length > 0) {
+            json = fallbackJson;
+            events = fallbackJson.events;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
     const leagueMeta = json?.leagues?.[0];
     const competition: MappedEspnCompetition | null = leagueMeta
       ? {
@@ -138,7 +203,6 @@ export async function fetchEspnScoreboard(code: string): Promise<EspnScoreboardR
         }
       : null;
 
-    const events: any[] = Array.isArray(json?.events) ? json.events : [];
     const fixtures: MappedEspnFixture[] = [];
 
     for (const ev of events) {

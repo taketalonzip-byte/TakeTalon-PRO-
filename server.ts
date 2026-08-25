@@ -5,7 +5,8 @@ import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
 import dotenv from "dotenv";
 import crypto from "crypto";
-import { syncEspnCompetition, ESPN_LEAGUE_SLUGS } from "./src/lib/espnService";
+import { syncEspnCompetition, fetchEspnScoreboard, ESPN_LEAGUE_SLUGS } from "./src/lib/espnService";
+import { getLeagueLogoUrl } from "./src/lib/leagueLogos";
 
 dotenv.config();
 
@@ -563,73 +564,83 @@ app.get("/api/sports/status", (req, res) => {
   });
 });
 
-// Helper: Real-world fallback fixtures for football leagues
-function getFootballFallback(code: string) {
-  const compMap: Record<string, { id: number; name: string; emblem: string; country: string }> = {
-    PL: { id: 2021, name: "Premier League", emblem: "https://crests.football-data.org/PL.png", country: "England" },
-    CL: { id: 2001, name: "UEFA Champions League", emblem: "https://crests.football-data.org/CL.png", country: "Europe" },
-    PD: { id: 2014, name: "La Liga", emblem: "https://crests.football-data.org/PD.png", country: "Spain" },
-    SA: { id: 2019, name: "Serie A", emblem: "https://crests.football-data.org/SA.png", country: "Italy" },
-    BL1: { id: 2002, name: "Bundesliga", emblem: "https://crests.football-data.org/BL1.png", country: "Germany" },
-    FL1: { id: 2015, name: "Ligue 1", emblem: "https://crests.football-data.org/FL1.png", country: "France" },
-    DED: { id: 2003, name: "Eredivisie", emblem: "https://crests.football-data.org/ED.png", country: "Netherlands" },
-    PPL: { id: 2017, name: "Primeira Liga", emblem: "https://crests.football-data.org/PPL.png", country: "Portugal" },
-  };
-
-  const comp = compMap[code.toUpperCase()] || { id: 2021, name: "Premier League", emblem: "https://crests.football-data.org/PL.png", country: "International" };
-  const now = new Date();
-  
-  const teamPairs: Record<string, Array<[string, string, string, string]>> = {
-    PL: [
-      ["Arsenal FC", "https://crests.football-data.org/57.png", "Chelsea FC", "https://crests.football-data.org/61.png"],
-      ["Manchester City FC", "https://crests.football-data.org/65.png", "Liverpool FC", "https://crests.football-data.org/64.png"],
-      ["Tottenham Hotspur FC", "https://crests.football-data.org/73.png", "Manchester United FC", "https://crests.football-data.org/66.png"],
-      ["Aston Villa FC", "https://crests.football-data.org/58.png", "Newcastle United FC", "https://crests.football-data.org/67.png"],
-      ["Brighton & Hove Albion FC", "https://crests.football-data.org/397.png", "West Ham United FC", "https://crests.football-data.org/563.png"],
-    ],
-    PD: [
-      ["Real Madrid CF", "https://crests.football-data.org/86.png", "FC Barcelona", "https://crests.football-data.org/81.png"],
-      ["Atlético de Madrid", "https://crests.football-data.org/78.png", "Sevilla FC", "https://crests.football-data.org/559.png"],
-      ["Real Sociedad", "https://crests.football-data.org/92.png", "Athletic Club", "https://crests.football-data.org/77.png"],
-      ["Villarreal CF", "https://crests.football-data.org/94.png", "Real Betis", "https://crests.football-data.org/90.png"],
-    ],
-    CL: [
-      ["Real Madrid CF", "https://crests.football-data.org/86.png", "Manchester City FC", "https://crests.football-data.org/65.png"],
-      ["FC Bayern München", "https://crests.football-data.org/5.png", "Paris Saint-Germain FC", "https://crests.football-data.org/524.png"],
-      ["Arsenal FC", "https://crests.football-data.org/57.png", "FC Barcelona", "https://crests.football-data.org/81.png"],
-      ["FC Internazionale Milano", "https://crests.football-data.org/108.png", "Borussia Dortmund", "https://crests.football-data.org/4.png"],
-    ],
-  };
-
-  const selectedPairs = teamPairs[code.toUpperCase()] || teamPairs.PL;
-
-  return selectedPairs.map((pair, idx) => {
-    const matchTime = new Date(now.getTime() + (idx * 2 + 1) * 3600 * 1000);
-    const isLive = idx === 0;
-    return {
-      id: 700000 + idx + (comp.id * 10),
-      utcDate: matchTime.toISOString(),
-      status: isLive ? "IN_PLAY" : "SCHEDULED",
-      minute: isLive ? 34 : null,
-      matchday: 26,
-      competition: { id: comp.id, name: comp.name, code: code.toUpperCase(), emblem: comp.emblem },
-      area: { id: 2072, name: comp.country, code: comp.country.substring(0, 3).toUpperCase(), flag: comp.emblem },
-      homeTeam: { id: 100 + idx * 2, name: pair[0], shortName: pair[0].split(" ")[0], tla: pair[0].substring(0, 3).toUpperCase(), crest: pair[1] },
-      awayTeam: { id: 101 + idx * 2, name: pair[2], shortName: pair[2].split(" ")[0], tla: pair[2].substring(0, 3).toUpperCase(), crest: pair[3] },
-      score: {
-        winner: null,
-        fullTime: { home: isLive ? 1 : null, away: isLive ? 0 : null },
-        halfTime: { home: isLive ? 1 : null, away: isLive ? 0 : null },
-      },
-    };
-  });
-}
-
-// Football-Data.org proxy: /api/football/competitions/:code/matches
+// Football matches endpoint with ESPN live scoreboard integration + Football-Data.org
 app.get("/api/football/competitions/:code/matches", async (req, res) => {
   const code = (req.params.code || "PL").toUpperCase();
-  const apiKey = process.env.FOOTBALL_DATA_API_KEY;
+  const statusParam = req.query.status as string | undefined;
 
+  // 1. Try real ESPN Scoreboard API first (real-time live scores, minutes, official teams)
+  if (ESPN_LEAGUE_SLUGS[code]) {
+    try {
+      const espnData = await fetchEspnScoreboard(code);
+      if (espnData && espnData.fixtures && espnData.fixtures.length > 0) {
+        let fixtures = espnData.fixtures;
+        if (statusParam === "SCHEDULED") {
+          fixtures = fixtures.filter((f) => f.status === "SCHEDULED" || f.status === "TIMED" || f.status === "IN_PLAY" || f.status === "PAUSED");
+        } else if (statusParam === "FINISHED") {
+          fixtures = fixtures.filter((f) => f.status === "FINISHED" || f.status === "AWARDED" || f.status === "POSTPONED");
+        }
+
+        const compName = espnData.competition?.name || code;
+        const compEmblem = espnData.competition?.emblemUrl || getLeagueLogoUrl(code);
+
+        const mappedMatches = fixtures.map((f) => {
+          let minuteNum: number | null = null;
+          if (f.displayClock) {
+            const parsedMin = parseInt(f.displayClock.replace(/[^0-9]/g, ""), 10);
+            if (!isNaN(parsedMin)) minuteNum = parsedMin;
+          }
+
+          return {
+            id: f.externalId,
+            utcDate: f.utcKickoff,
+            status: f.status,
+            minute: minuteNum,
+            displayClock: f.displayClock,
+            matchday: 1,
+            competition: {
+              id: espnData.competition?.externalId || 2014,
+              name: compName,
+              code: code,
+              emblem: compEmblem,
+            },
+            area: {
+              id: 2224,
+              name: compName,
+              code: code,
+              flag: compEmblem,
+            },
+            homeTeam: {
+              id: f.home.externalId,
+              name: f.home.name,
+              shortName: f.home.shortName,
+              tla: f.home.tla,
+              crest: f.home.crestUrl || `https://crests.football-data.org/${f.home.externalId}.png`,
+            },
+            awayTeam: {
+              id: f.away.externalId,
+              name: f.away.name,
+              shortName: f.away.shortName,
+              tla: f.away.tla,
+              crest: f.away.crestUrl || `https://crests.football-data.org/${f.away.externalId}.png`,
+            },
+            score: {
+              winner: f.winner,
+              fullTime: { home: f.homeScore, away: f.awayScore },
+              halfTime: { home: f.homeScore, away: f.awayScore },
+            },
+          };
+        });
+
+        return res.json({ matches: mappedMatches, source: "espn_live" });
+      }
+    } catch (err: any) {
+      console.warn(`[ESPN-API] Scoreboard fetch failed for ${code}:`, err?.message);
+    }
+  }
+
+  // 2. Try Football-Data.org if API key configured
+  const apiKey = process.env.FOOTBALL_DATA_API_KEY;
   if (apiKey) {
     try {
       const response = await fetch(`https://api.football-data.org/v4/competitions/${code}/matches?status=SCHEDULED,LIVE,IN_PLAY,PAUSED`, {
@@ -646,16 +657,85 @@ app.get("/api/football/competitions/:code/matches", async (req, res) => {
     }
   }
 
-  // Fallback fixtures
-  const fallbackMatches = getFootballFallback(code);
-  return res.json({ matches: fallbackMatches, source: "live_system" });
+  // 3. Clean empty fallback (no fake/mock live matches)
+  return res.json({ matches: [], source: "empty" });
 });
 
-// Football-Data.org proxy: /api/football/matches
+// Football-Data.org / ESPN proxy: /api/football/matches
 app.get("/api/football/matches", async (req, res) => {
   const competitions = (req.query.competitions as string || "PL").split(",");
-  const apiKey = process.env.FOOTBALL_DATA_API_KEY;
+  
+  // Try ESPN for all requested competitions first
+  try {
+    const espnResults = await Promise.allSettled(
+      competitions.map(async (c) => {
+        const code = c.trim().toUpperCase();
+        if (!ESPN_LEAGUE_SLUGS[code]) return [];
+        const res = await fetchEspnScoreboard(code);
+        if (!res?.fixtures) return [];
+        const compName = res.competition?.name || code;
+        const compEmblem = res.competition?.emblemUrl || getLeagueLogoUrl(code);
+        return res.fixtures.map((f) => {
+          let minuteNum: number | null = null;
+          if (f.displayClock) {
+            const parsedMin = parseInt(f.displayClock.replace(/[^0-9]/g, ""), 10);
+            if (!isNaN(parsedMin)) minuteNum = parsedMin;
+          }
+          return {
+            id: f.externalId,
+            utcDate: f.utcKickoff,
+            status: f.status,
+            minute: minuteNum,
+            displayClock: f.displayClock,
+            matchday: 1,
+            competition: {
+              id: res.competition?.externalId || 2014,
+              name: compName,
+              code: code,
+              emblem: compEmblem,
+            },
+            area: {
+              id: 2224,
+              name: compName,
+              code: code,
+              flag: compEmblem,
+            },
+            homeTeam: {
+              id: f.home.externalId,
+              name: f.home.name,
+              shortName: f.home.shortName,
+              tla: f.home.tla,
+              crest: f.home.crestUrl || `https://crests.football-data.org/${f.home.externalId}.png`,
+            },
+            awayTeam: {
+              id: f.away.externalId,
+              name: f.away.name,
+              shortName: f.away.shortName,
+              tla: f.away.tla,
+              crest: f.away.crestUrl || `https://crests.football-data.org/${f.away.externalId}.png`,
+            },
+            score: {
+              winner: f.winner,
+              fullTime: { home: f.homeScore, away: f.awayScore },
+              halfTime: { home: f.homeScore, away: f.awayScore },
+            },
+          };
+        });
+      })
+    );
 
+    const allEspnMatches = espnResults
+      .filter((r): r is PromiseFulfilledResult<any[]> => r.status === "fulfilled")
+      .flatMap((r) => r.value);
+
+    if (allEspnMatches.length > 0) {
+      return res.json({ matches: allEspnMatches, source: "espn_live" });
+    }
+  } catch (err: any) {
+    console.warn("[ESPN-API] Multi-match fetch error:", err?.message);
+  }
+
+  const apiKey = process.env.FOOTBALL_DATA_API_KEY;
   if (apiKey) {
     try {
       const response = await fetch(`https://api.football-data.org/v4/matches?competitions=${competitions.join(",")}`, {
@@ -672,8 +752,7 @@ app.get("/api/football/matches", async (req, res) => {
     }
   }
 
-  const allMatches = competitions.flatMap((c) => getFootballFallback(c.trim()));
-  return res.json({ matches: allMatches, source: "live_system" });
+  return res.json({ matches: [], source: "empty" });
 });
 
 // Football-Data.org proxy: /api/football/competitions/:code/standings
@@ -1281,6 +1360,7 @@ async function getMatchesForCode(
       utcDate: r.utc_kickoff,
       status: r.status,
       minute: isLive ? parseDisplayClockMinute(displayClock) : null,
+      displayClock: isLive ? displayClock : null,
       matchday: r.matchday ?? null,
       competition: { id: 0, name: comp.name, code, emblem: comp.emblem_url || "" },
       homeTeam: {
@@ -2370,6 +2450,125 @@ app.get("/api/supabase/user-contracts", async (req, res) => {
   } catch (err: any) {
     console.error("[user-contracts] exception:", err);
     res.json({ ok: false, contracts: [] });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GEMINI AI ASSISTANT & DEPOSIT REPORT ENDPOINTS
+// ─────────────────────────────────────────────────────────────────────────────
+app.post("/api/deposit/gemini-ask", async (req: Request, res: Response) => {
+  try {
+    const { question, lang, context } = req.body || {};
+    if (!question || typeof question !== "string") {
+      return res.status(400).json({ ok: false, message: "Missing question" });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    const isSw = lang === "sw";
+    const isFr = lang === "fr";
+
+    const unavailableMessage = isSw
+      ? "Gemini AI haikuweza kujibu kwa sasa. Jaribu tena baadaye."
+      : isFr
+      ? "Gemini AI n'a pas pu répondre pour le moment. Réessayez plus tard."
+      : "Gemini AI couldn't answer right now. Please try again later.";
+
+    if (!apiKey) {
+      return res.status(503).json({ ok: false, error: unavailableMessage, message: unavailableMessage });
+    }
+
+    try {
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            "User-Agent": "aistudio-build",
+          },
+        },
+      });
+
+      const systemInstruction = `You are the TakeTalon AI Assistant.
+Your task is to politely, clearly, and concisely help users who have questions.
+User Language: ${lang || "sw"}.
+Context: ${context?.method ? `Payment method = ${context.method}` : "General user inquiry"}.
+Rules:
+1. Answer the user's specific question directly, accurately, and politely in the user's language (${lang || "sw"}).
+2. Users have complete freedom to ask any question (about TakeTalon, games, sports, tips, betting rules, deposits, or general inquiries). Do not assume or restrict answers only to deposits unless that is specifically what they asked.
+3. Keep answers concise (2 to 4 sentences maximum).
+4. Security rule: never ask for, reveal, or accept account passwords, PINs, or private keys.
+5. Keep tone friendly, reassuring, and professional.`;
+
+      const candidateModels = ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"];
+      let answerText = "";
+
+      for (const model of candidateModels) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents: question,
+            config: {
+              systemInstruction,
+              temperature: 0.3,
+            },
+          });
+          if (response?.text) {
+            answerText = response.text.trim();
+            break;
+          }
+        } catch (modelErr: any) {
+          // Attempt next candidate silently without cluttering error logs unless all fail
+        }
+      }
+
+      if (answerText) {
+        return res.json({ ok: true, answer: answerText });
+      }
+    } catch (genAiErr: any) {
+      console.warn("[gemini-ask] GenAI SDK error:", genAiErr?.message);
+    }
+
+    return res.status(503).json({ ok: false, error: unavailableMessage, message: unavailableMessage });
+  } catch (err: any) {
+    console.warn("[gemini-ask] Error generating answer:", err?.message);
+    const isSw = req.body?.lang === "sw";
+    const isFr = req.body?.lang === "fr";
+    const unavailableMessage = isSw
+      ? "Gemini AI haikuweza kujibu kwa sasa. Jaribu tena baadaye."
+      : isFr
+      ? "Gemini AI n'a pas pu répondre pour le moment. Réessayez plus tard."
+      : "Gemini AI couldn't answer right now. Please try again later.";
+
+    return res.status(500).json({
+      ok: false,
+      error: unavailableMessage,
+      message: unavailableMessage,
+    });
+  }
+});
+
+app.post("/api/deposit/report", async (req: Request, res: Response) => {
+  try {
+    const { reportNumber, method, phone, transactionRef, description, username } = req.body || {};
+    console.log(`[Deposit Report] Received Report #${reportNumber} from ${username || phone}: ${description}`);
+
+    if (supabaseAdmin) {
+      try {
+        await supabaseAdmin.from("audit_logs").insert({
+          action: "DEPOSIT_ISSUE_REPORT",
+          entity_type: "deposit_report",
+          entity_id: reportNumber,
+          new_values: { reportNumber, method, phone, transactionRef, description, username },
+          created_at: new Date().toISOString(),
+        });
+      } catch (e: any) {
+        console.warn("[Deposit Report] Audit log insert warning:", e?.message);
+      }
+    }
+
+    return res.json({ ok: true, reportNumber });
+  } catch (err: any) {
+    return res.status(500).json({ ok: false, message: err?.message || "Failed to record report" });
   }
 });
 

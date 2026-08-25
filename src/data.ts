@@ -21,6 +21,43 @@ export const LEAGUE_FILTERS = [{ id: "All", name: "All" }];
 
 export const INITIAL_MATCH_TIPS: MatchTip[] = [
   {
+    id: "tip-valencia-betis",
+    sport: "Football",
+    category: "Espagne",
+    league: "LaLiga",
+    gender: "Man",
+    time: "Leo, 20:30 EAT",
+    status: "LIVE",
+    liveMinutes: "74'",
+    liveScore: "2 - 1",
+    confidence: 86,
+    homeTeam: {
+      name: "Valencia",
+      bgGlow: "rgba(249, 115, 22, 0.4)", // Orange
+    },
+    awayTeam: {
+      name: "Real Betis",
+      bgGlow: "rgba(16, 185, 129, 0.4)", // Green
+    },
+    odds: {
+      home: 2.3,
+      draw: 3.1,
+      away: 2.95,
+    },
+    payoutBadge: "FBU 1,500k",
+    isPremium: false,
+    isLocked: false,
+    tipster: {
+      name: "TakeTalon Pro",
+      avatarLetter: "T",
+      badge: "LIVE",
+      isOfficial: true,
+    },
+    predictionTip: "Valencia kushinda au Sare (1X) & Magoli zaidi ya 1.5",
+    analysisText:
+      "Pambano hili la LaLiga lina mvuto mkubwa sana. Valencia wako mbele kwa 2-1 Mestalla kwa mashambulizi ya kasi kupitia mabawa, huku Real Betis wakisaka bao la kusawazisha katika dakika hizi za mwisho.",
+  },
+  {
     id: "tip-1",
     sport: "Football",
     category: "Tanzania",
@@ -29,6 +66,7 @@ export const INITIAL_MATCH_TIPS: MatchTip[] = [
     time: "Leo, 19:00 EAT",
     status: "LIVE",
     liveMinutes: "68'",
+    liveScore: "1 - 1",
     confidence: 78,
     homeTeam: {
       name: "Simba SC",
