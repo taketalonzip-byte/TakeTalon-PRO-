@@ -20,6 +20,7 @@ const ESPN_TIMEOUT_MS = 8000;
 
 // Known football_competitions.code -> ESPN league slug mapping.
 // Only codes we actually sync. Add here only after confirming the slug works.
+// ksa.1 confirmed via live search 2026-08-25 (multiple espn.com /league/ksa.1/ URLs).
 export const ESPN_LEAGUE_SLUGS: Record<string, string> = {
   PL: "eng.1",
   PD: "esp.1",
@@ -27,6 +28,7 @@ export const ESPN_LEAGUE_SLUGS: Record<string, string> = {
   BL1: "ger.1",
   FL1: "fra.1",
   CL: "uefa.champions",
+  KSA1: "ksa.1",
 };
 
 // football_fixtures.status CHECK constraint allowed values (CONFIRMED from live schema):
