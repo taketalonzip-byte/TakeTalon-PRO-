@@ -26,7 +26,9 @@ import {
   Languages,
   Shield,
   Info,
+  FolderSync,
 } from "lucide-react";
+import GoogleDriveSyncModal from "./GoogleDriveSyncModal";
 import { renderThemeIcon } from "./ThemeModeIcons";
 import SettingsIcon from "./SettingsIcon";
 import ColorThemeIcon from "./ColorThemeIcon";
@@ -84,6 +86,9 @@ export default function SettingsView({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Google Drive Codes Sync Modal
+  const [showDriveSyncModal, setShowDriveSyncModal] = useState(false);
 
   const tr = (sw: string, fr: string, en: string) => (lang === "sw" ? sw : lang === "fr" ? fr : en);
 
@@ -888,6 +893,61 @@ export default function SettingsView({
             </div>
           </div>
 
+          {/* Section 3.6: GOOGLE DRIVE CODES SYNC */}
+          <div className={`p-3 rounded-xl border ${cardBg} space-y-3`}>
+            <div className="flex items-center justify-between border-b pb-2 border-slate-200 dark:border-neutral-800">
+              <div className="flex items-center space-x-2">
+                <FolderSync className="w-4 h-4 text-blue-400" />
+                <h3 className={`text-[10px] font-black uppercase tracking-widest ${theme === "light" ? "text-slate-800" : "text-white"}`}>
+                  {tr("Google Drive — Auto-Sync Codes", "Google Drive — Auto-Synchro", "Google Drive — Auto-Sync Codes")}
+                </h3>
+              </div>
+              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                ● Enabled
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-900/20 to-slate-900/40 space-y-3">
+              {/* Direct Auto-Sync Switch */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span>⚡ Auto-Sync Kiotomatiki</span>
+                  </h4>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {tr(
+                      "Hifadhi na sahihisha codes kila mabadiliko yanapofanyika",
+                      "Sauvegarde automatique à chaque modification",
+                      "Automatically backup and sync codes on change"
+                    )}
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    defaultChecked={true}
+                    onChange={(e) => {
+                      localStorage.setItem("tt_gdrive_auto_sync", e.target.checked ? "true" : "false");
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
+                <span>Akaunti: <strong className="text-blue-400">taketalonzip@gmail.com</strong></span>
+                <button
+                  type="button"
+                  onClick={() => setShowDriveSyncModal(true)}
+                  className="px-2.5 py-1 bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 rounded-md border border-blue-500/40 font-medium transition cursor-pointer"
+                >
+                  Tazama Folda / Mafaili
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Section 4: DANGER ZONE (SUPRIMER MON COMPTE DEFINIVEMENT) */}
           <div className="p-3 rounded-xl border border-rose-500/30 bg-rose-500/[0.02] space-y-3">
             <div className="flex items-center space-x-2 border-b border-rose-500/10 pb-2.5">
@@ -1038,6 +1098,12 @@ export default function SettingsView({
           </button>
         </div>
       )}
+
+      {/* Google Drive Sync Modal */}
+      <GoogleDriveSyncModal
+        isOpen={showDriveSyncModal}
+        onClose={() => setShowDriveSyncModal(false)}
+      />
     </div>
   );
 }
