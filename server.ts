@@ -1362,7 +1362,7 @@ async function getMatchesForCode(
       minute: isLive ? parseDisplayClockMinute(displayClock) : null,
       displayClock: isLive ? displayClock : null,
       matchday: r.matchday ?? null,
-      competition: { id: 0, name: comp.name, code, emblem: comp.emblem_url || "" },
+      competition: { id: 0, name: comp.name, code, emblem: getLeagueLogoUrl(code) || comp.emblem_url || "" },
       homeTeam: {
         id: r.home_team?.external_id ?? 0,
         name: r.home_team?.name ?? "Home Team",
