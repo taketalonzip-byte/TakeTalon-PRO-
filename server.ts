@@ -37,4 +37,4 @@ const supabaseAdmin = isDbConfigured
     })
   : null;
 
-console.log("[RESTORE-IN-PROGRESS] placeholder - next call has full content");
+console.log("[RESTORE-STILL-IN-PROGRESS] this is NOT the final file yet");
