@@ -21,6 +21,8 @@ import { MatchTip, CartItem } from "../types";
 import { FootballMatchSkeleton } from "./skeletons";
 import { getCompetitionFixtures } from "../lib/footballCache";
 import { ESPN_LEAGUE_LOGOS, getLeagueLogoUrl } from "../lib/leagueLogos";
+import { getUnifiedMatchStatus } from "../lib/sportMatchStatus";
+import { ScrollingScoreBadge } from "./ScrollingScoreBadge";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -505,45 +507,31 @@ const MatchRow: React.FC<{
   onBetNow?: FootballPageProps["onBetNow"];
   onBuyNow?: FootballPageProps["onBuyNow"];
 }> = ({ match, leagueName, theme, selectedOdd, onPlaceBet, onBetNow, onBuyNow }) => {
+  const [tickerSeconds, setTickerSeconds] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTickerSeconds((prev) => (prev >= 3599 ? 0 : prev + 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const tip = toMatchTip(match, leagueName);
   const odds = tip.odds;
-  const isEnded =
-    match.status === "FINISHED" ||
-    match.status === "AWARDED" ||
-    match.status === "ENDED" ||
-    match.status === "STATUS_FINAL" ||
-    match.status === "FT";
 
-  const isHalfTime =
-    !isEnded &&
-    (match.status === "PAUSED" ||
-      match.status === "HALFTIME" ||
-      match.status === "STATUS_HALFTIME" ||
-      match.status === "HT" ||
-      match.displayClock?.toLowerCase().includes("ht") ||
-      match.displayClock?.toLowerCase().includes("half"));
+  const scoreHome = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
+  const scoreAway = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
 
-  const isLive =
-    !isEnded &&
-    (match.status === "IN_PLAY" ||
-      match.status === "STATUS_FIRST_HALF" ||
-      match.status === "STATUS_SECOND_HALF" ||
-      isHalfTime ||
-      (match as any).status === "LIVE");
-
-  const scoreHome = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? 0;
-  const scoreAway = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? 0;
-  const scoreStr = `${scoreHome} - ${scoreAway}`;
-
-  const displayTimeMovement = isEnded
-    ? "FT"
-    : isHalfTime
-      ? "HT"
-      : match.displayClock
-        ? match.displayClock
-        : match.minute
-          ? `${match.minute}'`
-          : "LIVE";
+  const statusInfo = getUnifiedMatchStatus({
+    sport: "Football",
+    status: match.status,
+    score: scoreHome != null && scoreAway != null ? { home: scoreHome, away: scoreAway } : null,
+    kickoffUtc: match.utcDate,
+    minute: match.minute,
+    displayClock: match.displayClock,
+    matchId: match.id,
+    tickerSeconds,
+  });
 
   return (
     <div
@@ -553,19 +541,19 @@ const MatchRow: React.FC<{
       <div className="flex items-center justify-between gap-2">
         {/* Time / Score - Parti ya Kwanza */}
         <div className="shrink-0 text-center w-16">
-          {isEnded ? (
+          {statusInfo.isEnded ? (
             <span className="inline-flex items-center justify-center mb-0.5 bg-neutral-500/15 border border-neutral-500/30 px-1.5 py-0.5 rounded-full">
               <span className="text-[8px] font-mono font-black text-neutral-400 dark:text-neutral-300 uppercase tracking-tight">
-                Full Time
+                {statusInfo.endLabel}
               </span>
             </span>
-          ) : isHalfTime ? (
+          ) : statusInfo.isBreak ? (
             <span className="inline-flex items-center justify-center gap-1 mb-0.5 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded-full">
               <span className="text-[8px] font-mono font-black text-amber-500 dark:text-amber-400 uppercase tracking-tight">
-                Half Time
+                {statusInfo.breakLabel}
               </span>
             </span>
-          ) : isLive ? (
+          ) : statusInfo.isLive ? (
             <span className="inline-flex items-center justify-center gap-1 mb-0.5 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
               <span className="text-[8.5px] font-mono font-black text-emerald-400 uppercase">
@@ -590,32 +578,16 @@ const MatchRow: React.FC<{
           <Crest src={match.homeTeam.crest} name={match.homeTeam.shortName} size={20} />
         </div>
 
-        {/* VS or Live / Ended Score Badge */}
-        {isLive || isEnded ? (
-          <div className="flex flex-col items-center justify-center shrink-0 min-w-[48px]">
-            <span
-              className={`text-[11.5px] font-mono font-black px-2 py-0.5 rounded-lg shadow-sm ${
-                isEnded
-                  ? "text-slate-200 bg-neutral-800 border border-neutral-700"
-                  : isHalfTime
-                    ? "text-amber-400 bg-amber-500/15 border border-amber-500/30"
-                    : "text-emerald-400 bg-emerald-500/15 border border-emerald-500/30"
-              }`}
-            >
-              {scoreStr}
-            </span>
-            <span
-              className={`text-[8.5px] font-mono font-bold mt-0.5 ${
-                isEnded
-                  ? "text-neutral-400"
-                  : isHalfTime
-                    ? "text-amber-400"
-                    : "text-emerald-300 animate-pulse"
-              }`}
-            >
-              {displayTimeMovement}
-            </span>
-          </div>
+        {/* Center: Live / Ended Score Badge, OR Upcoming VS */}
+        {statusInfo.isLive || statusInfo.isEnded ? (
+          <ScrollingScoreBadge
+            scoreDisplay={statusInfo.scoreDisplay}
+            setScoresList={statusInfo.setScoresList}
+            isEnded={statusInfo.isEnded}
+            isBreak={statusInfo.isBreak}
+            isLive={statusInfo.isLive}
+            timeMovementDisplay={statusInfo.timeMovementDisplay}
+          />
         ) : (
           <span
             className={`shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded-lg border ${

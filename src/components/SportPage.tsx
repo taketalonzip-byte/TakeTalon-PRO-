@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { MatchTip } from "../types";
 import { FootballMatchSkeleton } from "./skeletons";
+import { getUnifiedMatchStatus } from "../lib/sportMatchStatus";
+import { ScrollingScoreBadge } from "./ScrollingScoreBadge";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -187,6 +189,14 @@ const ChinaFlag = () => (
   </div>
 );
 
+const EuropeFlag = () => (
+  <SimpleFlagBox colors={["#003399", "#003399", "#003399"]} label="Europe" />
+);
+
+const InternationalFlag = () => (
+  <SimpleFlagBox colors={["#0284c7", "#ffffff", "#0284c7"]} label="International" />
+);
+
 // ---------------------------------------------------------------------------
 // Sport data registry
 // Add more sports here; each entry is fully independent.
@@ -194,13 +204,21 @@ const ChinaFlag = () => (
 const SPORT_DATA: Record<string, Country[]> = {
   Basketball: [
     {
-      id: "usa",
+      id: "usa-bball",
       name: "USA",
       flag: <UsaFlag />,
       leagues: [
-        { id: "nba", name: "NBA" },
-        { id: "ncaa", name: "NCAA" },
-        { id: "g-league", name: "NBA G League" },
+        { id: "nba", name: "NBA — National Basketball Association" },
+        { id: "wnba", name: "WNBA — Women's National Basketball Association" },
+        { id: "mens-college-basketball", name: "NCAA Men's Basketball" },
+        { id: "womens-college-basketball", name: "NCAA Women's Basketball" },
+        { id: "nba-development", name: "NBA G League" },
+        { id: "nba-summer-las-vegas", name: "NBA Summer League (Las Vegas)" },
+        { id: "nba-summer-california", name: "NBA California Classic" },
+        { id: "nba-summer-sacramento", name: "NBA Sacramento Summer" },
+        { id: "nba-summer-utah", name: "NBA Salt Lake City Summer" },
+        { id: "nba-summer-golden-state", name: "NBA Golden State Summer" },
+        { id: "nba-summer-orlando", name: "NBA Orlando Summer" },
       ],
     },
     {
@@ -208,36 +226,50 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Spain",
       flag: <SpainFlag />,
       leagues: [
-        { id: "acb", name: "Liga ACB" },
-        { id: "copa-rey-bball", name: "Copa del Rey" },
-        { id: "supercopa-bball", name: "Supercopa de España" },
+        { id: "acb", name: "Liga ACB / Copa del Rey" },
       ],
     },
     {
-      id: "serbia-bball",
-      name: "Serbia",
-      flag: <SerbiaFlag />,
+      id: "italy-bball",
+      name: "Italy",
+      flag: <ItalyFlag />,
       leagues: [
-        { id: "kls", name: "KLS — Basketball League of Serbia" },
-        { id: "kup-srbije", name: "Kup Srbije" },
+        { id: "lba", name: "Lega Basket Serie A (LBA)" },
       ],
     },
     {
-      id: "france-bball",
-      name: "France",
-      flag: <FranceFlag />,
+      id: "australia-bball",
+      name: "Australia & Oceania",
+      flag: <AustraliaFlag />,
       leagues: [
-        { id: "jeep-elite", name: "Betclic Élite" },
-        { id: "coupe-france-bball", name: "Coupe de France" },
+        { id: "nbl", name: "NBL — National Basketball League" },
       ],
     },
     {
-      id: "greece-bball",
-      name: "Greece",
-      flag: <GreeceFlag />,
+      id: "brazil-bball",
+      name: "Brazil",
+      flag: <BrazilFlag />,
       leagues: [
-        { id: "basket-league", name: "Basket League" },
-        { id: "greek-cup-bball", name: "Greek Cup" },
+        { id: "nbb", name: "NBB — Novo Basquete Brasil" },
+      ],
+    },
+    {
+      id: "europe-bball",
+      name: "Europe",
+      flag: <EuropeFlag />,
+      leagues: [
+        { id: "euroleague", name: "EuroLeague Basketball" },
+      ],
+    },
+    {
+      id: "international-bball",
+      name: "International",
+      flag: <InternationalFlag />,
+      leagues: [
+        { id: "fiba", name: "FIBA Basketball World Cup" },
+        { id: "fiba-americas", name: "FIBA AmeriCup" },
+        { id: "mens-olympics-basketball", name: "Olympics Men's Basketball" },
+        { id: "womens-olympics-basketball", name: "Olympics Women's Basketball" },
       ],
     },
   ],
@@ -250,7 +282,20 @@ const SPORT_DATA: Record<string, Country[]> = {
       leagues: [
         { id: "us-open", name: "US Open (Grand Slam)" },
         { id: "atp-miami", name: "Miami Open (ATP Masters)" },
-        { id: "atp-indian-wells", name: "Indian Wells (ATP Masters)" },
+        { id: "atp-indian-wells", name: "Indian Wells (BNP Paribas Open)" },
+        { id: "cincinnati-open", name: "Cincinnati Open (ATP Masters)" },
+        { id: "winston-salem", name: "Winston-Salem Open" },
+        { id: "washington-open", name: "Mubadala Citi DC Open" },
+      ],
+    },
+    {
+      id: "uk-tennis",
+      name: "England",
+      flag: <EnglandFlag />,
+      leagues: [
+        { id: "wimbledon", name: "Wimbledon (Grand Slam)" },
+        { id: "queens-club", name: "Queen's Club Championships (ATP 500)" },
+        { id: "eastbourne", name: "Eastbourne International" },
       ],
     },
     {
@@ -260,24 +305,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       leagues: [
         { id: "roland-garros", name: "Roland Garros (Grand Slam)" },
         { id: "paris-masters", name: "Paris Masters (ATP Masters)" },
-      ],
-    },
-    {
-      id: "spain-tennis",
-      name: "Spain",
-      flag: <SpainFlag />,
-      leagues: [
-        { id: "barcelona-open", name: "Barcelona Open (ATP 500)" },
-        { id: "madrid-open", name: "Madrid Open (ATP Masters)" },
-      ],
-    },
-    {
-      id: "uk-tennis",
-      name: "England",
-      flag: <EnglandFlag />,
-      leagues: [
-        { id: "wimbledon", name: "Wimbledon (Grand Slam)" },
-        { id: "queens-club", name: "Queen's Club (ATP 500)" },
+        { id: "marseille-open", name: "Open 13 Provence (Marseille)" },
       ],
     },
     {
@@ -286,7 +314,27 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <AustraliaFlag />,
       leagues: [
         { id: "aus-open", name: "Australian Open (Grand Slam)" },
+        { id: "brisbane-atp", name: "Brisbane International" },
         { id: "sydney-atp", name: "Sydney Tennis Classic" },
+      ],
+    },
+    {
+      id: "spain-tennis",
+      name: "Spain",
+      flag: <SpainFlag />,
+      leagues: [
+        { id: "madrid-open", name: "Madrid Open (ATP Masters)" },
+        { id: "barcelona-open", name: "Barcelona Open (ATP 500)" },
+        { id: "mallorca-championships", name: "Mallorca Championships" },
+      ],
+    },
+    {
+      id: "italy-tennis",
+      name: "Italy",
+      flag: <ItalyFlag />,
+      leagues: [
+        { id: "italian-open", name: "Italian Open / Rome Masters" },
+        { id: "atp-finals", name: "Nitto ATP Finals (Turin)" },
       ],
     },
     {
@@ -294,17 +342,32 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Switzerland",
       flag: <SwitzerlandFlag />,
       leagues: [
-        { id: "swiss-indoors", name: "Swiss Indoors (ATP 500)" },
+        { id: "swiss-indoors", name: "Swiss Indoors (Basel)" },
         { id: "geneva-open", name: "Geneva Open (ATP 250)" },
       ],
     },
     {
-      id: "italy-tennis",
-      name: "Italy",
-      flag: <SimpleFlagBox colors={["#009246", "#ffffff", "#ce2b37"]} label="Italy" />,
+      id: "germany-tennis",
+      name: "Germany",
+      flag: <GermanyFlag />,
       leagues: [
-        { id: "italian-open", name: "Italian Open (ATP Masters)" },
-        { id: "atp-finals", name: "ATP Finals" },
+        { id: "halle-open", name: "Terra Wortmann Open (Halle)" },
+        { id: "bmw-open", name: "BMW Open (Munich)" },
+        { id: "berlin-wta", name: "Berlin Ladies Open" },
+      ],
+    },
+    {
+      id: "international-tennis",
+      name: "International & Tours",
+      flag: <InternationalFlag />,
+      leagues: [
+        { id: "atp", name: "ATP Tour (Men's Circuit)" },
+        { id: "wta", name: "WTA Tour (Women's Circuit)" },
+        { id: "abierto-monterrey", name: "Abierto GNP Seguros (Monterrey)" },
+        { id: "laver-cup", name: "Laver Cup" },
+        { id: "davis-cup", name: "Davis Cup" },
+        { id: "bjk-cup", name: "Billie Jean King Cup" },
+        { id: "olympics-tennis", name: "Olympics Tennis Tournament" },
       ],
     },
   ],
@@ -882,9 +945,17 @@ interface BballGame {
   away: BballTeamInfo;
   kickoff_utc: string;
   status: string;
+  display_clock?: string | null;
+  short_detail?: string | null;
+  status_description?: string | null;
+  period?: number | string | null;
+  cur_score?: { player1?: string; player2?: string; home?: string; away?: string } | null;
+  set_scores?: string[] | null;
+  raw_score?: string | null;
   score: { home: number; away: number } | null;
   broadcast: string | null;
   has_odds: boolean;
+  odds?: { home: number; away: number; draw?: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -1130,14 +1201,20 @@ const BballOddsButton: React.FC<{
 // ---------------------------------------------------------------------------
 function toBballMatchTip(game: BballGame): MatchTip {
   const seed = hashStr(game.id);
-  const odds = genOdds(seed, hashStr(game.home.short_name), hashStr(game.away.short_name));
+  const fallbackOdds = genOdds(seed, hashStr(game.home.short_name), hashStr(game.away.short_name));
+  const isTennis = (game.sport || "").toLowerCase() === "tennis";
+  const odds = {
+    home: game.odds?.home ?? fallbackOdds.home,
+    away: game.odds?.away ?? fallbackOdds.away,
+    draw: isTennis ? 1.0 : (game.odds?.draw ?? fallbackOdds.draw ?? 15.0),
+  };
   const s = game.status.toLowerCase();
-  const isLive = s === "live" || s === "inprogress" || s === "in_progress";
-  const isEnded = s === "final" || s === "ft" || s === "finished";
+  const isLive = s.includes("live") || s.includes("inprogress") || s.includes("in_progress");
+  const isEnded = s.includes("final") || s.includes("ft") || s.includes("finished");
   return {
     id: game.id,
-    sport: "Basketball",
-    category: "Basketball",
+    sport: game.sport || "Basketball",
+    category: game.sport || "Basketball",
     league: game.league,
     time: fmtTime(game.kickoff_utc),
     status: isLive ? "LIVE" : isEnded ? "ENDED" : "UPCOMING",
@@ -1155,7 +1232,7 @@ function toBballMatchTip(game: BballGame): MatchTip {
     odds,
     isPremium: false,
     isLocked: false,
-    tipster: { name: "TT Basketball", avatarLetter: "T", isOfficial: true },
+    tipster: { name: `TT ${game.sport || "Sports"}`, avatarLetter: "T", isOfficial: true },
   };
 }
 
@@ -1170,12 +1247,36 @@ const BballMatchRow: React.FC<{
   onBetNow?: SportPageProps["onBetNow"];
   onBuyNow?: SportPageProps["onBuyNow"];
 }> = ({ game, theme, selectedOdd, onPlaceBet, onBetNow, onBuyNow }) => {
+  const [tickerSeconds, setTickerSeconds] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTickerSeconds((prev) => (prev >= 3599 ? 0 : prev + 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const tip = toBballMatchTip(game);
   const odds = tip.odds;
-  const s = game.status.toLowerCase();
-  const isLive = s === "live" || s === "inprogress" || s === "in_progress";
-  const isEnded = s === "final" || s === "ft" || s === "finished";
-  const score = isEnded && game.score ? `${game.score.home} - ${game.score.away}` : null;
+  const isTwoWaySport =
+    (game.sport || "").toLowerCase() === "tennis" ||
+    (game.sport || "").toLowerCase() === "volleyball";
+
+  const statusInfo = getUnifiedMatchStatus({
+    sport: game.sport,
+    status: game.status,
+    statusDescription: game.status_description ?? undefined,
+    score: game.score,
+    rawScoreStr: game.raw_score ?? undefined,
+    setScores: game.set_scores ?? undefined,
+    kickoffUtc: game.kickoff_utc,
+    displayClock: game.display_clock ?? undefined,
+    shortDetail: game.short_detail ?? undefined,
+    period: game.period ?? undefined,
+    curScore: game.cur_score ?? undefined,
+    matchId: game.id,
+    tickerSeconds,
+  });
 
   return (
     <div
@@ -1184,51 +1285,73 @@ const BballMatchRow: React.FC<{
       {/* Teams row */}
       <div className="flex items-center justify-between gap-2">
         {/* Time / Score */}
-        <div className="shrink-0 text-center w-12">
-          {isLive && (
-            <span className="flex items-center justify-center gap-1 mb-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-[9px] font-bold text-green-400">LIVE</span>
+        <div className="shrink-0 text-center w-16">
+          {statusInfo.isEnded ? (
+            <span className="inline-flex items-center justify-center mb-0.5 bg-neutral-500/15 border border-neutral-500/30 px-1.5 py-0.5 rounded-full">
+              <span className="text-[8px] font-mono font-black text-neutral-400 dark:text-neutral-300 uppercase tracking-tight">
+                {statusInfo.endLabel}
+              </span>
             </span>
-          )}
-          {isEnded ? (
-            <span className={`text-[11px] font-black ${txtPrimary(theme)}`}>{score}</span>
-          ) : !isLive ? (
+          ) : statusInfo.isBreak ? (
+            <span className="inline-flex items-center justify-center gap-1 mb-0.5 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded-full">
+              <span className="text-[8px] font-mono font-black text-amber-500 dark:text-amber-400 uppercase tracking-tight">
+                {statusInfo.breakLabel}
+              </span>
+            </span>
+          ) : statusInfo.isLive ? (
+            <span className="inline-flex items-center justify-center gap-1 mb-0.5 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-[8.5px] font-mono font-black text-emerald-400 uppercase">
+                LIVE
+              </span>
+            </span>
+          ) : (
             <span className={`block text-[11px] font-black ${txtPrimary(theme)}`}>
               {fmtTime(game.kickoff_utc)}
             </span>
-          ) : null}
+          )}
           <span className={`block text-[9px] ${txtSecondary(theme)}`}>
             {fmtDate(game.kickoff_utc)}
           </span>
         </div>
 
         {/* Home Team */}
-        <div className="flex-1 flex items-center justify-end gap-1.5 max-w-[38%]">
+        <div className="flex-1 flex items-center justify-end gap-1.5 max-w-[36%]">
           <span className={`text-[11px] font-black truncate text-right ${txtPrimary(theme)}`}>
-            {game.home.short_name}
+            {game.home.name || game.home.short_name}
           </span>
           <BballCrest src={game.home.logo_url} name={game.home.short_name} size={20} />
         </div>
 
-        {/* VS badge */}
-        <span
-          className={`shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded-lg border ${
-            theme === "light"
-              ? "bg-slate-100 text-slate-800 border-slate-200"
-              : theme === "blue"
-                ? "bg-white/10 text-white border-white/20"
-                : "bg-neutral-800 text-slate-200 border-neutral-700"
-          }`}
-        >
-          VS
-        </span>
+        {/* Center: Live/Ended Score Badge with Scrolling Sets, OR Upcoming "VS" */}
+        {statusInfo.isLive || statusInfo.isEnded ? (
+          <ScrollingScoreBadge
+            scoreDisplay={statusInfo.scoreDisplay}
+            setScoresList={statusInfo.setScoresList}
+            isEnded={statusInfo.isEnded}
+            isBreak={statusInfo.isBreak}
+            isLive={statusInfo.isLive}
+            timeMovementDisplay={statusInfo.timeMovementDisplay}
+          />
+        ) : (
+          <span
+            className={`shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded-lg border ${
+              theme === "light"
+                ? "bg-slate-100 text-slate-800 border-slate-200"
+                : theme === "blue"
+                  ? "bg-white/10 text-white border-white/20"
+                  : "bg-neutral-800 text-slate-200 border-neutral-700"
+            }`}
+          >
+            VS
+          </span>
+        )}
 
         {/* Away Team */}
-        <div className="flex-1 flex items-center gap-1.5 max-w-[38%]">
+        <div className="flex-1 flex items-center gap-1.5 max-w-[36%]">
           <BballCrest src={game.away.logo_url} name={game.away.short_name} size={20} />
           <span className={`text-[11px] font-black truncate ${txtPrimary(theme)}`}>
-            {game.away.short_name}
+            {game.away.name || game.away.short_name}
           </span>
         </div>
       </div>
@@ -1243,13 +1366,15 @@ const BballMatchRow: React.FC<{
             theme={theme}
             onClick={() => onPlaceBet?.(tip, "home", odds.home)}
           />
-          <BballOddsButton
-            label="X"
-            value={odds.draw}
-            active={selectedOdd === "draw"}
-            theme={theme}
-            onClick={() => onPlaceBet?.(tip, "draw", odds.draw)}
-          />
+          {!isTwoWaySport && odds.draw > 1.0 && (
+            <BballOddsButton
+              label="X"
+              value={odds.draw}
+              active={selectedOdd === "draw"}
+              theme={theme}
+              onClick={() => onPlaceBet?.(tip, "draw", odds.draw)}
+            />
+          )}
           <BballOddsButton
             label="2"
             value={odds.away}

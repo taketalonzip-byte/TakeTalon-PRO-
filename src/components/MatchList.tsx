@@ -34,6 +34,7 @@ import {
   subscribeCommentCounts,
 } from "../lib/commentsService";
 import { getTeamLogoUrl } from "../lib/teamLogos";
+import { ScrollingScoreBadge } from "./ScrollingScoreBadge";
 
 // User Circle Single Streamline Icon for Post Card Profile
 export const UserCircleSingleIcon = ({ className }: { className?: string }) => (
@@ -709,51 +710,35 @@ export default function MatchList({
     if (m.score?.home != null && m.score?.away != null) {
       return `${m.score.home} - ${m.score.away}`;
     }
+    if (m.rawScore) return String(m.rawScore);
+    if (m.setScores && Array.isArray(m.setScores) && m.setScores.length > 0) {
+      return m.setScores.join(" ");
+    }
     if (m.id && String(m.id).startsWith("live-g-1")) {
       return ftScore;
     }
-    // Deterministic live score based on match id
-    const seed = String(m.id || m.homeTeam?.name || "")
-      .split("")
-      .reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
-    const homeGoals = (seed % 3);
-    const awayGoals = ((seed >> 2) % 2);
-    return `${homeGoals} - ${awayGoals}`;
+    return "0 - 0";
   };
 
   const getMatchLiveTimerDisplay = (m: any): string => {
-    if (!m) return "00:00";
+    if (!m) return "LIVE";
+    if (m.displayClock && m.displayClock !== "0'") return String(m.displayClock);
     if (m.liveClock) return String(m.liveClock);
-    if (m.displayClock) return String(m.displayClock);
+    if (m.shortDetail && !m.shortDetail.toLowerCase().includes("scheduled")) return String(m.shortDetail);
     if (m.liveMinutes) {
-      const numMatch = String(m.liveMinutes).match(/\d+/);
-      const baseMin = numMatch ? parseInt(numMatch[0], 10) : 45;
-      const secOffset = (elapsedSeconds * 4) % 60;
-      const currentMin = Math.min(90, baseMin + Math.floor((elapsedSeconds * 4) / 60));
-      return `${currentMin}':${String(secOffset).padStart(2, "0")}"`;
+      return String(m.liveMinutes).includes("'") ? String(m.liveMinutes) : `${m.liveMinutes}'`;
     }
-    const seed = String(m.id || "1")
-      .split("")
-      .reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
-    const totalMatchSeconds = (elapsedSeconds * 25 + (seed % 60) * 15) % 5400;
-    const mins = Math.max(1, Math.floor(totalMatchSeconds / 60));
-    const secs = totalMatchSeconds % 60;
-    return `${mins}':${String(secs).padStart(2, "0")}"`;
+    if (m.period) return `Q${m.period}`;
+    return "LIVE";
   };
 
   const getMatchLiveMinute = (m: any): string => {
+    if (m.displayClock && m.displayClock !== "0'") return String(m.displayClock);
     if (m.liveMinutes) {
-      const numMatch = String(m.liveMinutes).match(/\d+/);
-      const baseMin = numMatch ? parseInt(numMatch[0], 10) : 45;
-      const currentMin = Math.min(90, baseMin + Math.floor((elapsedSeconds * 4) / 60));
-      return `${currentMin}'`;
+      return String(m.liveMinutes).includes("'") ? String(m.liveMinutes) : `${m.liveMinutes}'`;
     }
-    const seed = String(m.id || "")
-      .split("")
-      .reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
-    const totalMatchSeconds = (elapsedSeconds * 25 + (seed % 60) * 15) % 5400;
-    const mins = Math.max(1, Math.floor(totalMatchSeconds / 60));
-    return `${mins}'`;
+    if (m.shortDetail) return String(m.shortDetail);
+    return "LIVE";
   };
 
   const mappedLiveMatches = [
@@ -1726,18 +1711,35 @@ export default function MatchList({
             {renderTeamLogo(match.homeTeam)}
           </div>
 
-          {/* VS */}
-          <span
-            className={`text-[8.5px] font-black px-1.5 py-0.5 rounded text-center shrink-0 border ${
-              theme === "light"
-                ? "bg-slate-200 text-slate-900 border-slate-300"
-                : theme === "blue"
-                  ? "bg-white text-slate-950 font-black border-white/60"
-                  : "bg-neutral-900 text-slate-200 border-neutral-800"
-            }`}
-          >
-            VS
-          </span>
+          {/* Live Score + Time Movement or VS */}
+          {isMatchLive(match) || match.status === "ENDED" ? (
+            <ScrollingScoreBadge
+              scoreDisplay={getMatchLiveScore(match)}
+              setScoresList={match.setScores || match.set_scores}
+              isEnded={match.status === "ENDED"}
+              isBreak={match.status === "HALFTIME" || match.status === "PAUSED"}
+              isLive={isMatchLive(match)}
+              timeMovementDisplay={
+                match.status === "ENDED"
+                  ? "FT"
+                  : match.status === "HALFTIME" || match.status === "PAUSED"
+                    ? "HT"
+                    : getMatchLiveTimerDisplay(match)
+              }
+            />
+          ) : (
+            <span
+              className={`text-[8.5px] font-black px-1.5 py-0.5 rounded text-center shrink-0 border ${
+                theme === "light"
+                  ? "bg-slate-200 text-slate-900 border-slate-300"
+                  : theme === "blue"
+                    ? "bg-white text-slate-950 font-black border-white/60"
+                    : "bg-neutral-900 text-slate-200 border-neutral-800"
+              }`}
+            >
+              VS
+            </span>
+          )}
 
           {/* Away Team */}
           <div className="flex items-center space-x-1.5 max-w-[45%] flex-1 justify-start">

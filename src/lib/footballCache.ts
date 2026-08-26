@@ -68,8 +68,26 @@ export function normalizeAndCorrectMatch(m: any): FootballMatch {
     m.competition?.emblem ||
     `https://crests.football-data.org/${compCode}.png`;
 
-  // Odds calculation if missing
+  // Odds resolution priority:
+  // 1) Explicit `odds` object ({ home, draw, away })
+  // 2) Supabase snake_case columns (`odds_home`, `odds_draw`, `odds_away`)
+  // 3) CamelCase properties (`oddsHome`, `oddsDraw`, `oddsAway`)
+  // 4) Fallback pseudo-random model (only if no DB/API odds exist)
   let odds = m.odds;
+  if (!odds && m.odds_home != null && m.odds_draw != null && m.odds_away != null) {
+    odds = {
+      home: Number(m.odds_home),
+      draw: Number(m.odds_draw),
+      away: Number(m.odds_away),
+    };
+  } else if (!odds && m.oddsHome != null && m.oddsDraw != null && m.oddsAway != null) {
+    odds = {
+      home: Number(m.oddsHome),
+      draw: Number(m.oddsDraw),
+      away: Number(m.oddsAway),
+    };
+  }
+
   if (!odds) {
     let s = (matchId ^ (homeId * 31) ^ (awayId * 17)) >>> 0;
     const rng = () => {
