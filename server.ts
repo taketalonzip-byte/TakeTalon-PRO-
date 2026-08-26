@@ -37,4 +37,4 @@ const supabaseAdmin = isDbConfigured
     })
   : null;
 
-console.log("[RESTORE-STILL-IN-PROGRESS] this is NOT the final file yet");
+console.log("[STAGING-MARKER-3] verifying tool call mechanics before final content");
