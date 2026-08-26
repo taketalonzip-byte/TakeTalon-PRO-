@@ -198,6 +198,201 @@ const InternationalFlag = () => (
 );
 
 // ---------------------------------------------------------------------------
+// Volleyball — real Streamline Flagpack country flags (used only in the
+// Volleyball section below; other sports keep their existing flag icons).
+// Source: Streamline Flagpack icon family (https://streamlinehq.com/icons/flagpack)
+// ---------------------------------------------------------------------------
+function StreamlineFlagpackBox({
+  children,
+  label,
+}: {
+  children: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <div className="w-8 h-8 rounded-md overflow-hidden flex shrink-0 border border-white/10">
+      {children}
+      <span className="sr-only">{label} flag</span>
+    </div>
+  );
+}
+
+const VolleyballBrazilFlag = () => (
+  <StreamlineFlagpackBox label="Brazil">
+    <svg
+      id="Brazil--Streamline-Flagpack"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 15"
+      width="100%"
+      height="100%"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <title>Brazil</title>
+      <desc>Brazil Streamline Icon: https://streamlinehq.com</desc>
+      <g clipPath="url(#clip_vbBR)">
+        <path fillRule="evenodd" clipRule="evenodd" d="M0 0V15H20V0H0Z" fill="#009933" />
+        <mask id="mask0_vbBR" style={{ maskType: "luminance" }} maskUnits="userSpaceOnUse" x="0" y="0" width="20" height="15">
+          <path fillRule="evenodd" clipRule="evenodd" d="M0 0V15H20V0H0Z" fill="white" />
+        </mask>
+        <g mask="url(#mask0_vbBR)">
+          <g filter="url(#filter_vbBR)">
+            <path fillRule="evenodd" clipRule="evenodd" d="M9.95424 2.31503L17.5804 7.62969L9.8505 12.607L2.38058 7.52667L9.95424 2.31503Z" fill="#FFD221" />
+            <path fillRule="evenodd" clipRule="evenodd" d="M9.95424 2.31503L17.5804 7.62969L9.8505 12.607L2.38058 7.52667L9.95424 2.31503Z" fill="url(#paint_vbBR)" />
+          </g>
+          <path fillRule="evenodd" clipRule="evenodd" d="M10 10.75C11.7259 10.75 13.125 9.35089 13.125 7.625C13.125 5.89911 11.7259 4.5 10 4.5C8.27411 4.5 6.875 5.89911 6.875 7.625C6.875 9.35089 8.27411 10.75 10 10.75Z" fill="#2E42A5" />
+          <mask id="mask1_vbBR" style={{ maskType: "luminance" }} maskUnits="userSpaceOnUse" x="6" y="4" width="8" height="7">
+            <path fillRule="evenodd" clipRule="evenodd" d="M10 10.75C11.7259 10.75 13.125 9.35089 13.125 7.625C13.125 5.89911 11.7259 4.5 10 4.5C8.27411 4.5 6.875 5.89911 6.875 7.625C6.875 9.35089 8.27411 10.75 10 10.75Z" fill="white" />
+          </mask>
+          <g mask="url(#mask1_vbBR)">
+            <path fillRule="evenodd" clipRule="evenodd" d="M8.9875 9.10625L8.8479 9.17964L8.87456 9.0242L8.76162 8.91411L8.9177 8.89143L8.9875 8.75L9.0573 8.89143L9.21338 8.91411L9.10044 9.0242L9.1271 9.17964L8.9875 9.10625Z" fill="#F7FCFF" />
+            <path fillRule="evenodd" clipRule="evenodd" d="M10.2375 9.10625L10.0979 9.17964L10.1246 9.0242L10.0116 8.91411L10.1677 8.89143L10.2375 8.75L10.3073 8.89143L10.4634 8.91411L10.3504 9.0242L10.3771 9.17964L10.2375 9.10625Z" fill="#F7FCFF" />
+            <path fillRule="evenodd" clipRule="evenodd" d="M10.2375 9.85625L10.0979 9.92964L10.1246 9.7742L10.0116 9.66411L10.1677 9.64143L10.2375 9.5L10.3073 9.64143L10.4634 9.66411L10.3504 9.7742L10.3771 9.92964L10.2375 9.85625Z" fill="#F7FCFF" />
+            <path fillRule="evenodd" clipRule="evenodd" d="M9.6125 7.23125L9.4729 7.30464L9.49956 7.1492L9.38662 7.03911L9.5427 7.01643L9.6125 6.875L9.6823 7.01643L9.83838 7.03911L9.72544 7.1492L9.7521 7.30464L9.6125 7.23125Z" fill="#F7FCFF" />
+            <path fillRule="evenodd" clipRule="evenodd" d="M9.6125 8.48125L9.4729 8.55464L9.49956 8.3992L9.38662 8.28911L9.5427 8.26643L9.6125 8.125L9.6823 8.26643L9.83838 8.28911L9.72544 8.3992L9.7521 8.55464L9.6125 8.48125Z" fill="#F7FCFF" />
+            <path fillRule="evenodd" clipRule="evenodd" d="M8.73748 7.85625L8.59789 7.92964L8.62455 7.7742L8.51161 7.66411L8.66769 7.64143L8.73748 7.5L8.80728 7.64143L8.96336 7.66411L8.85042 7.7742L8.87708 7.92964L8.73748 7.85625Z" fill="#F7FCFF" />
+            <path fillRule="evenodd" clipRule="evenodd" d="M7.86247 8.35625L7.72287 8.42964L7.74953 8.2742L7.63659 8.16411L7.79267 8.14143L7.86247 8L7.93227 8.14143L8.08835 8.16411L7.97541 8.2742L8.00207 8.42964L7.86247 8.35625Z" fill="#F7FCFF" />
+            <path fillRule="evenodd" clipRule="evenodd" d="M10.7375 6.23125L10.5979 6.30464L10.6246 6.1492L10.5117 6.03911L10.6677 6.01643L10.7375 5.875L10.8073 6.01643L10.9634 6.03911L10.8505 6.1492L10.8771 6.30464L10.7375 6.23125Z" fill="#F7FCFF" />
+            <path d="M6.20301 6.87323L6.297 5.62677C9.29571 5.85289 11.6625 6.83887 13.3676 8.59276L12.4714 9.46409C10.9935 7.94395 8.91399 7.07765 6.20301 6.87323Z" fill="#F7FCFF" />
+          </g>
+        </g>
+      </g>
+      <defs>
+        <filter id="filter_vbBR" x="2.38058" y="2.315" width="15.1998" height="10.2921" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
+          <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+          <feOffset />
+          <feColorMatrix type="matrix" values="0 0 0 0 0.0313726 0 0 0 0 0.368627 0 0 0 0 0 0 0 0 0.28 0" />
+          <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_vbBR" />
+          <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_vbBR" result="shape" />
+        </filter>
+        <linearGradient id="paint_vbBR" x1="20" y1="15" x2="20" y2="0" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#FFC600" />
+          <stop offset="1" stopColor="#FFDE42" />
+        </linearGradient>
+        <clipPath id="clip_vbBR">
+          <rect width="20" height="15" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  </StreamlineFlagpackBox>
+);
+
+const VolleyballItalyFlag = () => (
+  <StreamlineFlagpackBox label="Italy">
+    <svg
+      id="Italy--Streamline-Flagpack"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 15"
+      width="100%"
+      height="100%"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <title>Italy</title>
+      <desc>Italy Streamline Icon: https://streamlinehq.com</desc>
+      <g clipPath="url(#clip_vbIT)">
+        <path fillRule="evenodd" clipRule="evenodd" d="M14 0H20V15H14V0Z" fill="#C51918" />
+        <path fillRule="evenodd" clipRule="evenodd" d="M0 0H6V15H0V0Z" fill="#5EAA22" />
+        <path fillRule="evenodd" clipRule="evenodd" d="M6 0H14V15H6V0Z" fill="white" />
+      </g>
+      <defs>
+        <clipPath id="clip_vbIT">
+          <rect width="20" height="15" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  </StreamlineFlagpackBox>
+);
+
+const VolleyballPolandFlag = () => (
+  <StreamlineFlagpackBox label="Poland">
+    <svg
+      id="Poland--Streamline-Flagpack"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 15"
+      width="100%"
+      height="100%"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <title>Poland</title>
+      <desc>Poland Streamline Icon: https://streamlinehq.com</desc>
+      <g clipPath="url(#clip_vbPL)">
+        <path fillRule="evenodd" clipRule="evenodd" d="M0 0V15H20V0H0Z" fill="#F7FCFF" />
+        <mask id="mask_vbPL" style={{ maskType: "luminance" }} maskUnits="userSpaceOnUse" x="0" y="0" width="20" height="15">
+          <path fillRule="evenodd" clipRule="evenodd" d="M0 0V15H20V0H0Z" fill="white" />
+        </mask>
+        <g mask="url(#mask_vbPL)">
+          <path fillRule="evenodd" clipRule="evenodd" d="M0 7.5V15H20V7.5H0Z" fill="#C51918" />
+        </g>
+      </g>
+      <defs>
+        <clipPath id="clip_vbPL">
+          <rect width="20" height="15" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  </StreamlineFlagpackBox>
+);
+
+const VolleyballRussiaFlag = () => (
+  <StreamlineFlagpackBox label="Russia">
+    <svg
+      id="Russia--Streamline-Flagpack"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 15"
+      width="100%"
+      height="100%"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <title>Russia</title>
+      <desc>Russia Streamline Icon: https://streamlinehq.com</desc>
+      <g clipPath="url(#clip_vbRU)">
+        <mask id="mask_vbRU" style={{ maskType: "luminance" }} maskUnits="userSpaceOnUse" x="0" y="0" width="20" height="15">
+          <path fillRule="evenodd" clipRule="evenodd" d="M0 0V15H20V0H0Z" fill="white" />
+        </mask>
+        <g mask="url(#mask_vbRU)">
+          <rect y="5" width="20" height="5" fill="#3D58DB" />
+          <path fillRule="evenodd" clipRule="evenodd" d="M0 0V5H20V0H0Z" fill="#F7FCFF" />
+          <path fillRule="evenodd" clipRule="evenodd" d="M0 10V15H20V10H0Z" fill="#C51918" />
+        </g>
+      </g>
+      <defs>
+        <clipPath id="clip_vbRU">
+          <rect width="20" height="15" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  </StreamlineFlagpackBox>
+);
+
+const VolleyballUsaFlag = () => (
+  <StreamlineFlagpackBox label="USA">
+    <svg
+      id="United-States--Streamline-Flagpack"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 15"
+      width="100%"
+      height="100%"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <title>United States</title>
+      <desc>United States Streamline Icon: https://streamlinehq.com</desc>
+      <g clipPath="url(#clip_vbUS)">
+        <path fillRule="evenodd" clipRule="evenodd" d="M0 0H20V15H0V0Z" fill="#E31D1C" />
+        <path fillRule="evenodd" clipRule="evenodd" d="M0 1.25V2.5H20V1.25H0ZM0 3.75V5H20V3.75H0ZM0 7.5V6.25H20V7.5H0ZM0 8.75V10H20V8.75H0ZM0 12.5V11.25H20V12.5H0ZM0 15V13.75H20V15H0Z" fill="#F7FCFF" />
+        <rect width="11.25" height="8.75" fill="#2E42A5" />
+        <path fillRule="evenodd" clipRule="evenodd" d="M1.30002 2.71725L1.96242 2.25583L2.47624 2.62575H2.18532L2.77365 3.14612L2.57494 3.87575H2.2637L1.96149 3.20563L1.70376 3.87575H0.935318L1.52365 4.39612L1.30002 5.21725L1.96242 4.75583L2.47624 5.12575H2.18532L2.77365 5.64612L2.57494 6.37575H2.2637L1.96149 5.70563L1.70376 6.37575H0.935318L1.52365 6.89612L1.30002 7.71725L1.96242 7.25583L2.60334 7.71725L2.40407 6.89612L2.91878 6.37575H2.68137L3.21242 6.00583L3.72624 6.37575H3.43532L4.02365 6.89612L3.80002 7.71725L4.46242 7.25583L5.10334 7.71725L4.90407 6.89612L5.41878 6.37575H5.18137L5.71242 6.00583L6.22624 6.37575H5.93532L6.52365 6.89612L6.30002 7.71725L6.96242 7.25583L7.60334 7.71725L7.40407 6.89612L7.91878 6.37575H7.68137L8.21242 6.00583L8.72624 6.37575H8.43532L9.02365 6.89612L8.80002 7.71725L9.46242 7.25583L10.1033 7.71725L9.90407 6.89612L10.4188 6.37575H9.7637L9.46149 5.70563L9.20376 6.37575H8.83113L8.65407 5.64612L9.16878 5.12575H8.93137L9.46242 4.75583L10.1033 5.21725L9.90407 4.39612L10.4188 3.87575H9.7637L9.46149 3.20563L9.20376 3.87575H8.83113L8.65407 3.14612L9.16878 2.62575H8.93137L9.46242 2.25583L10.1033 2.71725L9.90407 1.89612L10.4188 1.37575H9.7637L9.46149 0.705627L9.20376 1.37575H8.43532L9.02365 1.89612L8.82494 2.62575H8.5137L8.21149 1.95563L7.95376 2.62575H7.58113L7.40407 1.89612L7.91878 1.37575H7.2637L6.96149 0.705627L6.70376 1.37575H5.93532L6.52365 1.89612L6.32494 2.62575H6.0137L5.71149 1.95563L5.45376 2.62575H5.08113L4.90407 1.89612L5.41878 1.37575H4.7637L4.46149 0.705627L4.20376 1.37575H3.43532L4.02365 1.89612L3.82494 2.62575H3.5137L3.21149 1.95563L2.95376 2.62575H2.58113L2.40407 1.89612L2.91878 1.37575H2.2637L1.96149 0.705627L1.70376 1.37575H0.935318L1.52365 1.89612L1.30002 2.71725ZM8.82494 5.12575L9.02365 4.39612L8.43532 3.87575H8.72624L8.21242 3.50583L7.68137 3.87575H7.91878L7.40407 4.39612L7.58113 5.12575H7.95376L8.21149 4.45563L8.5137 5.12575H8.82494ZM7.47624 5.12575L6.96242 4.75583L6.43137 5.12575H6.66878L6.15407 5.64612L6.33113 6.37575H6.70376L6.96149 5.70563L7.2637 6.37575H7.57494L7.77365 5.64612L7.18532 5.12575H7.47624ZM5.27365 5.64612L5.07494 6.37575H4.7637L4.46149 5.70563L4.20376 6.37575H3.83113L3.65407 5.64612L4.16878 5.12575H3.93137L4.46242 4.75583L4.97624 5.12575H4.68532L5.27365 5.64612ZM5.45376 5.12575H5.08113L4.90407 4.39612L5.41878 3.87575H5.18137L5.71242 3.50583L6.22624 3.87575H5.93532L6.52365 4.39612L6.32494 5.12575H6.0137L5.71149 4.45563L5.45376 5.12575ZM3.82494 5.12575L4.02365 4.39612L3.43532 3.87575H3.72624L3.21242 3.50583L2.68137 3.87575H2.91878L2.40407 4.39612L2.58113 5.12575H2.95376L3.21149 4.45563L3.5137 5.12575H3.82494ZM7.77365 3.14612L7.57494 3.87575H7.2637L6.96149 3.20563L6.70376 3.87575H6.33113L6.15407 3.14612L6.66878 2.62575H6.43137L6.96242 2.25583L7.47624 2.62575H7.18532L7.77365 3.14612ZM4.97624 2.62575L4.46242 2.25583L3.93137 2.62575H4.16878L3.65407 3.14612L3.83113 3.87575H4.20376L4.46149 3.20563L4.7637 3.87575H5.07494L5.27365 3.14612L4.68532 2.62575H4.97624Z" fill="#F7FCFF" />
+      </g>
+      <defs>
+        <clipPath id="clip_vbUS">
+          <rect width="20" height="15" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  </StreamlineFlagpackBox>
+);
+
+
+// ---------------------------------------------------------------------------
 // Sport data registry
 // Add more sports here; each entry is fully independent.
 // ---------------------------------------------------------------------------
@@ -376,7 +571,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "brazil-vball",
       name: "Brazil",
-      flag: <BrazilFlag />,
+      flag: <VolleyballBrazilFlag />,
       leagues: [
         { id: "superliga-vball", name: "Superliga Brasileira" },
         { id: "vnl-brazil", name: "VNL — Volleyball Nations League" },
@@ -385,7 +580,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "italy-vball",
       name: "Italy",
-      flag: <ItalyFlag />,
+      flag: <VolleyballItalyFlag />,
       leagues: [
         { id: "superlega", name: "SuperLega" },
         { id: "coppa-italia-vball", name: "Coppa Italia" },
@@ -394,7 +589,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "poland-vball",
       name: "Poland",
-      flag: <PolandFlag />,
+      flag: <VolleyballPolandFlag />,
       leagues: [
         { id: "plusliga", name: "PlusLiga" },
         { id: "puchar-polski", name: "Puchar Polski" },
@@ -403,13 +598,13 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "russia-vball",
       name: "Russia",
-      flag: <RussiaFlag />,
+      flag: <VolleyballRussiaFlag />,
       leagues: [{ id: "superliga-russia", name: "Superliga" }],
     },
     {
       id: "usa-vball",
       name: "USA",
-      flag: <UsaFlag />,
+      flag: <VolleyballUsaFlag />,
       leagues: [
         { id: "pro-vball", name: "PVF — Pro Volleyball Federation" },
         { id: "ncaa-vball", name: "NCAA Volleyball" },
