@@ -78,24 +78,55 @@ const UsaFlag = () => (
   </svg>
 );
 
+// Countries that also exist on the Football page now reuse the exact same
+// flag SVGs as FootballPage.tsx, so the icon matches across the app.
 const SpainFlag = () => (
-  <SimpleFlagBox colors={["#c51918", "#ffb400", "#ffb400", "#c51918"]} label="Spain" />
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 32 32" height="24" width="24">
+    <path fill="#ffb400" fillRule="evenodd" d="M0 4v24h32V4H0Z" clipRule="evenodd" />
+    <mask
+      id="spa2-sport"
+      width="32"
+      height="24"
+      x="0"
+      y="4"
+      maskUnits="userSpaceOnUse"
+      style={{ maskType: "luminance" }}
+    >
+      <path fill="#fff" fillRule="evenodd" d="M0 4v24h32V4H0Z" clipRule="evenodd" />
+    </mask>
+    <g mask="url(#spa2-sport)">
+      <path
+        fill="#c51918"
+        fillRule="evenodd"
+        d="M0 4v6h32V4H0Zm0 18v6h32v-6H0Z"
+        clipRule="evenodd"
+      />
+    </g>
+  </svg>
 );
 
 const FranceFlag = () => (
-  <SimpleFlagBox colors={["#2e42a5", "#f7fcff", "#f50100"]} label="France" />
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="24" width="24">
+    <path fill="#f50300" fillRule="evenodd" d="M16 3h8v18h-8V3Z" clipRule="evenodd" />
+    <path fill="#2e42a5" fillRule="evenodd" d="M0 3h8v18H0V3Z" clipRule="evenodd" />
+    <path fill="#f7fcff" fillRule="evenodd" d="M8 3h8v18H8V3Z" clipRule="evenodd" />
+  </svg>
 );
 
 const GermanyFlag = () => (
-  <div className="w-8 h-8 rounded-md overflow-hidden flex flex-col shrink-0 border border-white/10">
-    <div className="flex-1" style={{ background: "#272727" }} />
-    <div className="flex-1" style={{ background: "#e31d1c" }} />
-    <div className="flex-1" style={{ background: "#ffd018" }} />
-  </div>
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="24" width="24">
+    <path fill="#ffd018" fillRule="evenodd" d="M0 15h24v6H0v-6Z" clipRule="evenodd" />
+    <path fill="#e31d1c" fillRule="evenodd" d="M0 9h24v6H0v-6Z" clipRule="evenodd" />
+    <path fill="#272727" fillRule="evenodd" d="M0 3h24v6H0V3Z" clipRule="evenodd" />
+  </svg>
 );
 
 const BrazilFlag = () => (
-  <SimpleFlagBox colors={["#009c3b", "#ffdf00", "#009c3b"]} label="Brazil" />
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="24" width="24">
+    <rect width="24" height="18" y="3" fill="#009c3b" rx="1" />
+    <path fill="#ffdf00" d="M12 5.5 21 12l-9 6.5L3 12z" />
+    <circle cx="12" cy="12" r="3.2" fill="#002776" />
+  </svg>
 );
 
 const SerbiaFlag = () => (
@@ -115,7 +146,13 @@ const SwitzerlandFlag = () => (
   </div>
 );
 
-const ItalyFlag = () => <SimpleFlagBox colors={["#5eaa22", "#ffffff", "#c51918"]} label="Italy" />;
+const ItalyFlag = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="24" width="24">
+    <path fill="#f50300" fillRule="evenodd" d="M16 3h8v18h-8V3Z" clipRule="evenodd" />
+    <path fill="#169b62" fillRule="evenodd" d="M0 3h8v18H0V3Z" clipRule="evenodd" />
+    <path fill="#f7fcff" fillRule="evenodd" d="M8 3h8v18H8V3Z" clipRule="evenodd" />
+  </svg>
+);
 
 const AustraliaFlag = () => (
   <SimpleFlagBox colors={["#002868", "#002868", "#BF0A30"]} label="Australia" />
@@ -152,21 +189,15 @@ const GreeceFlag = () => (
   </div>
 );
 
+// England / UK — reuses the exact FootballPage.tsx flag SVG.
 const EnglandFlag = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="24" width="24">
-    <path
-      fill="#f7fcff"
-      fillRule="evenodd"
-      d="M0 3v18h24V3H0Z"
-      clipRule="evenodd"
-      strokeWidth="0.75"
-    />
+    <path fill="#f7fcff" fillRule="evenodd" d="M0 3v18h24V3H0Z" clipRule="evenodd" />
     <path
       fill="#f50302"
       fillRule="evenodd"
       d="M13.5 3h-3v7.5H0v3h10.5v7.5h3V13.5h10.5v-3H13.5V3Z"
       clipRule="evenodd"
-      strokeWidth="0.75"
     />
   </svg>
 );
@@ -571,7 +602,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "brazil-vball",
       name: "Brazil",
-      flag: <VolleyballBrazilFlag />,
+      flag: <BrazilFlag />,
       leagues: [
         { id: "superliga-vball", name: "Superliga Brasileira" },
         { id: "vnl-brazil", name: "VNL — Volleyball Nations League" },
@@ -580,7 +611,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "italy-vball",
       name: "Italy",
-      flag: <VolleyballItalyFlag />,
+      flag: <ItalyFlag />,
       leagues: [
         { id: "superlega", name: "SuperLega" },
         { id: "coppa-italia-vball", name: "Coppa Italia" },
