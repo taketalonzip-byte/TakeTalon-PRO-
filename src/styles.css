@@ -253,3 +253,7 @@ button, input, select, textarea {
 
 /* Reserve the same player-event row on every Home post card. */
 .postcard-player-line { height:14px; min-height:14px; display:flex; align-items:center; overflow:hidden; }
+
+
+/* Reserve the yellow/red-card row on every Home post card. */
+.postcard-match-event-line { height:14px; min-height:14px; margin-top:4px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
