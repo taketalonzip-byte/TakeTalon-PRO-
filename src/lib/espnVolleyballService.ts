@@ -123,7 +123,7 @@ async function fetchEspnVolleyballScoreboard(slug: string): Promise<any | null> 
       signal: controller.signal,
       headers: {
         Accept: "application/json",
-        "User-Agent": "TakeTalon-Server/1.0",
+        "User-Agent": "curl/8.7.1",
       },
     });
     clearTimeout(timeoutId);
