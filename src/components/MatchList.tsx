@@ -2306,13 +2306,7 @@ export default function MatchList({
 
     const predictionLabelText = isSwahili ? "Doti la Dhahabu 🌟" : "Golden Choice 🌟";
 
-    const heightClass = isCarousel
-      ? "h-[218px]"
-      : isFiltered
-        ? "min-h-[198px]"
-        : isMatchLocked
-          ? "min-h-[155px]"
-          : "min-h-[185px]";
+    const heightClass = "h-[218px]";
 
     // Card container class - redesigned for supreme elegance and sleek, award-winning aesthetics
     const cardClass = isMatchLocked
@@ -2502,16 +2496,12 @@ export default function MatchList({
         </div>
 
         {/* Card Body: Match Teams in a single horizontal row for sleek rectangular design (pushed down to clear profile trigger) */}
-        <div className="px-3.5 pt-5 pb-3 flex-1 flex flex-col justify-between gap-3">
+        <div className="px-3.5 pt-5 pb-3 flex-1 min-h-0 flex flex-col justify-between gap-3">
           <div className="flex items-center justify-between w-full gap-2">
             {/* Home Team (Inverted: Name first, logo next to VS) */}
             <div className="flex flex-col items-end flex-1 min-w-0">
               <div className="flex items-center space-x-2 justify-end w-full">
-                <span
-                  className={`text-[11.5px] tracking-tight whitespace-nowrap truncate max-w-[80px] xs:max-w-[100px] sm:max-w-[120px] inline-block text-right ${teamTextClass}`}
-                >
-                  {formatVirtualName(match.homeTeam.name)}
-                </span>
+                <span className={`postcard-text-viewport text-[11.5px] tracking-tight max-w-[80px] xs:max-w-[100px] sm:max-w-[120px] text-right ${teamTextClass}`}><span className="postcard-text-loop">{formatVirtualName(match.homeTeam.name)}</span></span>
                 <div className="flex flex-col items-center shrink-0">
                   <div
                     className="w-7.5 h-7.5 rounded-full flex items-center justify-center font-mono font-black text-[10.5px] shrink-0 transition-transform duration-300 hover:scale-105 overflow-hidden"
@@ -2574,12 +2564,7 @@ export default function MatchList({
               {match.sport === "Football" &&
                 isLive &&
                 getScoreValue(currentLiveScore, true) > 0 && (
-                  <div className="text-[7.5px] font-medium tracking-tight text-right mt-1 truncate w-full pr-9 text-slate-400 leading-none select-none">
-                    <span>{getMatchPlayers(match.homeTeam.name, true, match.id).scorers}</span>
-                    <span className="opacity-60 font-normal ml-1">
-                      ({getMatchPlayers(match.homeTeam.name, true, match.id).assists})
-                    </span>
-                  </div>
+                  <div className="postcard-text-viewport text-[7.5px] font-medium tracking-tight text-right mt-1 w-full pr-9 text-slate-400 leading-none select-none"><span className="postcard-text-loop">{getMatchPlayers(match.homeTeam.name, true, match.id).scorers}<span className="opacity-60 font-normal ml-1">({getMatchPlayers(match.homeTeam.name, true, match.id).assists})</span></span></div>
                 )}
             </div>
 
@@ -2666,23 +2651,14 @@ export default function MatchList({
                     </div>
                   )}
                 </div>
-                <span
-                  className={`text-[11.5px] tracking-tight whitespace-nowrap truncate max-w-[80px] xs:max-w-[100px] sm:max-w-[120px] inline-block text-left ${teamTextClass}`}
-                >
-                  {formatVirtualName(match.awayTeam.name)}
-                </span>
+                <span className={`postcard-text-viewport text-[11.5px] tracking-tight max-w-[80px] xs:max-w-[100px] sm:max-w-[120px] text-left ${teamTextClass}`}><span className="postcard-text-loop">{formatVirtualName(match.awayTeam.name)}</span></span>
               </div>
 
               {/* Player scorers and assists */}
               {match.sport === "Football" &&
                 isLive &&
                 getScoreValue(currentLiveScore, false) > 0 && (
-                  <div className="text-[7.5px] font-medium tracking-tight text-left mt-1 truncate w-full pl-9 text-slate-400 leading-none select-none">
-                    <span>{getMatchPlayers(match.awayTeam.name, false, match.id).scorers}</span>
-                    <span className="opacity-60 font-normal ml-1">
-                      ({getMatchPlayers(match.awayTeam.name, false, match.id).assists})
-                    </span>
-                  </div>
+                  <div className="postcard-text-viewport text-[7.5px] font-medium tracking-tight text-left mt-1 w-full pl-9 text-slate-400 leading-none select-none"><span className="postcard-text-loop">{getMatchPlayers(match.awayTeam.name, false, match.id).scorers}<span className="opacity-60 font-normal ml-1">({getMatchPlayers(match.awayTeam.name, false, match.id).assists})</span></span></div>
                 )}
             </div>
           </div>
