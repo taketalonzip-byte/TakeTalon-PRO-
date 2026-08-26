@@ -249,3 +249,7 @@ button, input, select, textarea {
 .postcard-text-viewport { display:block; min-width:0; overflow:hidden; white-space:nowrap; mask-image:linear-gradient(90deg,transparent 0,#000 8%,#000 92%,transparent 100%); -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 8%,#000 92%,transparent 100%); }
 .postcard-text-loop { display:inline-block; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; animation:postcard-text-fade 5s ease-in-out infinite; }
 @keyframes postcard-text-fade { 0%,14%,86%,100% { opacity:.42; transform:translateX(0); } 32%,68% { opacity:1; transform:translateX(0); } 50% { opacity:.86; transform:translateX(-2px); } }
+
+
+/* Reserve the same player-event row on every Home post card. */
+.postcard-player-line { height:14px; min-height:14px; display:flex; align-items:center; overflow:hidden; }
