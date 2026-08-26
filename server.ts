@@ -21,12 +21,91 @@ import {
   getVolleyballMatchesFromEspn,
   ESPN_VOLLEYBALL_LEAGUES,
 } from "./src/lib/espnVolleyballService";
+import {
+  getHockeyMatchesFromEspn,
+  ESPN_HOCKEY_LEAGUES,
+} from "./src/lib/espnHockeyService";
+import {
+  getRugbyMatchesFromEspn,
+  ESPN_RUGBY_LEAGUES,
+  DEFAULT_RUGBY_CODES,
+} from "./src/lib/espnRugbyService";
+import {
+  getBaseballMatchesFromEspn,
+  ESPN_BASEBALL_LEAGUES,
+  DEFAULT_BASEBALL_CODES,
+} from "./src/lib/espnBaseballService";
+import {
+  getCricketMatchesFromEspn,
+  ESPN_CRICKET_LEAGUES,
+  DEFAULT_CRICKET_CODES,
+} from "./src/lib/espnCricketService";
+import {
+  getGolfTournamentsFromEspn,
+  ESPN_GOLF_TOURS,
+  DEFAULT_GOLF_CODES,
+} from "./src/lib/espnGolfService";
+import { getHandballMatchesFromEspn } from "./src/lib/espnHandballService";
+import { getBoxingBoutsFromEspn } from "./src/lib/espnBoxingService";
+import type { EspnGenericMatch } from "./src/lib/espnEventCore";
 import { getLeagueLogoUrl } from "./src/lib/leagueLogos";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ESPN generic mappers (rugby, baseball, cricket, hockey, handball, golf, boxing)
+// Every sport below is sourced from ESPN only.
+// ─────────────────────────────────────────────────────────────────────────────
+function espnMatchToGame(m: EspnGenericMatch, sportName: string, broadcastLabel: string) {
+  const statusText = m.isLive
+    ? m.shortDetail || m.summary || (m.statusDescription ? `LIVE - ${m.statusDescription}` : "LIVE")
+    : m.status === "FINISHED"
+    ? m.summary || m.shortDetail || "Final"
+    : m.status;
+
+  return {
+    id: String(m.id),
+    sport: sportName,
+    league: m.competition.name,
+    league_logo: m.competition.emblem,
+    country: m.competition.country,
+    league_id: m.competition.code.toLowerCase(),
+    home: {
+      name: m.homeTeam.name,
+      short_name: m.homeTeam.shortName || m.homeTeam.tla,
+      logo_url: m.homeTeam.crest,
+      display_score: m.homeTeam.displayScore,
+    },
+    away: {
+      name: m.awayTeam.name,
+      short_name: m.awayTeam.shortName || m.awayTeam.tla,
+      logo_url: m.awayTeam.crest,
+      display_score: m.awayTeam.displayScore,
+    },
+    kickoff_utc: m.utcDate,
+    status: statusText,
+    status_description: m.statusDescription,
+    display_clock: m.displayClock,
+    short_detail: m.shortDetail,
+    summary: m.summary,
+    period: m.period,
+    is_live: m.isLive,
+    venue: m.venue,
+    period_scores: m.score.periods,
+    score:
+      m.score.fullTime.home == null && m.score.fullTime.away == null
+        ? null
+        : { home: m.score.fullTime.home ?? 0, away: m.score.fullTime.away ?? 0 },
+    broadcast: m.broadcast || broadcastLabel,
+    has_odds: true,
+    odds: m.odds,
+  };
+}
+
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -802,6 +881,108 @@ app.get("/api/sports/:sport/games", async (req, res) => {
     return res.json({ games, source: "live_system" });
   }
 
+  const ESPN_TEAM_SPORTS: Record<
+    string,
+    { label: string; broadcast: string; load: () => Promise<EspnGenericMatch[]> }
+  > = {
+    hockey: {
+      label: "Ice Hockey",
+      broadcast: "ESPN Hockey",
+      load: () => getHockeyMatchesFromEspn() as unknown as Promise<EspnGenericMatch[]>,
+    },
+    icehockey: {
+      label: "Ice Hockey",
+      broadcast: "ESPN Hockey",
+      load: () => getHockeyMatchesFromEspn() as unknown as Promise<EspnGenericMatch[]>,
+    },
+    rugby: { label: "Rugby", broadcast: "ESPN Rugby", load: () => getRugbyMatchesFromEspn() },
+    baseball: { label: "Baseball", broadcast: "ESPN Baseball", load: () => getBaseballMatchesFromEspn() },
+    cricket: { label: "Cricket", broadcast: "ESPN Cricinfo", load: () => getCricketMatchesFromEspn() },
+  };
+
+  const espnTeamSport = ESPN_TEAM_SPORTS[sportParam];
+  if (espnTeamSport) {
+    try {
+      const matches = await espnTeamSport.load();
+      return res.json({
+        games: matches.map((m) => espnMatchToGame(m, espnTeamSport.label, espnTeamSport.broadcast)),
+        source: "espn",
+      });
+    } catch (e: any) {
+      console.warn(`[${sportParam.toUpperCase()}-ESPN] Scoreboard fetch error:`, e?.message);
+      return res.json({ games: [], source: "espn", error: e?.message || String(e) });
+    }
+  }
+
+  if (sportParam === "handball") {
+    const feed = await getHandballMatchesFromEspn();
+    return res.json({
+      games: feed.matches.map((m) => espnMatchToGame(m, "Handball", "ESPN")),
+      source: "espn",
+      available: feed.available,
+      note: feed.reason,
+    });
+  }
+
+  if (sportParam === "boxing") {
+    const feed = await getBoxingBoutsFromEspn();
+    return res.json({
+      games: feed.bouts.map((b) => ({
+        id: b.id,
+        sport: "Boxing",
+        league: b.event,
+        league_logo: null,
+        country: "International",
+        league_id: "espn-boxing",
+        home: { name: b.fighterA.name, short_name: b.fighterA.name, logo_url: b.fighterA.flag || null },
+        away: { name: b.fighterB.name, short_name: b.fighterB.name, logo_url: b.fighterB.flag || null },
+        kickoff_utc: b.utcDate,
+        status: b.isLive ? b.shortDetail || `Round ${b.round}` : b.status,
+        period: b.round,
+        is_live: b.isLive,
+        score: null,
+        broadcast: "ESPN",
+        has_odds: true,
+        odds: b.odds,
+      })),
+      source: "espn",
+      available: feed.available,
+      note: feed.reason,
+    });
+  }
+
+  if (sportParam === "golf") {
+    try {
+      const tournaments = await getGolfTournamentsFromEspn();
+      return res.json({
+        games: tournaments.map((t) => ({
+          id: t.id,
+          sport: "Golf",
+          league: t.tour.name,
+          league_logo: t.tour.emblem,
+          country: t.tour.country,
+          league_id: t.tour.code.toLowerCase(),
+          name: t.name,
+          course: t.course,
+          kickoff_utc: t.startDate,
+          end_utc: t.endDate,
+          status: t.isLive ? t.shortDetail || `Round ${t.round}` : t.status,
+          short_detail: t.shortDetail,
+          period: t.round,
+          is_live: t.isLive,
+          score: null,
+          broadcast: t.broadcast || "ESPN Golf",
+          has_odds: true,
+          leaderboard: t.leaderboard.slice(0, 20),
+        })),
+        source: "espn",
+      });
+    } catch (e: any) {
+      console.warn("[GOLF-ESPN] Leaderboard fetch error:", e?.message);
+      return res.json({ games: [], source: "espn", error: e?.message || String(e) });
+    }
+  }
+
   const defaultSportName = sportParam.charAt(0).toUpperCase() + sportParam.slice(1);
   const genericGames = [
     {
@@ -1009,6 +1190,98 @@ app.get("/api/sports/volleyball/fixtures", async (req, res) => {
   } catch (err: any) {
     return res.status(500).json({ ok: false, error: err.message || String(err) });
   }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ESPN sport endpoints: hockey, rugby, baseball, cricket, golf, handball, boxing
+// ─────────────────────────────────────────────────────────────────────────────
+const ESPN_SPORT_ENDPOINTS: Record<
+  string,
+  { competitions: Record<string, any>; load: (codes: string[]) => Promise<any[]> }
+> = {
+  hockey: {
+    competitions: ESPN_HOCKEY_LEAGUES,
+    load: (codes) => getHockeyMatchesFromEspn(codes.length ? codes : undefined) as unknown as Promise<any[]>,
+  },
+  rugby: {
+    competitions: ESPN_RUGBY_LEAGUES,
+    load: (codes) => getRugbyMatchesFromEspn(codes.length ? codes : DEFAULT_RUGBY_CODES),
+  },
+  baseball: {
+    competitions: ESPN_BASEBALL_LEAGUES,
+    load: (codes) => getBaseballMatchesFromEspn(codes.length ? codes : DEFAULT_BASEBALL_CODES),
+  },
+  cricket: {
+    competitions: ESPN_CRICKET_LEAGUES,
+    load: (codes) => getCricketMatchesFromEspn(codes.length ? codes : DEFAULT_CRICKET_CODES),
+  },
+};
+
+function parseCodes(raw: unknown): string[] {
+  if (typeof raw !== "string" || raw.trim() === "") return [];
+  return raw.split(",").map((c) => c.trim()).filter(Boolean);
+}
+
+app.get("/api/sports/:sport/competitions", (req, res, next) => {
+  const sport = (req.params.sport || "").toLowerCase();
+  const entry = ESPN_SPORT_ENDPOINTS[sport];
+  if (!entry) return next();
+  return res.json({ ok: true, sport, provider: "espn", competitions: Object.values(entry.competitions) });
+});
+
+app.get("/api/sports/:sport/fixtures", async (req, res, next) => {
+  const sport = (req.params.sport || "").toLowerCase();
+  const entry = ESPN_SPORT_ENDPOINTS[sport];
+  if (!entry) return next();
+
+  try {
+    const matches = await entry.load(parseCodes(req.query.competitions));
+    return res.json({ ok: true, sport, provider: "espn", count: matches.length, matches });
+  } catch (err: any) {
+    console.error(`[API-${sport}] Error fetching fixtures:`, err);
+    return res.status(500).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+app.get("/api/golf/tours", (req, res) => {
+  res.json({ ok: true, provider: "espn", tours: Object.values(ESPN_GOLF_TOURS) });
+});
+
+app.get("/api/sports/golf/leaderboards", async (req, res) => {
+  try {
+    const codes = parseCodes(req.query.tours);
+    const tournaments = await getGolfTournamentsFromEspn(codes.length ? codes : DEFAULT_GOLF_CODES);
+    return res.json({ ok: true, sport: "golf", provider: "espn", count: tournaments.length, tournaments });
+  } catch (err: any) {
+    console.error("[API-Golf] Error fetching leaderboards:", err);
+    return res.status(500).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+app.get("/api/sports/handball/fixtures", async (req, res) => {
+  const feed = await getHandballMatchesFromEspn();
+  return res.json({
+    ok: true,
+    sport: "handball",
+    provider: "espn",
+    available: feed.available,
+    note: feed.reason,
+    count: feed.matches.length,
+    matches: feed.matches,
+  });
+});
+
+app.get("/api/sports/boxing/fixtures", async (req, res) => {
+  const feed = await getBoxingBoutsFromEspn();
+  return res.json({
+    ok: true,
+    sport: "boxing",
+    provider: "espn",
+    available: feed.available,
+    note: feed.reason,
+    count: feed.bouts.length,
+    bouts: feed.bouts,
+  });
 });
 
 app.get("/api/sports/golf/tournaments", async (req, res) => {
