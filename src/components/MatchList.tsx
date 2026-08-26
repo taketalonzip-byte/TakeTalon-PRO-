@@ -2501,7 +2501,7 @@ export default function MatchList({
             {/* Home Team (Inverted: Name first, logo next to VS) */}
             <div className="flex flex-col items-end flex-1 min-w-0">
               <div className="flex items-center space-x-2 justify-end w-full">
-                <span className={`postcard-text-viewport text-[11.5px] tracking-tight max-w-[80px] xs:max-w-[100px] sm:max-w-[120px] text-right ${teamTextClass}`}><span className="postcard-text-loop">{formatVirtualName(match.homeTeam.name)}</span></span>
+                <span className={`text-[11.5px] tracking-tight whitespace-nowrap truncate max-w-[80px] xs:max-w-[100px] sm:max-w-[120px] inline-block text-right ${teamTextClass}`}>{formatVirtualName(match.homeTeam.name)}</span>
                 <div className="flex flex-col items-center shrink-0">
                   <div
                     className="w-7.5 h-7.5 rounded-full flex items-center justify-center font-mono font-black text-[10.5px] shrink-0 transition-transform duration-300 hover:scale-105 overflow-hidden"
@@ -2647,7 +2647,7 @@ export default function MatchList({
                     </div>
                   )}
                 </div>
-                <span className={`postcard-text-viewport text-[11.5px] tracking-tight max-w-[80px] xs:max-w-[100px] sm:max-w-[120px] text-left ${teamTextClass}`}><span className="postcard-text-loop">{formatVirtualName(match.awayTeam.name)}</span></span>
+                <span className={`text-[11.5px] tracking-tight whitespace-nowrap truncate max-w-[80px] xs:max-w-[100px] sm:max-w-[120px] inline-block text-left ${teamTextClass}`}>{formatVirtualName(match.awayTeam.name)}</span>
               </div>
 
               {/* Player scorers and assists */}
