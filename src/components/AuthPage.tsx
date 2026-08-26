@@ -415,14 +415,58 @@ export default function AuthPage({
       }
 
       // Login via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: emailToLogin,
-        password: loginPassword,
-      });
+      let authSuccessful = false;
+      let user: any = null;
 
-      if (authError) throw authError;
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: emailToLogin,
+          password: loginPassword,
+        });
 
-      const user = authData?.user;
+        if (!authError && authData?.user) {
+          authSuccessful = true;
+          user = authData.user;
+        }
+      } catch (authErr) {
+        // Fallback to server login
+      }
+
+      // If client auth did not succeed, try server authoritative login
+      if (!authSuccessful) {
+        try {
+          const sLoginRes = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              loginId: loginId.trim(),
+              password: loginPassword,
+            }),
+          });
+
+          if (sLoginRes.ok) {
+            const sLoginData = await sLoginRes.json();
+            if (sLoginData?.ok && sLoginData?.profile) {
+              const prof = sLoginData.profile;
+              onAuthSuccess({
+                username: prof.username || prof.first_name || "User",
+                email: prof.email || "",
+                phone: prof.phone || "",
+                role: prof.role || "USER",
+              });
+              setSuccessMsg(t.successLogin);
+              setTimeout(() => {
+                onClose();
+                resetForm();
+              }, 700);
+              return;
+            }
+          }
+        } catch (sLoginErr) {
+          console.warn("[SERVER-LOGIN-FALLBACK-NOTICE]", sLoginErr);
+        }
+      }
+
       if (user) {
         let existingProfile: any = null;
 
@@ -480,7 +524,11 @@ export default function AuthPage({
           onClose();
           resetForm();
         }, 800);
+        return;
       }
+
+      // If reached here without user and without server success, raise invalid credentials
+      throw new Error("Invalid login credentials");
     } catch (err: any) {
       console.error("[LOGIN-ERROR]", err);
       let friendlyError = err?.message || "Imeshindikana kuingia kwenye akaunti.";

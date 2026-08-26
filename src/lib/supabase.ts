@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 const rawSupabaseUrl =
   import.meta.env?.VITE_SUPABASE_URL ||
   process.env?.VITE_SUPABASE_URL ||
+  process.env?.SUPABASE_URL ||
   "https://placeholder-project.supabase.co";
 
 // Safely clean the URL if it contains "/rest/v1" or trailing slashes
