@@ -36,5 +36,3 @@ const supabaseAdmin = isDbConfigured
       auth: { persistSession: false, autoRefreshToken: false },
     })
   : null;
-
-console.log("[STAGING-MARKER-3] verifying tool call mechanics before final content");
