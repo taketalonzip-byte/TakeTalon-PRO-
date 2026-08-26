@@ -261,7 +261,7 @@ export async function fetchEspnHockeyScoreboard(
 
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { Accept: "application/json", "User-Agent": "TakeTalon-Server/1.0" },
+      headers: { Accept: "application/json", "User-Agent": "curl/8.7.1" },
     });
 
     if (!res.ok) {
