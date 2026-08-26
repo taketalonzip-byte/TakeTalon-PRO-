@@ -2545,8 +2545,8 @@ export default function MatchList({
                   </div>
 
                   {/* Yellow and Red cards underneath logo */}
-                  {match.sport === "Football" && isLive && (
-                    <div className="flex items-center space-x-1 mt-1 text-[7px] font-mono font-bold select-none leading-none">
+                  <div className="postcard-match-event-line">{match.sport === "Football" && isLive ? (
+                    <div className="flex items-center space-x-1 text-[7px] font-mono font-bold select-none leading-none">
                       <div className="flex items-center space-x-0.5 bg-yellow-500/10 px-0.5 rounded border border-yellow-500/20">
                         <span className="w-1.5 h-2 rounded-[1px] bg-yellow-400 inline-block shadow-sm shadow-yellow-500/30" />
                         <span className="text-yellow-600 text-[6.5px]">3</span>
@@ -2556,7 +2556,7 @@ export default function MatchList({
                         <span className="text-red-500 text-[6.5px]">1</span>
                       </div>
                     </div>
-                  )}
+                  ) : null}</div>
                 </div>
               </div>
 
@@ -2634,8 +2634,8 @@ export default function MatchList({
                   </div>
 
                   {/* Yellow and Red cards underneath logo */}
-                  {match.sport === "Football" && isLive && (
-                    <div className="flex items-center space-x-1 mt-1 text-[7px] font-mono font-bold select-none leading-none">
+                  <div className="postcard-match-event-line">{match.sport === "Football" && isLive ? (
+                    <div className="flex items-center space-x-1 text-[7px] font-mono font-bold select-none leading-none">
                       <div className="flex items-center space-x-0.5 bg-yellow-500/10 px-0.5 rounded border border-yellow-500/20">
                         <span className="w-1.5 h-2 rounded-[1px] bg-yellow-400 inline-block shadow-sm shadow-yellow-500/30" />
                         <span className="text-yellow-600 text-[6.5px]">3</span>
@@ -2645,7 +2645,7 @@ export default function MatchList({
                         <span className="text-red-500 text-[6.5px]">1</span>
                       </div>
                     </div>
-                  )}
+                  ) : null}</div>
                 </div>
                 <span className={`text-[11.5px] tracking-tight whitespace-nowrap truncate max-w-[80px] xs:max-w-[100px] sm:max-w-[120px] inline-block text-left ${teamTextClass}`}>{formatVirtualName(match.awayTeam.name)}</span>
               </div>
