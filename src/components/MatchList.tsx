@@ -2561,11 +2561,7 @@ export default function MatchList({
               </div>
 
               {/* Player scorers and assists */}
-              {match.sport === "Football" &&
-                isLive &&
-                getScoreValue(currentLiveScore, true) > 0 && (
-                  <div className="postcard-text-viewport text-[7.5px] font-medium tracking-tight text-right mt-1 w-full pr-9 text-slate-400 leading-none select-none"><span className="postcard-text-loop">{getMatchPlayers(match.homeTeam.name, true, match.id).scorers}<span className="opacity-60 font-normal ml-1">({getMatchPlayers(match.homeTeam.name, true, match.id).assists})</span></span></div>
-                )}
+              <div className="postcard-player-line text-[7.5px] font-medium tracking-tight text-right w-full pr-9 text-slate-400 leading-none select-none">{match.sport === "Football" && isLive && getScoreValue(currentLiveScore, true) > 0 ? (<span className="postcard-text-viewport"><span className="postcard-text-loop">{getMatchPlayers(match.homeTeam.name, true, match.id).scorers}<span className="opacity-60 font-normal ml-1">({getMatchPlayers(match.homeTeam.name, true, match.id).assists})</span></span></span>) : null}</div>
             </div>
 
             {/* VS Divider or Score Display with high-end glassmorphic vibe */}
@@ -2655,11 +2651,7 @@ export default function MatchList({
               </div>
 
               {/* Player scorers and assists */}
-              {match.sport === "Football" &&
-                isLive &&
-                getScoreValue(currentLiveScore, false) > 0 && (
-                  <div className="postcard-text-viewport text-[7.5px] font-medium tracking-tight text-left mt-1 w-full pl-9 text-slate-400 leading-none select-none"><span className="postcard-text-loop">{getMatchPlayers(match.awayTeam.name, false, match.id).scorers}<span className="opacity-60 font-normal ml-1">({getMatchPlayers(match.awayTeam.name, false, match.id).assists})</span></span></div>
-                )}
+              <div className="postcard-player-line text-[7.5px] font-medium tracking-tight text-left w-full pl-9 text-slate-400 leading-none select-none">{match.sport === "Football" && isLive && getScoreValue(currentLiveScore, false) > 0 ? (<span className="postcard-text-viewport"><span className="postcard-text-loop">{getMatchPlayers(match.awayTeam.name, false, match.id).scorers}<span className="opacity-60 font-normal ml-1">({getMatchPlayers(match.awayTeam.name, false, match.id).assists})</span></span></span>) : null}</div>
             </div>
           </div>
 
