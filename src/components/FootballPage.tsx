@@ -23,6 +23,7 @@ import { getCompetitionFixtures } from "../lib/footballCache";
 import { ESPN_LEAGUE_LOGOS, getLeagueLogoUrl } from "../lib/leagueLogos";
 import { getUnifiedMatchStatus } from "../lib/sportMatchStatus";
 import { ScrollingScoreBadge } from "./ScrollingScoreBadge";
+import { Flag } from "./Flag";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -104,175 +105,6 @@ function genOdds(matchId: number, homeId: number, awayId: number) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-function fmtTime(utcDate: string) {
-  try {
-    return new Date(utcDate).toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "Africa/Harare",
-    });
-  } catch {
-    return "--:--";
-  }
-}
-
-function fmtDate(utcDate: string) {
-  try {
-    return new Date(utcDate).toLocaleDateString("en-GB", {
-      weekday: "short",
-      day: "2-digit",
-      month: "short",
-      timeZone: "Africa/Harare",
-    });
-  } catch {
-    return "";
-  }
-}
-
-function toMatchTip(m: ApiMatch, leagueName: string): MatchTip {
-  const odds = genOdds(m.id, m.homeTeam.id, m.awayTeam.id);
-  const isLive = m.status === "IN_PLAY" || m.status === "PAUSED" || m.status === "HALFTIME";
-  const isEnded = m.status === "FINISHED";
-  return {
-    id: String(m.id),
-    sport: "Football",
-    category: "Football",
-    league: leagueName,
-    time: fmtTime(m.utcDate),
-    status: isLive ? "LIVE" : isEnded ? "ENDED" : "UPCOMING",
-    confidence: 70,
-    homeTeam: {
-      name: m.homeTeam.shortName || m.homeTeam.name,
-      logoUrl: m.homeTeam.crest,
-      bgGlow: "#1e40af",
-    },
-    awayTeam: {
-      name: m.awayTeam.shortName || m.awayTeam.name,
-      logoUrl: m.awayTeam.crest,
-      bgGlow: "#991b1b",
-    },
-    odds,
-    isPremium: false,
-    isLocked: false,
-    tipster: { name: "TT Football", avatarLetter: "T", isOfficial: true },
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Flag SVGs
-// ─────────────────────────────────────────────────────────────────────────────
-
-const EnglandFlag = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
-    <path fill="#f7fcff" fillRule="evenodd" d="M0 3v18h24V3H0Z" clipRule="evenodd" />
-    <path
-      fill="#f50302"
-      fillRule="evenodd"
-      d="M13.5 3h-3v7.5H0v3h10.5v7.5h3V13.5h10.5v-3H13.5V3Z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
-const SpainFlag = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 32 32" height="18" width="18">
-    <path fill="#ffb400" fillRule="evenodd" d="M0 4v24h32V4H0Z" clipRule="evenodd" />
-    <mask
-      id="spa2"
-      width="32"
-      height="24"
-      x="0"
-      y="4"
-      maskUnits="userSpaceOnUse"
-      style={{ maskType: "luminance" }}
-    >
-      <path fill="#fff" fillRule="evenodd" d="M0 4v24h32V4H0Z" clipRule="evenodd" />
-    </mask>
-    <g mask="url(#spa2)">
-      <path
-        fill="#c51918"
-        fillRule="evenodd"
-        d="M0 4v6h32V4H0Zm0 18v6h32v-6H0Z"
-        clipRule="evenodd"
-      />
-    </g>
-  </svg>
-);
-const GermanyFlag = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
-    <path fill="#ffd018" fillRule="evenodd" d="M0 15h24v6H0v-6Z" clipRule="evenodd" />
-    <path fill="#e31d1c" fillRule="evenodd" d="M0 9h24v6H0v-6Z" clipRule="evenodd" />
-    <path fill="#272727" fillRule="evenodd" d="M0 3h24v6H0V3Z" clipRule="evenodd" />
-  </svg>
-);
-const FranceFlag = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
-    <path fill="#f50300" fillRule="evenodd" d="M16 3h8v18h-8V3Z" clipRule="evenodd" />
-    <path fill="#2e42a5" fillRule="evenodd" d="M0 3h8v18H0V3Z" clipRule="evenodd" />
-    <path fill="#f7fcff" fillRule="evenodd" d="M8 3h8v18H8V3Z" clipRule="evenodd" />
-  </svg>
-);
-const ItalyFlag = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
-    <path fill="#f50300" fillRule="evenodd" d="M16 3h8v18h-8V3Z" clipRule="evenodd" />
-    <path fill="#169b62" fillRule="evenodd" d="M0 3h8v18H0V3Z" clipRule="evenodd" />
-    <path fill="#f7fcff" fillRule="evenodd" d="M8 3h8v18H8V3Z" clipRule="evenodd" />
-  </svg>
-);
-const PortugalFlag = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
-    <path fill="#f50300" fillRule="evenodd" d="M7 3h17v18H7V3Z" clipRule="evenodd" />
-    <path fill="#128415" fillRule="evenodd" d="M0 3h7v18H0V3Z" clipRule="evenodd" />
-    <circle cx="8.5" cy="12" r="3" fill="#ffd018" />
-  </svg>
-);
-const NetherlandsFlag = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
-    <path fill="#f50300" fillRule="evenodd" d="M0 3h24v6H0V3Z" clipRule="evenodd" />
-    <path fill="#f7fcff" fillRule="evenodd" d="M0 9h24v6H0V9Z" clipRule="evenodd" />
-    <path fill="#1f3a93" fillRule="evenodd" d="M0 15h24v6H0v-6Z" clipRule="evenodd" />
-  </svg>
-);
-const BrazilFlag = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
-    <rect width="24" height="18" y="3" fill="#009c3b" rx="1" />
-    <path fill="#ffdf00" d="M12 5.5 21 12l-9 6.5L3 12z" />
-    <circle cx="12" cy="12" r="3.2" fill="#002776" />
-  </svg>
-);
-const ScotlandFlag = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
-    <rect width="24" height="18" y="3" fill="#005eb8" rx="1" />
-    <path stroke="#fff" strokeWidth="2.5" d="M0 3l24 18M24 3L0 21" />
-  </svg>
-);
-const SaudiFlag = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
-    <rect width="24" height="18" y="3" fill="#006c35" rx="1" />
-    <path fill="#fff" d="M4 14h16v1.5H4z" />
-    <path fill="#fff" d="M6 10h12v1.5H6z" />
-  </svg>
-);
-const WorldFlag = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
-    <circle cx="12" cy="12" r="9" fill="#1a56db" />
-    <ellipse cx="12" cy="12" rx="4" ry="9" fill="none" stroke="#fff" strokeWidth="0.8" />
-    <line x1="3" y1="12" x2="21" y2="12" stroke="#fff" strokeWidth="0.8" />
-    <circle cx="12" cy="12" r="9" fill="none" stroke="#fff" strokeWidth="0.8" />
-  </svg>
-);
-const SouthAmericaFlag = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="18" width="18">
-    <rect width="24" height="18" y="3" fill="#006847" rx="1" />
-    <text x="12" y="14.5" textAnchor="middle" fontSize="8" fill="#fff">
-      SA
-    </text>
-  </svg>
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Countries & Leagues data — na logo za ligi
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -280,7 +112,7 @@ const FOOTBALL_COUNTRIES: Country[] = [
   {
     id: "world",
     name: "Dunia (World)",
-    flag: <WorldFlag />,
+    flag: <Flag country="international" label="World" size={18} />,
     leagues: [
       { id: "world-cup", name: "FIFA World Cup 2026", apiCode: "WC", logo: ESPN_LEAGUE_LOGOS.WC },
       { id: "champions-league", name: "UEFA Champions League", apiCode: "CL", logo: ESPN_LEAGUE_LOGOS.CL },
@@ -291,7 +123,7 @@ const FOOTBALL_COUNTRIES: Country[] = [
   {
     id: "uk",
     name: "United Kingdom (UK / Uingereza & Uskoti)",
-    flag: <EnglandFlag />,
+    flag: <Flag country="england" size={18} />,
     leagues: [
       { id: "epl", name: "Premier League (EPL)", apiCode: "PL", logo: ESPN_LEAGUE_LOGOS.PL },
       { id: "championship", name: "Championship (ELC)", apiCode: "ELC", logo: ESPN_LEAGUE_LOGOS.ELC },
@@ -305,7 +137,7 @@ const FOOTBALL_COUNTRIES: Country[] = [
   {
     id: "spain",
     name: "España",
-    flag: <SpainFlag />,
+    flag: <Flag country="spain" size={18} />,
     leagues: [
       { id: "la-liga", name: "La Liga (LALIGA EA SPORTS)", apiCode: "PD", logo: ESPN_LEAGUE_LOGOS.PD },
       { id: "copa-del-rey", name: "Copa del Rey", apiCode: "CDR", logo: ESPN_LEAGUE_LOGOS.CDR },
@@ -315,7 +147,7 @@ const FOOTBALL_COUNTRIES: Country[] = [
   {
     id: "germany",
     name: "Deutschland",
-    flag: <GermanyFlag />,
+    flag: <Flag country="germany" size={18} />,
     leagues: [
       { id: "bundesliga", name: "Bundesliga", apiCode: "BL1", logo: ESPN_LEAGUE_LOGOS.BL1 },
       { id: "dfb-pokal", name: "DFB-Pokal", apiCode: "DFB", logo: ESPN_LEAGUE_LOGOS.DFB },
@@ -325,7 +157,7 @@ const FOOTBALL_COUNTRIES: Country[] = [
   {
     id: "france",
     name: "France",
-    flag: <FranceFlag />,
+    flag: <Flag country="france" size={18} />,
     leagues: [
       { id: "ligue1", name: "Ligue 1 (Ligue 1 McDonald's)", apiCode: "FL1", logo: ESPN_LEAGUE_LOGOS.FL1 },
       { id: "coupe-de-france", name: "Coupe de France", apiCode: "CDF", logo: ESPN_LEAGUE_LOGOS.CDF },
@@ -334,7 +166,7 @@ const FOOTBALL_COUNTRIES: Country[] = [
   {
     id: "italy",
     name: "Italia",
-    flag: <ItalyFlag />,
+    flag: <Flag country="italy" size={18} />,
     leagues: [
       { id: "serie-a", name: "Serie A (Serie A Enilive)", apiCode: "SA", logo: ESPN_LEAGUE_LOGOS.SA },
       { id: "coppa-italia", name: "Coppa Italia", apiCode: "CIT", logo: ESPN_LEAGUE_LOGOS.CIT },
@@ -343,7 +175,7 @@ const FOOTBALL_COUNTRIES: Country[] = [
   {
     id: "saudi",
     name: "Saudi Arabia",
-    flag: <SaudiFlag />,
+    flag: <Flag country="saudiarabia" size={18} />,
     leagues: [
       { id: "saudi-pro", name: "Saudi Pro League (Roshn Saudi League)", apiCode: "KSA1", logo: ESPN_LEAGUE_LOGOS.KSA1 },
     ],
@@ -351,7 +183,7 @@ const FOOTBALL_COUNTRIES: Country[] = [
   {
     id: "portugal",
     name: "Portugal",
-    flag: <PortugalFlag />,
+    flag: <Flag country="portugal" size={18} />,
     leagues: [
       { id: "primeira-liga", name: "Primeira Liga (Liga Portugal Betclic)", apiCode: "PPL", logo: ESPN_LEAGUE_LOGOS.PPL },
       { id: "taca-portugal", name: "Taça de Portugal", logo: ESPN_LEAGUE_LOGOS.PPL },
@@ -360,7 +192,7 @@ const FOOTBALL_COUNTRIES: Country[] = [
   {
     id: "netherlands",
     name: "Nederland",
-    flag: <NetherlandsFlag />,
+    flag: <Flag country="netherlands" size={18} />,
     leagues: [
       { id: "eredivisie", name: "Eredivisie", apiCode: "DED", logo: ESPN_LEAGUE_LOGOS.DED },
       { id: "knvb-cup", name: "KNVB Cup", logo: ESPN_LEAGUE_LOGOS.DED },
@@ -369,7 +201,7 @@ const FOOTBALL_COUNTRIES: Country[] = [
   {
     id: "brazil",
     name: "Brasil",
-    flag: <BrazilFlag />,
+    flag: <Flag country="brazil" size={18} />,
     leagues: [
       { id: "brasileirao", name: "Brasileirão Série A (Betano)", apiCode: "BSA", logo: ESPN_LEAGUE_LOGOS.BSA },
     ],
@@ -377,7 +209,7 @@ const FOOTBALL_COUNTRIES: Country[] = [
   {
     id: "south-america",
     name: "South America",
-    flag: <SouthAmericaFlag />,
+    flag: <Flag country="southamerica" label="South America" size={18} />,
     leagues: [
       { id: "copa-libertadores", name: "CONMEBOL Libertadores", apiCode: "CLI", logo: ESPN_LEAGUE_LOGOS.CLI },
     ],
