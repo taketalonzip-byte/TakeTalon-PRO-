@@ -45,6 +45,27 @@ export const ESPN_HOCKEY_LEAGUES: Record<string, HockeyLeagueConfig> = {
     country: "USA",
     emblemUrl: "https://a.espncdn.com/i/teamlogos/leagues/500/womens-college-hockey.png",
   },
+  WCH: {
+    code: "WCH",
+    slug: "hockey-world-cup",
+    name: "World Cup of Hockey",
+    country: "International",
+    emblemUrl: "https://a.espncdn.com/i/teamlogos/leagues/500/hockey-world-cup.png",
+  },
+  OLYMH: {
+    code: "OLYMH",
+    slug: "olympics-mens-ice-hockey",
+    name: "Olympic Men's Ice Hockey",
+    country: "International",
+    emblemUrl: "https://a.espncdn.com/i/teamlogos/leagues/500/olympics-mens-ice-hockey.png",
+  },
+  OLYWH: {
+    code: "OLYWH",
+    slug: "olympics-womens-ice-hockey",
+    name: "Olympic Women's Ice Hockey",
+    country: "International",
+    emblemUrl: "https://a.espncdn.com/i/teamlogos/leagues/500/olympics-womens-ice-hockey.png",
+  },
 };
 
 export type HockeyStatus = "SCHEDULED" | "IN_PLAY" | "PAUSED" | "FINISHED" | "POSTPONED" | "CANCELLED";
