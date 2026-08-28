@@ -1972,8 +1972,26 @@ export default function SportPage({
         });
       }
     }
-    return [...staticCountries, ...extra];
-  }, [hasSportApi, staticCountries, liveData.grouped, liveData.allGames.length]);
+    // Prune: hide static leagues/countries that have no real ESPN games, so the
+    // user never opens a country and finds an empty list.
+    const hasLiveGames = (leagueId: string, leagueName: string) =>
+      liveData.allGames.some(
+        (g) =>
+          g.league_id === leagueId ||
+          g.league === leagueName ||
+          matchLeagueName(leagueName, g.league || "") ||
+          matchLeagueName(leagueId, g.league_id || ""),
+      );
+
+    const pruned = [...staticCountries, ...extra]
+      .map((country) => ({
+        ...country,
+        leagues: country.leagues.filter((l) => hasLiveGames(l.id, l.name)),
+      }))
+      .filter((country) => country.leagues.length > 0);
+
+    return pruned.length > 0 ? pruned : [...staticCountries, ...extra];
+  }, [hasSportApi, staticCountries, liveData.grouped, liveData.allGames]);
 
   // Games shown in the GamesPanel — filtered to selected country + league
   const panelGames = useMemo<BballGame[]>(() => {
