@@ -433,7 +433,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "usa-bball",
       name: "USA",
-      flag: <Flag country="usa" size={32} />,
+      flag: <Flag country="usa" size={18} />,
       leagues: [
         { id: "nba", name: "NBA — National Basketball Association" },
         { id: "wnba", name: "WNBA — Women's National Basketball Association" },
@@ -451,7 +451,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "spain-bball",
       name: "Spain",
-      flag: <Flag country="spain" size={32} />,
+      flag: <Flag country="spain" size={18} />,
       leagues: [
         { id: "acb", name: "Liga ACB / Copa del Rey" },
       ],
@@ -459,7 +459,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "italy-bball",
       name: "Italy",
-      flag: <Flag country="italy" size={32} />,
+      flag: <Flag country="italy" size={18} />,
       leagues: [
         { id: "lba", name: "Lega Basket Serie A (LBA)" },
       ],
@@ -467,7 +467,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "australia-bball",
       name: "Australia & Oceania",
-      flag: <Flag country="australia" size={32} />,
+      flag: <Flag country="australia" size={18} />,
       leagues: [
         { id: "nbl", name: "NBL — National Basketball League" },
       ],
@@ -475,7 +475,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "brazil-bball",
       name: "Brazil",
-      flag: <Flag country="brazil" size={32} />,
+      flag: <Flag country="brazil" size={18} />,
       leagues: [
         { id: "nbb", name: "NBB — Novo Basquete Brasil" },
       ],
@@ -483,7 +483,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "europe-bball",
       name: "Europe",
-      flag: <Flag country="europe" size={32} />,
+      flag: <Flag country="europe" size={18} />,
       leagues: [
         { id: "euroleague", name: "EuroLeague Basketball" },
       ],
@@ -491,7 +491,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "international-bball",
       name: "International",
-      flag: <Flag country="international" size={32} />,
+      flag: <Flag country="international" size={18} />,
       leagues: [
         { id: "fiba", name: "FIBA Basketball World Cup" },
         { id: "fiba-americas", name: "FIBA AmeriCup" },
