@@ -14,6 +14,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { CATALOG_LEAGUE_SLUGS } from "./footballCatalog";
 
 const ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer";
 const ESPN_TIMEOUT_MS = 8000;
@@ -22,6 +23,9 @@ const ESPN_TIMEOUT_MS = 8000;
 // Only codes we actually sync. Add here only after confirming the slug works.
 // ksa.1 confirmed via live search 2026-08-25 (multiple espn.com /league/ksa.1/ URLs).
 export const ESPN_LEAGUE_SLUGS: Record<string, string> = {
+  // Full ESPN catalog (218 competitions) — every entry uses a real ESPN slug.
+  ...CATALOG_LEAGUE_SLUGS,
+  // Short legacy codes kept for backwards compatibility with existing UI/data.
   PL: "eng.1",
   ELC: "eng.2",
   FAC: "eng.fa",
