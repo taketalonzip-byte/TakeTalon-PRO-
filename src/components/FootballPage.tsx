@@ -105,6 +105,81 @@ function genOdds(matchId: number, homeId: number, awayId: number) {
   };
 }
 
+function fmtTime(utc: string) {
+  try {
+    return new Date(utc).toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Africa/Harare",
+    });
+  } catch {
+    return "--:--";
+  }
+}
+
+function fmtDate(utc: string) {
+  try {
+    return new Date(utc).toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      timeZone: "Africa/Harare",
+    });
+  } catch {
+    return "";
+  }
+}
+
+function toMatchTip(match: ApiMatch, leagueName: string): MatchTip {
+  const homeId = match.homeTeam?.id || 0;
+  const awayId = match.awayTeam?.id || 0;
+  const odds = genOdds(match.id, homeId, awayId);
+  const s = (match.status || "").toUpperCase();
+  const isLive = s === "IN_PLAY" || s === "PAUSED" || s === "LIVE" || s === "INPROGRESS";
+  const isEnded = s === "FINISHED" || s === "AWARDED" || s === "ENDED" || s === "FINAL" || s === "FT";
+  const scoreHome = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
+  const scoreAway = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
+
+  return {
+    id: String(match.id),
+    sport: "Football",
+    category: "Football",
+    league: leagueName || match.competition?.name || "Football League",
+    time: fmtTime(match.utcDate),
+    status: isLive ? "LIVE" : isEnded ? "ENDED" : "UPCOMING",
+    homeScore: scoreHome,
+    awayScore: scoreAway,
+    score:
+      scoreHome != null && scoreAway != null
+        ? { home: scoreHome, away: scoreAway }
+        : undefined,
+    liveClock: match.displayClock ?? (match.minute != null ? `${match.minute}'` : undefined),
+    confidence: 75,
+    homeTeam: {
+      name: match.homeTeam?.shortName || match.homeTeam?.name || "Home",
+      logoUrl: match.homeTeam?.crest || "",
+      bgGlow: "from-blue-600/30",
+    },
+    awayTeam: {
+      name: match.awayTeam?.shortName || match.awayTeam?.name || "Away",
+      logoUrl: match.awayTeam?.crest || "",
+      bgGlow: "from-red-600/30",
+    },
+    odds: {
+      home: odds.home,
+      draw: odds.draw,
+      away: odds.away,
+    },
+    isPremium: false,
+    isLocked: false,
+    tipster: {
+      name: "TakeTalon",
+      avatarLetter: "T",
+      isOfficial: true,
+    },
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Countries & Leagues data — na logo za ligi
 // ─────────────────────────────────────────────────────────────────────────────
