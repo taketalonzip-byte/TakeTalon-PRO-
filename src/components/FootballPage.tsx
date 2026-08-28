@@ -23,6 +23,7 @@ import { getCompetitionFixtures } from "../lib/footballCache";
 import { ESPN_LEAGUE_LOGOS, getLeagueLogoUrl } from "../lib/leagueLogos";
 import { getUnifiedMatchStatus } from "../lib/sportMatchStatus";
 import { ScrollingScoreBadge } from "./ScrollingScoreBadge";
+import { FOOTBALL_BY_COUNTRY } from "@/lib/footballCatalog";
 import { Flag } from "./Flag";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -108,113 +109,79 @@ function genOdds(matchId: number, homeId: number, awayId: number) {
 // Countries & Leagues data — na logo za ligi
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FOOTBALL_COUNTRIES: Country[] = [
-  {
-    id: "world",
-    name: "Dunia (World)",
-    flag: <Flag country="international" label="World" size={18} />,
-    leagues: [
-      { id: "world-cup", name: "FIFA World Cup 2026", apiCode: "WC", logo: ESPN_LEAGUE_LOGOS.WC },
-      { id: "champions-league", name: "UEFA Champions League", apiCode: "CL", logo: ESPN_LEAGUE_LOGOS.CL },
-      { id: "europa-league", name: "UEFA Europa League", apiCode: "UEL", logo: ESPN_LEAGUE_LOGOS.UEL },
-      { id: "conference-league", name: "UEFA Conference League", apiCode: "UECL", logo: ESPN_LEAGUE_LOGOS.UECL },
-    ],
-  },
-  {
-    id: "uk",
-    name: "United Kingdom (UK / Uingereza & Uskoti)",
-    flag: <Flag country="england" size={18} />,
-    leagues: [
-      { id: "epl", name: "Premier League (EPL)", apiCode: "PL", logo: ESPN_LEAGUE_LOGOS.PL },
-      { id: "championship", name: "Championship (ELC)", apiCode: "ELC", logo: ESPN_LEAGUE_LOGOS.ELC },
-      { id: "efl-cup", name: "Carabao Cup (EFL Cup)", apiCode: "EFL", logo: ESPN_LEAGUE_LOGOS.EFL },
-      { id: "fa-cup", name: "FA Cup", apiCode: "FAC", logo: ESPN_LEAGUE_LOGOS.FAC },
-      { id: "league-one", name: "League One", apiCode: "ENG3", logo: ESPN_LEAGUE_LOGOS.ENG3 },
-      { id: "league-two", name: "League Two", apiCode: "ENG4", logo: ESPN_LEAGUE_LOGOS.ENG4 },
-      { id: "scottish-prem", name: "Scottish Premiership", apiCode: "SCO1", logo: ESPN_LEAGUE_LOGOS.SCO1 },
-    ],
-  },
-  {
-    id: "spain",
-    name: "España",
-    flag: <Flag country="spain" size={18} />,
-    leagues: [
-      { id: "la-liga", name: "La Liga (LALIGA EA SPORTS)", apiCode: "PD", logo: ESPN_LEAGUE_LOGOS.PD },
-      { id: "copa-del-rey", name: "Copa del Rey", apiCode: "CDR", logo: ESPN_LEAGUE_LOGOS.CDR },
-      { id: "super-copa", name: "Super Copa de España", logo: ESPN_LEAGUE_LOGOS.PD },
-    ],
-  },
-  {
-    id: "germany",
-    name: "Deutschland",
-    flag: <Flag country="germany" size={18} />,
-    leagues: [
-      { id: "bundesliga", name: "Bundesliga", apiCode: "BL1", logo: ESPN_LEAGUE_LOGOS.BL1 },
-      { id: "dfb-pokal", name: "DFB-Pokal", apiCode: "DFB", logo: ESPN_LEAGUE_LOGOS.DFB },
-      { id: "2-bundesliga", name: "2. Bundesliga", logo: ESPN_LEAGUE_LOGOS.BL1 },
-    ],
-  },
-  {
-    id: "france",
-    name: "France",
-    flag: <Flag country="france" size={18} />,
-    leagues: [
-      { id: "ligue1", name: "Ligue 1 (Ligue 1 McDonald's)", apiCode: "FL1", logo: ESPN_LEAGUE_LOGOS.FL1 },
-      { id: "coupe-de-france", name: "Coupe de France", apiCode: "CDF", logo: ESPN_LEAGUE_LOGOS.CDF },
-    ],
-  },
-  {
-    id: "italy",
-    name: "Italia",
-    flag: <Flag country="italy" size={18} />,
-    leagues: [
-      { id: "serie-a", name: "Serie A (Serie A Enilive)", apiCode: "SA", logo: ESPN_LEAGUE_LOGOS.SA },
-      { id: "coppa-italia", name: "Coppa Italia", apiCode: "CIT", logo: ESPN_LEAGUE_LOGOS.CIT },
-    ],
-  },
-  {
-    id: "saudi",
-    name: "Saudi Arabia",
-    flag: <Flag country="saudiarabia" size={18} />,
-    leagues: [
-      { id: "saudi-pro", name: "Saudi Pro League (Roshn Saudi League)", apiCode: "KSA1", logo: ESPN_LEAGUE_LOGOS.KSA1 },
-    ],
-  },
-  {
-    id: "portugal",
-    name: "Portugal",
-    flag: <Flag country="portugal" size={18} />,
-    leagues: [
-      { id: "primeira-liga", name: "Primeira Liga (Liga Portugal Betclic)", apiCode: "PPL", logo: ESPN_LEAGUE_LOGOS.PPL },
-      { id: "taca-portugal", name: "Taça de Portugal", logo: ESPN_LEAGUE_LOGOS.PPL },
-    ],
-  },
-  {
-    id: "netherlands",
-    name: "Nederland",
-    flag: <Flag country="netherlands" size={18} />,
-    leagues: [
-      { id: "eredivisie", name: "Eredivisie", apiCode: "DED", logo: ESPN_LEAGUE_LOGOS.DED },
-      { id: "knvb-cup", name: "KNVB Cup", logo: ESPN_LEAGUE_LOGOS.DED },
-    ],
-  },
-  {
-    id: "brazil",
-    name: "Brasil",
-    flag: <Flag country="brazil" size={18} />,
-    leagues: [
-      { id: "brasileirao", name: "Brasileirão Série A (Betano)", apiCode: "BSA", logo: ESPN_LEAGUE_LOGOS.BSA },
-    ],
-  },
-  {
-    id: "south-america",
-    name: "South America",
-    flag: <Flag country="southamerica" label="South America" size={18} />,
-    leagues: [
-      { id: "copa-libertadores", name: "CONMEBOL Libertadores", apiCode: "CLI", logo: ESPN_LEAGUE_LOGOS.CLI },
-    ],
-  },
+// Nchi/kanda zote hujengwa moja kwa moja kutoka katalogi halisi ya ESPN
+// (218 mashindano). Hakuna nchi tupu: kila nchi inayoonekana ina angalau
+// ligi moja yenye slug halisi ya ESPN.
+const COUNTRY_ORDER = [
+  "International",
+  "Europe",
+  "England",
+  "Spain",
+  "Germany",
+  "Italy",
+  "France",
+  "Netherlands",
+  "Portugal",
+  "Scotland",
+  "Turkey",
+  "Belgium",
+  "Austria",
+  "Greece",
+  "Russia",
+  "Sweden",
+  "Denmark",
+  "Norway",
+  "Saudi Arabia",
+  "USA",
+  "Mexico",
+  "Brazil",
+  "Argentina",
+  "South America",
+  "North America",
+  "Africa",
+  "Asia",
 ];
+
+const COUNTRY_FLAG_KEY: Record<string, string> = {
+  International: "international",
+  Europe: "europe",
+  "South America": "southamerica",
+  "North America": "northamerica",
+  Africa: "africa",
+  Asia: "asia",
+  USA: "usa",
+  "Saudi Arabia": "saudi-arabia",
+  "Costa Rica": "costa-rica",
+  "El Salvador": "el-salvador",
+  "South Africa": "south-africa",
+};
+
+function countryId(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}
+
+const FOOTBALL_COUNTRIES: Country[] = (() => {
+  const names = Object.keys(FOOTBALL_BY_COUNTRY).sort((a, b) => {
+    const ia = COUNTRY_ORDER.indexOf(a);
+    const ib = COUNTRY_ORDER.indexOf(b);
+    if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    return a.localeCompare(b);
+  });
+
+  return names.map((name) => ({
+    id: countryId(name),
+    name,
+    flag: (
+      <Flag country={COUNTRY_FLAG_KEY[name] ?? countryId(name)} label={name} size={18} />
+    ),
+    leagues: FOOTBALL_BY_COUNTRY[name].map((l) => ({
+      id: l.slug,
+      name: l.name,
+      apiCode: l.code,
+    })),
+  }));
+})();
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Theme helpers (kuiga PostCard wa MatchList kikamilifu)
