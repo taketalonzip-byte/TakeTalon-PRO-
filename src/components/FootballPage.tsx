@@ -20,10 +20,10 @@ import {
 import { MatchTip, CartItem } from "../types";
 import { FootballMatchSkeleton } from "./skeletons";
 import { getCompetitionFixtures } from "../lib/footballCache";
-import { ESPN_LEAGUE_LOGOS, getLeagueLogoUrl } from "../lib/leagueLogos";
+import { getLeagueLogoUrl } from "../lib/leagueLogos";
 import { getUnifiedMatchStatus } from "../lib/sportMatchStatus";
 import { ScrollingScoreBadge } from "./ScrollingScoreBadge";
-import { FOOTBALL_BY_COUNTRY } from "@/lib/footballCatalog";
+import { FOOTBALL_BY_COUNTRY } from "../lib/footballCatalog";
 import { Flag } from "./Flag";
 
 // ─────────────────────────────────────────────────────────────────────────────
