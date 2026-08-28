@@ -20,7 +20,7 @@ import {
 import { MatchTip, CartItem } from "../types";
 import { FootballMatchSkeleton } from "./skeletons";
 import { getCompetitionFixtures } from "../lib/footballCache";
-import { getLeagueLogoUrl } from "../lib/leagueLogos";
+import { ESPN_LEAGUE_LOGOS } from "../lib/leagueLogos";
 import { getUnifiedMatchStatus } from "../lib/sportMatchStatus";
 import { ScrollingScoreBadge } from "./ScrollingScoreBadge";
 import { FOOTBALL_BY_COUNTRY } from "../lib/footballCatalog";
@@ -178,6 +178,7 @@ const FOOTBALL_COUNTRIES: Country[] = (() => {
       id: l.slug,
       name: l.name,
       apiCode: l.code,
+      logo: ESPN_LEAGUE_LOGOS[l.slug] ?? ESPN_LEAGUE_LOGOS[l.code],
     })),
   }));
 })();
