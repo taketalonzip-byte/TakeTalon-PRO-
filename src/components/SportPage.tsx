@@ -480,6 +480,54 @@ const SPORT_DATA: Record<string, Country[]> = {
       ],
     },
     {
+      id: "france-bball",
+      name: "France",
+      flag: <Flag country="france" size={18} />,
+      leagues: [
+        { id: "lnb-pro-a", name: "LNB Pro A (Betclic Élite)" },
+      ],
+    },
+    {
+      id: "germany-bball",
+      name: "Germany",
+      flag: <Flag country="germany" size={18} />,
+      leagues: [
+        { id: "bbl", name: "Basketball Bundesliga (BBL)" },
+      ],
+    },
+    {
+      id: "greece-bball",
+      name: "Greece",
+      flag: <Flag country="greece" size={18} />,
+      leagues: [
+        { id: "greek-basket-league", name: "Greek Basket League" },
+      ],
+    },
+    {
+      id: "serbia-bball",
+      name: "Serbia",
+      flag: <Flag country="serbia" size={18} />,
+      leagues: [
+        { id: "aba-liga", name: "ABA Liga (Adriatic League)" },
+      ],
+    },
+    {
+      id: "china-bball",
+      name: "China",
+      flag: <Flag country="china" size={18} />,
+      leagues: [
+        { id: "cba", name: "CBA — Chinese Basketball Association" },
+      ],
+    },
+    {
+      id: "argentina-bball",
+      name: "Argentina",
+      flag: <Flag country="argentina" size={18} />,
+      leagues: [
+        { id: "liga-nacional", name: "Liga Nacional de Básquet" },
+      ],
+    },
+    {
       id: "europe-bball",
       name: "Europe",
       flag: <Flag country="europe" size={18} />,
