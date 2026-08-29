@@ -2570,9 +2570,11 @@ export default function SportPage({
     const leagueLogo = (games: BballGame[]) => games[0]?.league_logo ?? null;
 
     // Build extra countries/leagues from live data not already in static list
+    // Clone so we never mutate SPORT_DATA (that caused duplicated leagues).
+    const merged = staticCountries.map((c) => ({ ...c, leagues: c.leagues.map((l) => ({ ...l })) }));
     const extra: typeof staticCountries = [];
     for (const [countryKey, leagueMap] of liveData.grouped) {
-      const exists = staticCountries.find((c) => matchCountryName(c.name, countryKey));
+      const exists = merged.find((c) => matchCountryName(c.name, countryKey));
       if (!exists) {
         extra.push({
           id: `api-${countryKey.toLowerCase().replace(/\s+/g, "-")}`,
@@ -2605,25 +2607,11 @@ export default function SportPage({
         });
       }
     }
-    // Prune: hide static leagues/countries that have no real ESPN games, so the
-    // user never opens a country and finds an empty list.
-    const hasLiveGames = (leagueId: string, leagueName: string) =>
-      liveData.allGames.some(
-        (g) =>
-          g.league_id === leagueId ||
-          g.league === leagueName ||
-          matchLeagueName(leagueName, g.league || "") ||
-          matchLeagueName(leagueId, g.league_id || ""),
-      );
-
-    const pruned = [...staticCountries, ...extra]
-      .map((country) => ({
-        ...country,
-        leagues: country.leagues.filter((l) => hasLiveGames(l.id, l.name)),
-      }))
-      .filter((country) => country.leagues.length > 0);
-
-    return pruned.length > 0 ? pruned : [...staticCountries, ...extra];
+    // Keep the full static list visible (like Football) and simply append any
+    // extra countries the live API returned. No pruning — otherwise the page
+    // flashes the full list and then collapses to one or two countries when
+    // the API only has a few live games at that moment.
+    return [...merged, ...extra];
   }, [hasSportApi, staticCountries, liveData.grouped, liveData.allGames]);
 
   // Games shown in the GamesPanel — filtered to selected country + league
