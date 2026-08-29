@@ -1845,6 +1845,7 @@ function useSportLiveData(sport: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [source, setSource] = useState<string>("");
+  const [loaded, setLoaded] = useState(false);
 
   const fetchGames = useCallback(async () => {
     setLoading(true);
@@ -1875,6 +1876,7 @@ function useSportLiveData(sport: string) {
       setSource("coming_soon");
     } finally {
       setLoading(false);
+      setLoaded(true);
     }
   }, [slug]);
 
@@ -1896,7 +1898,7 @@ function useSportLiveData(sport: string) {
     return map;
   }, [allGames]);
 
-  return { allGames, grouped, loading, error, source, refresh: fetchGames };
+  return { allGames, grouped, loading, loaded, error, source, refresh: fetchGames };
 }
 
 // ---------------------------------------------------------------------------
@@ -2562,57 +2564,43 @@ export default function SportPage({
   const staticCountries = SPORT_DATA[sport] ?? getDefaultCountries(sport);
   const icon = SPORT_ICONS[sport] ?? null;
 
-  // Merge live API countries with static structure so unknown leagues also appear
+  // Countries come straight from ESPN (live API). Static SPORT_DATA is only a
+  // fallback for sports without an API, or when ESPN returns nothing at all.
   const countries = useMemo<typeof staticCountries>(() => {
-    if (!hasSportApi || liveData.allGames.length === 0) return staticCountries;
+    if (!hasSportApi) return staticCountries;
+    // Until the first ESPN response arrives we show nothing (a loader instead),
+    // so the list never flashes a long static list and then collapses.
+    if (!liveData.loaded) return [];
+    if (liveData.grouped.size === 0) return staticCountries;
 
-    // Helper: pick the first game in a league group to extract its league logo
     const leagueLogo = (games: BballGame[]) => games[0]?.league_logo ?? null;
 
-    // Build extra countries/leagues from live data not already in static list
-    // Clone so we never mutate SPORT_DATA (that caused duplicated leagues).
-    const merged = staticCountries.map((c) => ({ ...c, leagues: c.leagues.map((l) => ({ ...l })) }));
-    const extra: typeof staticCountries = [];
+    const fromApi: typeof staticCountries = [];
     for (const [countryKey, leagueMap] of liveData.grouped) {
-      const exists = merged.find((c) => matchCountryName(c.name, countryKey));
-      if (!exists) {
-        extra.push({
-          id: `api-${countryKey.toLowerCase().replace(/\s+/g, "-")}`,
-          name: countryKey,
-          // Same ESPN-backed Flag component + 18px size used everywhere else
-          // (Football page, static Basketball countries) so flags never look
-          // mismatched in size when a country only comes from live API data.
-          flag: <Flag country={countryKey} label={countryKey} size={18} />,
-          leagues: Array.from(leagueMap.entries()).map(([l, gs]) => ({
-            id: l,
-            name: l,
-            logo: leagueLogo(gs),
-          })),
-        });
-      } else {
-        // Augment static leagues with any extra from API; also inject logo where missing
-        const apiLeagueNames = Array.from(leagueMap.entries());
-        apiLeagueNames.forEach(([lName, gs]) => {
-          const logo = leagueLogo(gs);
-          const existing = exists.leagues.find((l) => matchLeagueName(l.name, lName));
-          if (!existing) {
-            exists.leagues.push({
-              id: lName.toLowerCase().replace(/\s+/g, "-"),
-              name: lName,
-              logo,
-            });
-          } else if (!existing.logo && logo) {
-            existing.logo = logo; // backfill logo on static entry
-          }
-        });
-      }
+      // Reuse the static entry's flag/name when we already know this country,
+      // so ESPN-only countries still render the same 18px Flag component.
+      const known = staticCountries.find((c) => matchCountryName(c.name, countryKey));
+      fromApi.push({
+        id: known?.id ?? `api-${countryKey.toLowerCase().replace(/\s+/g, "-")}`,
+        name: known?.name ?? countryKey,
+        flag: known?.flag ?? <Flag country={countryKey} label={countryKey} size={18} />,
+        leagues: Array.from(leagueMap.entries()).map(([lName, gs]) => {
+          const staticLeague = known?.leagues.find((l) => matchLeagueName(l.name, lName));
+          return {
+            id: staticLeague?.id ?? lName.toLowerCase().replace(/\s+/g, "-"),
+            name: staticLeague?.name ?? lName,
+            logo: leagueLogo(gs) ?? staticLeague?.logo ?? null,
+          };
+        }),
+      });
     }
-    // Keep the full static list visible (like Football) and simply append any
-    // extra countries the live API returned. No pruning — otherwise the page
-    // flashes the full list and then collapses to one or two countries when
-    // the API only has a few live games at that moment.
-    return [...merged, ...extra];
-  }, [hasSportApi, staticCountries, liveData.grouped, liveData.allGames]);
+
+    // Keep the familiar static ordering first, then any extra ESPN countries.
+    const order = new Map(staticCountries.map((c, i) => [c.name, i]));
+    return fromApi.sort(
+      (a, b) => (order.get(a.name) ?? 999) - (order.get(b.name) ?? 999) || a.name.localeCompare(b.name),
+    );
+  }, [hasSportApi, staticCountries, liveData.grouped, liveData.loaded]);
 
   // Games shown in the GamesPanel — filtered to selected country + league
   const panelGames = useMemo<BballGame[]>(() => {
@@ -2701,6 +2689,12 @@ export default function SportPage({
 
       {/* ── Country list ───────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 pb-6 no-scrollbar">
+        {hasSportApi && !liveData.loaded && (
+          <p className={`text-xs py-6 text-center ${subtitleText}`}>Loading countries…</p>
+        )}
+        {hasSportApi && liveData.loaded && countries.length === 0 && (
+          <p className={`text-xs py-6 text-center ${subtitleText}`}>No countries available right now.</p>
+        )}
         {countries.map((country) => (
           <CountryRow
             key={country.id}
