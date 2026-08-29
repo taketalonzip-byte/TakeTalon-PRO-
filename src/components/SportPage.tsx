@@ -512,6 +512,12 @@ const SPORT_DATA: Record<string, Country[]> = {
         { id: "cincinnati-open", name: "Cincinnati Open (ATP Masters)" },
         { id: "winston-salem", name: "Winston-Salem Open" },
         { id: "washington-open", name: "Mubadala Citi DC Open" },
+        { id: "atlanta-open", name: "Atlanta Open (ATP 250)" },
+        { id: "dallas-open", name: "Dallas Open (ATP 500)" },
+        { id: "delray-beach", name: "Delray Beach Open" },
+        { id: "san-diego-open", name: "San Diego Open" },
+        { id: "newport-hall-of-fame", name: "Hall of Fame Open (Newport)" },
+        { id: "charleston-wta", name: "Charleston Open (WTA 500)" },
       ],
     },
     {
@@ -522,6 +528,8 @@ const SPORT_DATA: Record<string, Country[]> = {
         { id: "wimbledon", name: "Wimbledon (Grand Slam)" },
         { id: "queens-club", name: "Queen's Club Championships (ATP 500)" },
         { id: "eastbourne", name: "Eastbourne International" },
+        { id: "nottingham-open", name: "Nottingham Open" },
+        { id: "birmingham-classic", name: "Birmingham Classic (WTA 250)" },
       ],
     },
     {
@@ -532,6 +540,9 @@ const SPORT_DATA: Record<string, Country[]> = {
         { id: "roland-garros", name: "Roland Garros (Grand Slam)" },
         { id: "paris-masters", name: "Paris Masters (ATP Masters)" },
         { id: "marseille-open", name: "Open 13 Provence (Marseille)" },
+        { id: "montpellier-open", name: "Open Sud de France (Montpellier)" },
+        { id: "lyon-open", name: "Open Parc Lyon (ATP 250)" },
+        { id: "strasbourg-wta", name: "Internationaux de Strasbourg" },
       ],
     },
     {
@@ -542,6 +553,9 @@ const SPORT_DATA: Record<string, Country[]> = {
         { id: "aus-open", name: "Australian Open (Grand Slam)" },
         { id: "brisbane-atp", name: "Brisbane International" },
         { id: "sydney-atp", name: "Sydney Tennis Classic" },
+        { id: "adelaide-international", name: "Adelaide International" },
+        { id: "united-cup", name: "United Cup (Mixed Teams)" },
+        { id: "hobart-international", name: "Hobart International (WTA)" },
       ],
     },
     {
@@ -552,6 +566,8 @@ const SPORT_DATA: Record<string, Country[]> = {
         { id: "madrid-open", name: "Madrid Open (ATP Masters)" },
         { id: "barcelona-open", name: "Barcelona Open (ATP 500)" },
         { id: "mallorca-championships", name: "Mallorca Championships" },
+        { id: "gijon-open", name: "Gijon Open" },
+        { id: "valencia-open", name: "Valencia Open" },
       ],
     },
     {
@@ -561,6 +577,9 @@ const SPORT_DATA: Record<string, Country[]> = {
       leagues: [
         { id: "italian-open", name: "Italian Open / Rome Masters" },
         { id: "atp-finals", name: "Nitto ATP Finals (Turin)" },
+        { id: "next-gen-finals", name: "Next Gen ATP Finals" },
+        { id: "sardegna-open", name: "Sardegna Open" },
+        { id: "firenze-open", name: "Firenze Open" },
       ],
     },
     {
@@ -570,6 +589,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       leagues: [
         { id: "swiss-indoors", name: "Swiss Indoors (Basel)" },
         { id: "geneva-open", name: "Geneva Open (ATP 250)" },
+        { id: "gstaad-open", name: "Swiss Open Gstaad" },
       ],
     },
     {
@@ -580,6 +600,25 @@ const SPORT_DATA: Record<string, Country[]> = {
         { id: "halle-open", name: "Terra Wortmann Open (Halle)" },
         { id: "bmw-open", name: "BMW Open (Munich)" },
         { id: "berlin-wta", name: "Berlin Ladies Open" },
+        { id: "hamburg-open", name: "Hamburg European Open" },
+        { id: "stuttgart-open", name: "Stuttgart Open (Boss / Porsche GP)" },
+      ],
+    },
+    {
+      id: "netherlands-tennis",
+      name: "Netherlands",
+      flag: <Flag country="netherlands" size={18} />,
+      leagues: [
+        { id: "rotterdam-open", name: "ABN AMRO Open (Rotterdam)" },
+        { id: "libema-open", name: "Libema Open ('s-Hertogenbosch)" },
+      ],
+    },
+    {
+      id: "portugal-tennis",
+      name: "Portugal",
+      flag: <Flag country="portugal" size={18} />,
+      leagues: [
+        { id: "estoril-open", name: "Millennium Estoril Open" },
       ],
     },
     {
@@ -588,6 +627,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="sweden" size={18} />,
       leagues: [
         { id: "stockholm-open", name: "Stockholm Open (ATP 250)" },
+        { id: "bastad-open", name: "Nordea Open (Bastad)" },
       ],
     },
     {
@@ -596,6 +636,108 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="argentina" size={18} />,
       leagues: [
         { id: "argentina-open", name: "Argentina Open (ATP 250, Buenos Aires)" },
+        { id: "cordoba-open", name: "Cordoba Open" },
+      ],
+    },
+    {
+      id: "brazil-tennis",
+      name: "Brazil",
+      flag: <Flag country="brazil" size={18} />,
+      leagues: [
+        { id: "rio-open", name: "Rio Open (ATP 500)" },
+        { id: "brasil-open", name: "Brasil Tennis Cup" },
+      ],
+    },
+    {
+      id: "mexico-tennis",
+      name: "Mexico",
+      flag: <Flag country="mexico" size={18} />,
+      leagues: [
+        { id: "acapulco-open", name: "Abierto Mexicano Telcel (Acapulco)" },
+        { id: "los-cabos-open", name: "Los Cabos Open" },
+        { id: "abierto-monterrey", name: "Abierto GNP Seguros (Monterrey)" },
+      ],
+    },
+    {
+      id: "china-tennis",
+      name: "China",
+      flag: <Flag country="china" size={18} />,
+      leagues: [
+        { id: "shanghai-masters", name: "Shanghai Masters (ATP 1000)" },
+        { id: "china-open", name: "China Open (Beijing)" },
+        { id: "wuhan-open", name: "Wuhan Open (WTA)" },
+        { id: "chengdu-open", name: "Chengdu Open" },
+        { id: "zhuhai-championships", name: "Zhuhai Championships" },
+      ],
+    },
+    {
+      id: "japan-tennis",
+      name: "Japan",
+      flag: <Flag country="japan" size={18} />,
+      leagues: [
+        { id: "japan-open", name: "Kinoshita Group Japan Open" },
+        { id: "pan-pacific-open", name: "Toray Pan Pacific Open (WTA)" },
+      ],
+    },
+    {
+      id: "southkorea-tennis",
+      name: "South Korea",
+      flag: <Flag country="southkorea" size={18} />,
+      leagues: [
+        { id: "korea-open", name: "Korea Open (WTA 500, Seoul)" },
+      ],
+    },
+    {
+      id: "canada-tennis",
+      name: "Canada",
+      flag: <Flag country="canada" size={18} />,
+      leagues: [
+        { id: "canadian-open", name: "National Bank Open (ATP/WTA 1000)" },
+      ],
+    },
+    {
+      id: "saudi-tennis",
+      name: "Saudi Arabia",
+      flag: <Flag country="saudiarabia" size={18} />,
+      leagues: [
+        { id: "wta-finals-riyadh", name: "WTA Finals (Riyadh)" },
+        { id: "next-gen-jeddah", name: "Next Gen ATP Finals (Jeddah)" },
+      ],
+    },
+    {
+      id: "serbia-tennis",
+      name: "Serbia",
+      flag: <Flag country="serbia" size={18} />,
+      leagues: [
+        { id: "serbia-open", name: "Serbia Open (Belgrade)" },
+      ],
+    },
+    {
+      id: "greece-tennis",
+      name: "Greece",
+      flag: <Flag country="greece" size={18} />,
+      leagues: [
+        { id: "hellenic-championship", name: "Hellenic Championship (Athens)" },
+      ],
+    },
+    {
+      id: "russia-tennis",
+      name: "Russia",
+      flag: <Flag country="russia" size={18} />,
+      leagues: [
+        { id: "kremlin-cup", name: "Kremlin Cup (Moscow)" },
+        { id: "st-petersburg-open", name: "St. Petersburg Open" },
+      ],
+    },
+    {
+      id: "europe-tennis",
+      name: "Europe",
+      flag: <Flag country="europe" size={18} />,
+      leagues: [
+        { id: "monte-carlo-masters", name: "Monte-Carlo Masters (ATP 1000)" },
+        { id: "vienna-open", name: "Erste Bank Open (Vienna)" },
+        { id: "umag-open", name: "Croatia Open Umag" },
+        { id: "bucharest-open", name: "Tiriac Open (Bucharest)" },
       ],
     },
     {
@@ -605,11 +747,12 @@ const SPORT_DATA: Record<string, Country[]> = {
       leagues: [
         { id: "atp", name: "ATP Tour (Men's Circuit)" },
         { id: "wta", name: "WTA Tour (Women's Circuit)" },
-        { id: "abierto-monterrey", name: "Abierto GNP Seguros (Monterrey)" },
         { id: "laver-cup", name: "Laver Cup" },
         { id: "davis-cup", name: "Davis Cup" },
         { id: "bjk-cup", name: "Billie Jean King Cup" },
         { id: "olympics-tennis", name: "Olympics Tennis Tournament" },
+        { id: "atp-challenger", name: "ATP Challenger Tour" },
+        { id: "itf-tour", name: "ITF World Tennis Tour" },
       ],
     },
   ],
