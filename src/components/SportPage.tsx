@@ -583,6 +583,22 @@ const SPORT_DATA: Record<string, Country[]> = {
       ],
     },
     {
+      id: "sweden-tennis",
+      name: "Sweden",
+      flag: <Flag country="sweden" size={18} />,
+      leagues: [
+        { id: "stockholm-open", name: "Stockholm Open (ATP 250)" },
+      ],
+    },
+    {
+      id: "argentina-tennis",
+      name: "Argentina",
+      flag: <Flag country="argentina" size={18} />,
+      leagues: [
+        { id: "argentina-open", name: "Argentina Open (ATP 250, Buenos Aires)" },
+      ],
+    },
+    {
       id: "international-tennis",
       name: "International & Tours",
       flag: <Flag country="international" size={18} />,
@@ -641,6 +657,40 @@ const SPORT_DATA: Record<string, Country[]> = {
         { id: "ncaa-vball", name: "NCAA Volleyball" },
       ],
     },
+    {
+      id: "france-vball",
+      name: "France",
+      flag: <Flag country="france" size={18} />,
+      leagues: [
+        { id: "ligue-a-vball", name: "Ligue A (LNV)" },
+        { id: "coupe-france-vball", name: "Coupe de France" },
+      ],
+    },
+    {
+      id: "germany-vball",
+      name: "Germany",
+      flag: <Flag country="germany" size={18} />,
+      leagues: [
+        { id: "bundesliga-vball", name: "Volleyball Bundesliga" },
+        { id: "dvv-pokal", name: "DVV-Pokal" },
+      ],
+    },
+    {
+      id: "japan-vball",
+      name: "Japan",
+      flag: <Flag country="japan" size={18} />,
+      leagues: [{ id: "v-league", name: "V.League" }],
+    },
+    {
+      id: "international-vball",
+      name: "International",
+      flag: <Flag country="international" size={18} />,
+      leagues: [
+        { id: "vnl", name: "FIVB Volleyball Nations League" },
+        { id: "fivb-world-champs", name: "FIVB World Championship" },
+        { id: "olympics-vball", name: "Olympics Volleyball" },
+      ],
+    },
   ],
 
   // Fallback countries for other sports (Ice Hockey, Rugby, etc.)
@@ -681,6 +731,30 @@ const SPORT_DATA: Record<string, Country[]> = {
         { id: "hockeyallsvenskan", name: "Hockeyallsvenskan" },
       ],
     },
+    {
+      id: "switzerland-hockey",
+      name: "Switzerland",
+      flag: <Flag country="switzerland" size={18} />,
+      leagues: [
+        { id: "national-league", name: "National League" },
+        { id: "swiss-cup-hockey", name: "Swiss Cup" },
+      ],
+    },
+    {
+      id: "germany-hockey",
+      name: "Germany",
+      flag: <Flag country="germany" size={18} />,
+      leagues: [{ id: "del", name: "DEL — Deutsche Eishockey Liga" }],
+    },
+    {
+      id: "international-hockey",
+      name: "International",
+      flag: <Flag country="international" size={18} />,
+      leagues: [
+        { id: "iihf-worlds", name: "IIHF World Championship" },
+        { id: "olympics-hockey", name: "Olympics Ice Hockey" },
+      ],
+    },
   ],
 
   Rugby: [
@@ -718,6 +792,25 @@ const SPORT_DATA: Record<string, Country[]> = {
       leagues: [
         { id: "super-rugby-americas", name: "Super Rugby Americas" },
         { id: "urba-top-12", name: "URBA Top 12" },
+      ],
+    },
+    {
+      id: "italy-rugby",
+      name: "Italy",
+      flag: <Flag country="italy" size={18} />,
+      leagues: [
+        { id: "urc-italy", name: "United Rugby Championship (Italian teams)" },
+        { id: "serie-a-elite", name: "Serie A Elite" },
+      ],
+    },
+    {
+      id: "international-rugby",
+      name: "International",
+      flag: <Flag country="international" size={18} />,
+      leagues: [
+        { id: "rugby-world-cup", name: "Rugby World Cup" },
+        { id: "six-nations", name: "Six Nations Championship" },
+        { id: "rugby-championship", name: "The Rugby Championship" },
       ],
     },
   ],
