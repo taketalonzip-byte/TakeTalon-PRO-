@@ -1091,6 +1091,48 @@ const SPORT_DATA: Record<string, Country[]> = {
       ],
     },
     {
+      id: "japan-rugby",
+      name: "Japan",
+      flag: <Flag country="japan" size={18} />,
+      leagues: [
+        { id: "japan-rugby-league-one", name: "Japan Rugby League One" },
+        { id: "japan-rugby-cup", name: "Japan Rugby Championship" },
+      ],
+    },
+    {
+      id: "usa-rugby",
+      name: "USA",
+      flag: <Flag country="usa" size={18} />,
+      leagues: [{ id: "major-league-rugby", name: "Major League Rugby (MLR)" }],
+    },
+    {
+      id: "canada-rugby",
+      name: "Canada",
+      flag: <Flag country="canada" size={18} />,
+      leagues: [{ id: "canada-super-series", name: "Canada Super Rugby Series" }],
+    },
+    {
+      id: "spain-rugby",
+      name: "Spain",
+      flag: <Flag country="spain" size={18} />,
+      leagues: [{ id: "division-de-honor-rugby", name: "División de Honor de Rugby" }],
+    },
+    {
+      id: "portugal-rugby",
+      name: "Portugal",
+      flag: <Flag country="portugal" size={18} />,
+      leagues: [{ id: "campeonato-portugal-rugby", name: "Campeonato Nacional de Rugby" }],
+    },
+    {
+      id: "europe-rugby",
+      name: "Europe",
+      flag: <Flag country="europe" size={18} />,
+      leagues: [
+        { id: "urc", name: "United Rugby Championship" },
+        { id: "epcr-challenge-cup", name: "EPCR Challenge Cup" },
+      ],
+    },
+    {
       id: "international-rugby",
       name: "International",
       flag: <Flag country="international" size={18} />,
