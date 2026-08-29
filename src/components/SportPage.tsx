@@ -1246,6 +1246,46 @@ const SPORT_DATA: Record<string, Country[]> = {
         { id: "ranji-trophy", name: "Ranji Trophy" },
       ],
     },
+    {
+      id: "southafrica-cricket",
+      name: "International",
+      flag: <Flag country="international" size={18} />,
+      leagues: [
+        { id: "icc-world-cup", name: "ICC Cricket World Cup" },
+        { id: "icc-t20-world-cup", name: "ICC T20 World Cup" },
+        { id: "wtc", name: "ICC World Test Championship" },
+      ],
+    },
+    {
+      id: "usa-cricket",
+      name: "USA",
+      flag: <Flag country="usa" size={18} />,
+      leagues: [{ id: "mlc", name: "MLC — Major League Cricket" }],
+    },
+    {
+      id: "canada-cricket",
+      name: "Canada",
+      flag: <Flag country="canada" size={18} />,
+      leagues: [{ id: "gt20-canada", name: "Global T20 Canada" }],
+    },
+    {
+      id: "england-womens-cricket",
+      name: "Europe",
+      flag: <Flag country="europe" size={18} />,
+      leagues: [{ id: "european-cricket-league", name: "European Cricket League" }],
+    },
+    {
+      id: "netherlands-cricket",
+      name: "Netherlands",
+      flag: <Flag country="netherlands" size={18} />,
+      leagues: [{ id: "topklasse-cricket", name: "Topklasse Cricket" }],
+    },
+    {
+      id: "saudi-cricket",
+      name: "Saudi Arabia",
+      flag: <Flag country="saudiarabia" size={18} />,
+      leagues: [{ id: "saudi-t20-league", name: "Saudi T20 League" }],
+    },
   ],
 
   Handball: [
