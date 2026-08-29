@@ -1316,6 +1316,48 @@ const SPORT_DATA: Record<string, Country[]> = {
         { id: "copa-rey-handball", name: "Copa del Rey" },
       ],
     },
+    {
+      id: "denmark-handball",
+      name: "Poland",
+      flag: <Flag country="poland" size={18} />,
+      leagues: [{ id: "superliga-handball-pl", name: "Superliga (Orlen Superliga)" }],
+    },
+    {
+      id: "sweden-handball",
+      name: "Sweden",
+      flag: <Flag country="sweden" size={18} />,
+      leagues: [{ id: "handbollsligan", name: "Handbollsligan" }],
+    },
+    {
+      id: "portugal-handball",
+      name: "Portugal",
+      flag: <Flag country="portugal" size={18} />,
+      leagues: [{ id: "andebol-1", name: "Campeonato de Andebol 1" }],
+    },
+    {
+      id: "serbia-handball",
+      name: "Serbia",
+      flag: <Flag country="serbia" size={18} />,
+      leagues: [{ id: "superliga-handball-rs", name: "Serbian Handball Super League" }],
+    },
+    {
+      id: "europe-handball",
+      name: "Europe",
+      flag: <Flag country="europe" size={18} />,
+      leagues: [
+        { id: "ehf-champions-league", name: "EHF Champions League" },
+        { id: "ehf-european-league", name: "EHF European League" },
+      ],
+    },
+    {
+      id: "international-handball",
+      name: "International",
+      flag: <Flag country="international" size={18} />,
+      leagues: [
+        { id: "ihf-world-championship", name: "IHF World Championship" },
+        { id: "olympics-handball", name: "Olympics Handball" },
+      ],
+    },
   ],
 
   Boxing: [
@@ -1347,6 +1389,46 @@ const SPORT_DATA: Record<string, Country[]> = {
         { id: "wbc-mexico", name: "WBC Mexico" },
       ],
     },
+    {
+      id: "japan-boxing",
+      name: "Japan",
+      flag: <Flag country="japan" size={18} />,
+      leagues: [{ id: "jbc", name: "JBC — Japan Boxing Commission" }],
+    },
+    {
+      id: "saudi-boxing",
+      name: "Saudi Arabia",
+      flag: <Flag country="saudiarabia" size={18} />,
+      leagues: [{ id: "riyadh-season-boxing", name: "Riyadh Season Boxing Cards" }],
+    },
+    {
+      id: "russia-boxing",
+      name: "Russia",
+      flag: <Flag country="russia" size={18} />,
+      leagues: [{ id: "russian-boxing-federation", name: "Russian Boxing Federation" }],
+    },
+    {
+      id: "germany-boxing",
+      name: "Germany",
+      flag: <Flag country="germany" size={18} />,
+      leagues: [{ id: "bdb", name: "BDB — Bund Deutscher Berufsboxer" }],
+    },
+    {
+      id: "argentina-boxing",
+      name: "Argentina",
+      flag: <Flag country="argentina" size={18} />,
+      leagues: [{ id: "fab", name: "Federación Argentina de Box" }],
+    },
+    {
+      id: "international-boxing",
+      name: "International",
+      flag: <Flag country="international" size={18} />,
+      leagues: [
+        { id: "wbo-world", name: "WBO World Championships" },
+        { id: "ibo-world", name: "IBO Championships" },
+        { id: "olympics-boxing", name: "Olympics Boxing" },
+      ],
+    },
   ],
 
   Golf: [
@@ -1375,6 +1457,50 @@ const SPORT_DATA: Record<string, Country[]> = {
       leagues: [
         { id: "jgto", name: "JGTO — Japan Golf Tour" },
         { id: "jlpga", name: "JLPGA Tour" },
+      ],
+    },
+    {
+      id: "europe-golf",
+      name: "Europe",
+      flag: <Flag country="europe" size={18} />,
+      leagues: [
+        { id: "ryder-cup", name: "Ryder Cup" },
+        { id: "challenge-tour", name: "Challenge Tour" },
+      ],
+    },
+    {
+      id: "saudi-golf",
+      name: "Saudi Arabia",
+      flag: <Flag country="saudiarabia" size={18} />,
+      leagues: [{ id: "liv-golf", name: "LIV Golf League" }],
+    },
+    {
+      id: "australia-golf",
+      name: "Australia",
+      flag: <Flag country="australia" size={18} />,
+      leagues: [{ id: "pga-tour-australasia", name: "PGA Tour of Australasia" }],
+    },
+    {
+      id: "southkorea-golf",
+      name: "South Korea",
+      flag: <Flag country="southkorea" size={18} />,
+      leagues: [{ id: "klpga", name: "KLPGA Tour" }],
+    },
+    {
+      id: "spain-golf",
+      name: "Spain",
+      flag: <Flag country="spain" size={18} />,
+      leagues: [{ id: "spanish-open-golf", name: "Open de España" }],
+    },
+    {
+      id: "international-golf",
+      name: "International",
+      flag: <Flag country="international" size={18} />,
+      leagues: [
+        { id: "masters-tournament", name: "The Masters" },
+        { id: "us-open-golf", name: "U.S. Open" },
+        { id: "pga-championship", name: "PGA Championship" },
+        { id: "presidents-cup", name: "Presidents Cup" },
       ],
     },
   ],
