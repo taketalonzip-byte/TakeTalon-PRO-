@@ -992,6 +992,48 @@ const SPORT_DATA: Record<string, Country[]> = {
       leagues: [{ id: "del", name: "DEL — Deutsche Eishockey Liga" }],
     },
     {
+      id: "finland-hockey",
+      name: "Europe",
+      flag: <Flag country="europe" size={18} />,
+      leagues: [
+        { id: "champions-hockey-league", name: "Champions Hockey League" },
+        { id: "euro-hockey-tour", name: "Euro Hockey Tour" },
+      ],
+    },
+    {
+      id: "czech-hockey",
+      name: "Poland",
+      flag: <Flag country="poland" size={18} />,
+      leagues: [{ id: "polska-hokej-liga", name: "Polska Hokej Liga" }],
+    },
+    {
+      id: "france-hockey",
+      name: "France",
+      flag: <Flag country="france" size={18} />,
+      leagues: [
+        { id: "ligue-magnus", name: "Ligue Magnus" },
+        { id: "coupe-france-hockey", name: "Coupe de France de Hockey" },
+      ],
+    },
+    {
+      id: "italy-hockey",
+      name: "Italy",
+      flag: <Flag country="italy" size={18} />,
+      leagues: [{ id: "ihl-italy", name: "IHL — Italian Hockey League" }],
+    },
+    {
+      id: "japan-hockey",
+      name: "Japan",
+      flag: <Flag country="japan" size={18} />,
+      leagues: [{ id: "asia-league-hockey", name: "Asia League Ice Hockey" }],
+    },
+    {
+      id: "china-hockey",
+      name: "China",
+      flag: <Flag country="china" size={18} />,
+      leagues: [{ id: "china-ice-hockey-league", name: "Chinese Ice Hockey League" }],
+    },
+    {
       id: "international-hockey",
       name: "International",
       flag: <Flag country="international" size={18} />,
