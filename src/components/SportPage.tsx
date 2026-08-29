@@ -504,7 +504,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "usa-tennis",
       name: "USA",
-      flag: <UsaFlag />,
+      flag: <Flag country="usa" size={18} />,
       leagues: [
         { id: "us-open", name: "US Open (Grand Slam)" },
         { id: "atp-miami", name: "Miami Open (ATP Masters)" },
@@ -517,7 +517,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "uk-tennis",
       name: "England",
-      flag: <EnglandFlag />,
+      flag: <Flag country="england" size={18} />,
       leagues: [
         { id: "wimbledon", name: "Wimbledon (Grand Slam)" },
         { id: "queens-club", name: "Queen's Club Championships (ATP 500)" },
@@ -527,7 +527,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "france-tennis",
       name: "France",
-      flag: <FranceFlag />,
+      flag: <Flag country="france" size={18} />,
       leagues: [
         { id: "roland-garros", name: "Roland Garros (Grand Slam)" },
         { id: "paris-masters", name: "Paris Masters (ATP Masters)" },
@@ -537,7 +537,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "australia-tennis",
       name: "Australia",
-      flag: <AustraliaFlag />,
+      flag: <Flag country="australia" size={18} />,
       leagues: [
         { id: "aus-open", name: "Australian Open (Grand Slam)" },
         { id: "brisbane-atp", name: "Brisbane International" },
@@ -547,7 +547,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "spain-tennis",
       name: "Spain",
-      flag: <SpainFlag />,
+      flag: <Flag country="spain" size={18} />,
       leagues: [
         { id: "madrid-open", name: "Madrid Open (ATP Masters)" },
         { id: "barcelona-open", name: "Barcelona Open (ATP 500)" },
@@ -557,7 +557,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "italy-tennis",
       name: "Italy",
-      flag: <ItalyFlag />,
+      flag: <Flag country="italy" size={18} />,
       leagues: [
         { id: "italian-open", name: "Italian Open / Rome Masters" },
         { id: "atp-finals", name: "Nitto ATP Finals (Turin)" },
@@ -566,7 +566,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "switzerland-tennis",
       name: "Switzerland",
-      flag: <SwitzerlandFlag />,
+      flag: <Flag country="switzerland" size={18} />,
       leagues: [
         { id: "swiss-indoors", name: "Swiss Indoors (Basel)" },
         { id: "geneva-open", name: "Geneva Open (ATP 250)" },
@@ -575,7 +575,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "germany-tennis",
       name: "Germany",
-      flag: <GermanyFlag />,
+      flag: <Flag country="germany" size={18} />,
       leagues: [
         { id: "halle-open", name: "Terra Wortmann Open (Halle)" },
         { id: "bmw-open", name: "BMW Open (Munich)" },
@@ -585,7 +585,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "international-tennis",
       name: "International & Tours",
-      flag: <InternationalFlag />,
+      flag: <Flag country="international" size={18} />,
       leagues: [
         { id: "atp", name: "ATP Tour (Men's Circuit)" },
         { id: "wta", name: "WTA Tour (Women's Circuit)" },
@@ -602,7 +602,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "brazil-vball",
       name: "Brazil",
-      flag: <BrazilFlag />,
+      flag: <Flag country="brazil" size={18} />,
       leagues: [
         { id: "superliga-vball", name: "Superliga Brasileira" },
         { id: "vnl-brazil", name: "VNL — Volleyball Nations League" },
@@ -611,7 +611,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "italy-vball",
       name: "Italy",
-      flag: <ItalyFlag />,
+      flag: <Flag country="italy" size={18} />,
       leagues: [
         { id: "superlega", name: "SuperLega" },
         { id: "coppa-italia-vball", name: "Coppa Italia" },
@@ -620,7 +620,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "poland-vball",
       name: "Poland",
-      flag: <VolleyballPolandFlag />,
+      flag: <Flag country="poland" size={18} />,
       leagues: [
         { id: "plusliga", name: "PlusLiga" },
         { id: "puchar-polski", name: "Puchar Polski" },
@@ -629,13 +629,13 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "russia-vball",
       name: "Russia",
-      flag: <VolleyballRussiaFlag />,
+      flag: <Flag country="russia" size={18} />,
       leagues: [{ id: "superliga-russia", name: "Superliga" }],
     },
     {
       id: "usa-vball",
       name: "USA",
-      flag: <VolleyballUsaFlag />,
+      flag: <Flag country="usa" size={18} />,
       leagues: [
         { id: "pro-vball", name: "PVF — Pro Volleyball Federation" },
         { id: "ncaa-vball", name: "NCAA Volleyball" },
@@ -648,7 +648,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "canada-hockey",
       name: "Canada",
-      flag: <SimpleFlagBox colors={["#FF0000", "#FFFFFF", "#FF0000"]} label="Canada" />,
+      flag: <Flag country="canada" size={18} />,
       leagues: [
         { id: "nhl-canada", name: "NHL (Canadian teams)" },
         { id: "ahl", name: "AHL" },
@@ -657,7 +657,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "usa-hockey",
       name: "USA",
-      flag: <UsaFlag />,
+      flag: <Flag country="usa" size={18} />,
       leagues: [
         { id: "nhl-usa", name: "NHL (US teams)" },
         { id: "ushl", name: "USHL" },
@@ -666,7 +666,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "russia-hockey",
       name: "Russia",
-      flag: <RussiaFlag />,
+      flag: <Flag country="russia" size={18} />,
       leagues: [
         { id: "khl", name: "KHL" },
         { id: "vhl", name: "VHL" },
@@ -675,7 +675,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "sweden-hockey",
       name: "Sweden",
-      flag: <SimpleFlagBox colors={["#006AA7", "#FECC02", "#006AA7"]} label="Sweden" />,
+      flag: <Flag country="sweden" size={18} />,
       leagues: [
         { id: "shl", name: "SHL — Swedish Hockey League" },
         { id: "hockeyallsvenskan", name: "Hockeyallsvenskan" },
@@ -687,7 +687,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "england-rugby",
       name: "England",
-      flag: <EnglandFlag />,
+      flag: <Flag country="england" size={18} />,
       leagues: [
         { id: "prem-rugby", name: "Gallagher Premiership" },
         { id: "european-champions", name: "European Champions Cup" },
@@ -696,7 +696,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "france-rugby",
       name: "France",
-      flag: <FranceFlag />,
+      flag: <Flag country="france" size={18} />,
       leagues: [
         { id: "top14", name: "TOP 14" },
         { id: "pro-d2", name: "PRO D2" },
@@ -705,7 +705,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "australia-rugby",
       name: "Australia",
-      flag: <AustraliaFlag />,
+      flag: <Flag country="australia" size={18} />,
       leagues: [
         { id: "super-rugby-pacific", name: "Super Rugby Pacific" },
         { id: "nrc", name: "National Rugby Championship" },
@@ -714,7 +714,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "argentina-rugby",
       name: "Argentina",
-      flag: <ArgentinaFlag />,
+      flag: <Flag country="argentina" size={18} />,
       leagues: [
         { id: "super-rugby-americas", name: "Super Rugby Americas" },
         { id: "urba-top-12", name: "URBA Top 12" },
@@ -726,7 +726,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "usa-baseball",
       name: "USA",
-      flag: <UsaFlag />,
+      flag: <Flag country="usa" size={18} />,
       leagues: [
         { id: "mlb", name: "MLB — Major League Baseball" },
         { id: "aaa", name: "Triple-A (AAA)" },
@@ -735,7 +735,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "japan-baseball",
       name: "Japan",
-      flag: <JapanFlag />,
+      flag: <Flag country="japan" size={18} />,
       leagues: [
         { id: "npb", name: "NPB — Nippon Professional Baseball" },
         { id: "japan-series", name: "Japan Series" },
@@ -744,7 +744,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "korea-baseball",
       name: "South Korea",
-      flag: <SimpleFlagBox colors={["#C60C30", "#FFFFFF", "#003478"]} label="Korea" />,
+      flag: <Flag country="korea" size={18} />,
       leagues: [
         { id: "kbo", name: "KBO League" },
         { id: "korean-series", name: "Korean Series" },
@@ -756,7 +756,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "england-cricket",
       name: "England",
-      flag: <EnglandFlag />,
+      flag: <Flag country="england" size={18} />,
       leagues: [
         { id: "county-cricket", name: "County Championship" },
         { id: "the-hundred", name: "The Hundred" },
@@ -766,7 +766,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "australia-cricket",
       name: "Australia",
-      flag: <AustraliaFlag />,
+      flag: <Flag country="australia" size={18} />,
       leagues: [
         { id: "bbl", name: "Big Bash League" },
         { id: "sheffield-shield", name: "Sheffield Shield" },
@@ -775,7 +775,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "india-cricket",
       name: "India",
-      flag: <SimpleFlagBox colors={["#FF9933", "#FFFFFF", "#138808"]} label="India" />,
+      flag: <Flag country="india" size={18} />,
       leagues: [
         { id: "ipl", name: "IPL — Indian Premier League" },
         { id: "ranji-trophy", name: "Ranji Trophy" },
@@ -787,7 +787,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "germany-handball",
       name: "Germany",
-      flag: <GermanyFlag />,
+      flag: <Flag country="germany" size={18} />,
       leagues: [
         { id: "bundesliga-handball", name: "Handball Bundesliga" },
         { id: "dhb-pokal", name: "DHB-Pokal" },
@@ -796,7 +796,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "france-handball",
       name: "France",
-      flag: <FranceFlag />,
+      flag: <Flag country="france" size={18} />,
       leagues: [
         { id: "starligue", name: "Starligue" },
         { id: "coupe-handball", name: "Coupe de France" },
@@ -805,7 +805,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "spain-handball",
       name: "Spain",
-      flag: <SpainFlag />,
+      flag: <Flag country="spain" size={18} />,
       leagues: [
         { id: "liga-asobal", name: "Liga ASOBAL" },
         { id: "copa-rey-handball", name: "Copa del Rey" },
@@ -817,7 +817,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "usa-boxing",
       name: "USA",
-      flag: <UsaFlag />,
+      flag: <Flag country="usa" size={18} />,
       leagues: [
         { id: "wbc", name: "WBC Championships" },
         { id: "wba", name: "WBA Championships" },
@@ -827,7 +827,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "uk-boxing",
       name: "England",
-      flag: <EnglandFlag />,
+      flag: <Flag country="england" size={18} />,
       leagues: [
         { id: "bbc-boxing", name: "British Boxing Board of Control" },
         { id: "wbo-uk", name: "WBO" },
@@ -836,7 +836,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "mexico-boxing",
       name: "Mexico",
-      flag: <SimpleFlagBox colors={["#006847", "#FFFFFF", "#CE1126"]} label="Mexico" />,
+      flag: <Flag country="mexico" size={18} />,
       leagues: [
         { id: "cmb", name: "CMB — Consejo Mundial de Boxeo" },
         { id: "wbc-mexico", name: "WBC Mexico" },
@@ -848,7 +848,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "usa-golf",
       name: "USA",
-      flag: <UsaFlag />,
+      flag: <Flag country="usa" size={18} />,
       leagues: [
         { id: "pga-tour", name: "PGA Tour" },
         { id: "korn-ferry", name: "Korn Ferry Tour" },
@@ -857,7 +857,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "uk-golf",
       name: "England",
-      flag: <EnglandFlag />,
+      flag: <Flag country="england" size={18} />,
       leagues: [
         { id: "dp-world-tour", name: "DP World Tour (European Tour)" },
         { id: "the-open", name: "The Open Championship" },
@@ -866,7 +866,7 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "japan-golf",
       name: "Japan",
-      flag: <JapanFlag />,
+      flag: <Flag country="japan" size={18} />,
       leagues: [
         { id: "jgto", name: "JGTO — Japan Golf Tour" },
         { id: "jlpga", name: "JLPGA Tour" },
@@ -2006,7 +2006,8 @@ export default function SportPage({
         g.league === selectedLeague.name ||
         g.league_id === selectedLeague.id ||
         matchLeagueName(selectedLeague.name, g.league || "") ||
-        matchLeagueName(selectedLeague.id, g.league_id || "");
+        matchLeagueName(selectedLeague.id, g.league_id || ""),
+      );
 
       if (!leagueMatches) return false;
 
