@@ -1166,10 +1166,53 @@ const SPORT_DATA: Record<string, Country[]> = {
     {
       id: "korea-baseball",
       name: "South Korea",
-      flag: <Flag country="korea" size={18} />,
+      flag: <Flag country="southkorea" size={18} />,
       leagues: [
         { id: "kbo", name: "KBO League" },
         { id: "korean-series", name: "Korean Series" },
+      ],
+    },
+    {
+      id: "mexico-baseball",
+      name: "Mexico",
+      flag: <Flag country="mexico" size={18} />,
+      leagues: [
+        { id: "lmb", name: "LMB — Liga Mexicana de Béisbol" },
+        { id: "lmp", name: "LMP — Liga Mexicana del Pacífico" },
+      ],
+    },
+    {
+      id: "canada-baseball",
+      name: "Canada",
+      flag: <Flag country="canada" size={18} />,
+      leagues: [{ id: "can-am-baseball", name: "Canadian Baseball League" }],
+    },
+    {
+      id: "china-baseball",
+      name: "China",
+      flag: <Flag country="china" size={18} />,
+      leagues: [{ id: "cba-baseball", name: "China National Baseball League" }],
+    },
+    {
+      id: "netherlands-baseball",
+      name: "Netherlands",
+      flag: <Flag country="netherlands" size={18} />,
+      leagues: [{ id: "honkbal-hoofdklasse", name: "Honkbal Hoofdklasse" }],
+    },
+    {
+      id: "italy-baseball",
+      name: "Italy",
+      flag: <Flag country="italy" size={18} />,
+      leagues: [{ id: "serie-a-baseball", name: "Italian Baseball League (Serie A)" }],
+    },
+    {
+      id: "international-baseball",
+      name: "International",
+      flag: <Flag country="international" size={18} />,
+      leagues: [
+        { id: "world-baseball-classic", name: "World Baseball Classic" },
+        { id: "premier12", name: "WBSC Premier12" },
+        { id: "olympics-baseball", name: "Olympics Baseball" },
       ],
     },
   ],
