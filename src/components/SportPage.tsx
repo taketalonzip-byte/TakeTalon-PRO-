@@ -2006,8 +2006,7 @@ export default function SportPage({
         g.league === selectedLeague.name ||
         g.league_id === selectedLeague.id ||
         matchLeagueName(selectedLeague.name, g.league || "") ||
-        matchLeagueName(selectedLeague.id, g.league_id || ""),
-      );
+        matchLeagueName(selectedLeague.id, g.league_id || "");
 
       if (!leagueMatches) return false;
 
