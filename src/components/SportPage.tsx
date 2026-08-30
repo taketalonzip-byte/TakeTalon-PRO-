@@ -19,7 +19,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { MatchTip } from "../types";
-import { FootballMatchSkeleton } from "./skeletons";
+import { FootballMatchSkeleton, SportPageSkeleton } from "./skeletons";
 import { getUnifiedMatchStatus } from "../lib/sportMatchStatus";
 import { ScrollingScoreBadge } from "./ScrollingScoreBadge";
 import { Flag } from "./Flag";
@@ -2564,8 +2564,11 @@ export default function SportPage({
   const staticCountries = SPORT_DATA[sport] ?? getDefaultCountries(sport);
   const icon = SPORT_ICONS[sport] ?? null;
 
-  // Countries come straight from ESPN (live API). Static SPORT_DATA is only a
-  // fallback for sports without an API, or when ESPN returns nothing at all.
+  // Countries always start from the full static catalogue, then merge in
+  // whatever ESPN (live API) reports on top — adding new countries/leagues
+  // and filling in real logos — but never removing a static country/league
+  // just because ESPN has no live games for it at this exact moment. This is
+  // what keeps e.g. Russia (Volleyball) or off-season leagues from vanishing.
   const countries = useMemo<typeof staticCountries>(() => {
     if (!hasSportApi) return staticCountries;
     // Until the first ESPN response arrives we show nothing (a loader instead),
@@ -2575,29 +2578,44 @@ export default function SportPage({
 
     const leagueLogo = (games: BballGame[]) => games[0]?.league_logo ?? null;
 
-    const fromApi: typeof staticCountries = [];
+    // Deep-clone the static catalogue so we never mutate the module-level data.
+    const merged: typeof staticCountries = staticCountries.map((c) => ({
+      ...c,
+      leagues: c.leagues.map((l) => ({ ...l })),
+    }));
+
     for (const [countryKey, leagueMap] of liveData.grouped) {
-      // Reuse the static entry's flag/name when we already know this country,
-      // so ESPN-only countries still render the same 18px Flag component.
-      const known = staticCountries.find((c) => matchCountryName(c.name, countryKey));
-      fromApi.push({
-        id: known?.id ?? `api-${countryKey.toLowerCase().replace(/\s+/g, "-")}`,
-        name: known?.name ?? countryKey,
-        flag: known?.flag ?? <Flag country={countryKey} label={countryKey} size={18} />,
-        leagues: Array.from(leagueMap.entries()).map(([lName, gs]) => {
-          const staticLeague = known?.leagues.find((l) => matchLeagueName(l.name, lName));
-          return {
-            id: staticLeague?.id ?? lName.toLowerCase().replace(/\s+/g, "-"),
-            name: staticLeague?.name ?? lName,
-            logo: leagueLogo(gs) ?? staticLeague?.logo ?? null,
-          };
-        }),
-      });
+      let target = merged.find((c) => matchCountryName(c.name, countryKey));
+      if (!target) {
+        // ESPN knows a country our static catalogue doesn't yet have — add it,
+        // don't drop everything else in favour of it.
+        target = {
+          id: `api-${countryKey.toLowerCase().replace(/\s+/g, "-")}`,
+          name: countryKey,
+          flag: <Flag country={countryKey} label={countryKey} size={18} />,
+          leagues: [],
+        };
+        merged.push(target);
+      }
+      for (const [lName, gs] of leagueMap.entries()) {
+        const logo = leagueLogo(gs);
+        const existingLeague = target.leagues.find((l) => matchLeagueName(l.name, lName));
+        if (existingLeague) {
+          // Keep the static id/name (stable for bet handlers), just fill the logo in.
+          if (logo && !existingLeague.logo) existingLeague.logo = logo;
+        } else {
+          target.leagues.push({
+            id: lName.toLowerCase().replace(/\s+/g, "-"),
+            name: lName,
+            logo,
+          });
+        }
+      }
     }
 
     // Keep the familiar static ordering first, then any extra ESPN countries.
     const order = new Map(staticCountries.map((c, i) => [c.name, i]));
-    return fromApi.sort(
+    return merged.sort(
       (a, b) => (order.get(a.name) ?? 999) - (order.get(b.name) ?? 999) || a.name.localeCompare(b.name),
     );
   }, [hasSportApi, staticCountries, liveData.grouped, liveData.loaded]);
@@ -2689,9 +2707,7 @@ export default function SportPage({
 
       {/* ── Country list ───────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 pb-6 no-scrollbar">
-        {hasSportApi && !liveData.loaded && (
-          <p className={`text-xs py-6 text-center ${subtitleText}`}>Loading countries…</p>
-        )}
+        {hasSportApi && !liveData.loaded && <SportPageSkeleton theme={theme} />}
         {hasSportApi && liveData.loaded && countries.length === 0 && (
           <p className={`text-xs py-6 text-center ${subtitleText}`}>No countries available right now.</p>
         )}
