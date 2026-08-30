@@ -23,7 +23,17 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import FlightIcon from "./FlightIcon";
-import { hush } from "../lib/hush/presentation/hush-facade";
+
+interface AviatorRoundState {
+  round_id: string;
+  phase: "BETTING" | "LAUNCHED" | "BUSTED";
+  phase_started_at: string;
+  betting_duration_ms: number;
+  busted_duration_ms: number;
+  crash_point: number | null;
+  round_nonce: number;
+  updated_at: string;
+}
 
 interface AviatorGameProps {
   userBalance: number;
@@ -196,6 +206,7 @@ export default function AviatorGame({
   ]);
   const [countdown, setCountdown] = useState(10);
   const [cashoutGain, setCashoutGain] = useState(0);
+  const [serverRound, setServerRound] = useState<AviatorRoundState | null>(null);
 
   interface FakePlayer {
     username: string;
@@ -218,14 +229,6 @@ export default function AviatorGame({
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const multiplierRef = useRef(1.0);
-  const nextCrashPointRef = useRef<number | null>(null);
-
-  // Initialize HUSH provably fair engine on mount
-  useEffect(() => {
-    hush.initialize().catch((err) => {
-      console.error("Failed to initialize HUSH engine:", err);
-    });
-  }, []);
 
   // Quick select bet amounts
   const PRESET_AMOUNTS = [1000, 2000, 5000, 10000];
@@ -323,129 +326,100 @@ export default function AviatorGame({
     onAddNotification(winNotifyMsg, "success");
   };
 
+  // The server is the single source of truth for every user's round.
   useEffect(() => {
-    if (gameState === "BETTING") {
-      setCountdown(10);
+    let cancelled = false;
+
+    const syncRound = async () => {
+      try {
+        const response = await fetch("/api/aviator/round");
+        if (!response.ok) throw new Error("Round endpoint returned " + response.status);
+        const payload = await response.json();
+        if (!cancelled && payload?.ok && payload.round) setServerRound(payload.round);
+      } catch (err) {
+        console.error("Failed to sync Aviator round:", err);
+      }
+    };
+
+    syncRound();
+    const interval = window.setInterval(syncRound, 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!serverRound) return;
+    const phaseStart = new Date(serverRound.phase_started_at).getTime();
+    if (!Number.isFinite(phaseStart)) return;
+
+    if (serverRound.phase === "BETTING") {
+      setGameState("BETTING");
       setMultiplier(1.0);
       multiplierRef.current = 1.0;
+      setPlacedBetAmount(null);
       setIsCashedOut(false);
       setCashoutGain(0);
 
-      // Asynchronously generate next provably fair outcome using HUSH
-      hush
-        .generateNextOutcome()
-        .then((outcome) => {
-          nextCrashPointRef.current = outcome.multiplier;
-        })
-        .catch((err) => {
-          console.error("HUSH Engine outcome generation error:", err);
-          // High-reliability fallback matching typical flight duration distribution
-          nextCrashPointRef.current = parseFloat((1.05 + Math.random() * 5.0).toFixed(2));
-        });
-
-      // Generate a set of fake players
       const generatedPlayers: FakePlayer[] = Array.from({ length: 18 }).map(() => {
         const suffix = Math.floor(Math.random() * 90) + 10;
-        const username = `*******${suffix}`;
+        const username = "*******" + suffix;
         const isRound = Math.random() > 0.4;
         const betAmount = isRound
           ? Math.floor(Math.random() * 15 + 1) * 1000
           : parseFloat((Math.random() * 4500 + 500).toFixed(2));
-
-        // Target multiplier where they'll cash out
         const r = Math.random();
         let targetMult = 1.1;
-        if (r < 0.35) {
-          targetMult = parseFloat((1.05 + Math.random() * 0.75).toFixed(2));
-        } else if (r < 0.7) {
-          targetMult = parseFloat((1.8 + Math.random() * 1.7).toFixed(2));
-        } else if (r < 0.85) {
-          targetMult = parseFloat((3.5 + Math.random() * 4.5).toFixed(2));
-        } else {
-          targetMult = parseFloat((8.0 + Math.random() * 25.0).toFixed(2));
-        }
-
-        return {
-          username,
-          betAmount,
-          targetMult,
-          cashedOut: false,
-        };
+        if (r < 0.35) targetMult = parseFloat((1.05 + Math.random() * 0.75).toFixed(2));
+        else if (r < 0.7) targetMult = parseFloat((1.8 + Math.random() * 1.7).toFixed(2));
+        else if (r < 0.85) targetMult = parseFloat((3.5 + Math.random() * 4.5).toFixed(2));
+        else targetMult = parseFloat((8.0 + Math.random() * 25.0).toFixed(2));
+        return { username, betAmount, targetMult, cashedOut: false };
       });
-
-      // Calculate new header stats for the network round (Number of bets, Total bets)
-      const networkNumBets = Math.floor(Math.random() * 1000) + 1500; // e.g. 1500 to 2500
-      const networkTotalBets = parseFloat((150000 + Math.random() * 200000).toFixed(2));
 
       setStats({
-        numBets: networkNumBets,
-        totalBets: networkTotalBets,
+        numBets: Math.floor(Math.random() * 1000) + 1500,
+        totalBets: parseFloat((150000 + Math.random() * 200000).toFixed(2)),
         totalWinnings: 0.0,
       });
-
       setFakePlayers(generatedPlayers);
 
-      const interval = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            setGameState("LAUNCHED");
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      return () => clearInterval(interval);
+      const tickCountdown = () => {
+        setCountdown(Math.max(0, Math.ceil((serverRound.betting_duration_ms - (Date.now() - phaseStart)) / 1000)));
+      };
+      tickCountdown();
+      const interval = window.setInterval(tickCountdown, 250);
+      return () => window.clearInterval(interval);
     }
 
-    if (gameState === "LAUNCHED") {
-      // Retrieve pre-computed cryptographically secure crash point from HUSH
-      const crashPoint = nextCrashPointRef.current ?? 1.15;
-      // Reset ref for subsequent rounds
-      nextCrashPointRef.current = null;
-
-      const start = Date.now();
+    if (serverRound.phase === "LAUNCHED") {
+      setGameState("LAUNCHED");
+      setCountdown(0);
       let active = true;
-
       const tick = () => {
         if (!active) return;
-        const elapsed = (Date.now() - start) / 1000; // in seconds
-        // Exponential multiplier growth rate
-        const currentMult = parseFloat((1.0 + Math.pow(elapsed, 1.3) * 0.08).toFixed(2));
-
-        if (currentMult >= crashPoint) {
-          setMultiplier(crashPoint);
-          multiplierRef.current = crashPoint;
-          setGameState("BUSTED");
-          setHistory((prev) => [crashPoint, ...prev.slice(0, 11)]);
-        } else {
-          setMultiplier(currentMult);
-          multiplierRef.current = currentMult;
-          timerRef.current = setTimeout(tick, 50);
-        }
+        const elapsed = (Date.now() - phaseStart) / 1000;
+        const currentMult = parseFloat((1.0 + Math.pow(Math.max(0, elapsed), 1.3) * 0.08).toFixed(2));
+        setMultiplier(currentMult);
+        multiplierRef.current = currentMult;
+        timerRef.current = window.setTimeout(tick, 50);
       };
-
       tick();
-
       return () => {
         active = false;
-        if (timerRef.current) clearTimeout(timerRef.current);
+        if (timerRef.current) window.clearTimeout(timerRef.current);
       };
     }
 
-    if (gameState === "BUSTED") {
-      // Show burn effect for 4 seconds, then start a new betting round
-      const timer = setTimeout(() => {
-        setPlacedBetAmount(null);
-        setIsCashedOut(false);
-        setCashoutGain(0);
-        setGameState("BETTING");
-      }, 4000);
-
-      return () => clearTimeout(timer);
+    if (serverRound.phase === "BUSTED") {
+      const finalMult = serverRound.crash_point ?? multiplierRef.current;
+      setMultiplier(finalMult);
+      multiplierRef.current = finalMult;
+      setGameState("BUSTED");
+      setHistory((prev) => (prev[0] === finalMult ? prev : [finalMult, ...prev.slice(0, 11)]));
     }
-  }, [gameState]);
+  }, [serverRound?.round_id, serverRound?.phase]);
 
   // Real-time fake players cashout handler as multiplier climbs
   useEffect(() => {

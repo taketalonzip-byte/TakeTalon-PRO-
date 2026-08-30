@@ -4,6 +4,7 @@ import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import crypto from "crypto";
+import { hush } from "./src/lib/hush/presentation/hush-facade";
 import { syncEspnCompetition, fetchEspnScoreboard, ESPN_LEAGUE_SLUGS } from "./src/lib/espnService";
 import {
   getBasketballMatchesFromEspn,
@@ -133,6 +134,105 @@ const supabaseAdmin = isDbConfigured
       auth: { persistSession: false, autoRefreshToken: false },
     })
   : null;
+
+const AVIATOR_BETTING_MS = 10_000;
+const AVIATOR_BUSTED_MS = 4_000;
+let aviatorRoundNonce = 0;
+let aviatorLoopStarted = false;
+
+async function writeAviatorRoundState(patch: Record<string, any>) {
+  if (!supabaseAdmin) return;
+  try {
+    const { error } = await supabaseAdmin
+      .from("aviator_round_state")
+      .upsert({ id: 1, updated_at: new Date().toISOString(), ...patch });
+    if (error) throw error;
+  } catch (e: any) {
+    console.error("[Aviator] Imeshindwa kuandika round state:", e?.message || e);
+  }
+}
+
+async function runAviatorBettingPhase() {
+  aviatorRoundNonce += 1;
+  await writeAviatorRoundState({
+    round_id: crypto.randomUUID(),
+    phase: "BETTING",
+    phase_started_at: new Date().toISOString(),
+    betting_duration_ms: AVIATOR_BETTING_MS,
+    busted_duration_ms: AVIATOR_BUSTED_MS,
+    crash_point: null,
+    round_nonce: aviatorRoundNonce,
+  });
+  setTimeout(() => {
+    runAviatorLaunchedPhase().catch((e) => console.error("[Aviator] LAUNCHED error:", e));
+  }, AVIATOR_BETTING_MS);
+}
+
+async function runAviatorLaunchedPhase() {
+  let crashPoint = 1.15;
+  try {
+    await hush.initialize();
+    const outcome = await hush.generateNextOutcome();
+    const generatedCrashPoint = Number(outcome.multiplier);
+    if (Number.isFinite(generatedCrashPoint) && generatedCrashPoint >= 1) {
+      crashPoint = parseFloat(generatedCrashPoint.toFixed(2));
+    }
+  } catch (e: any) {
+    console.error("[Aviator] HUSH generation error, natumia fallback ya nasibu:", e?.message || e);
+    crashPoint = parseFloat((1.05 + Math.random() * 5.0).toFixed(2));
+  }
+
+  // Never expose the crash point before the BUSTED phase.
+  await writeAviatorRoundState({
+    phase: "LAUNCHED",
+    phase_started_at: new Date().toISOString(),
+    crash_point: null,
+  });
+
+  const elapsedForCrash = Math.pow(Math.max(0, crashPoint - 1.0) / 0.08, 1 / 1.3);
+  const launchDurationMs = Math.max(200, elapsedForCrash * 1000);
+
+  setTimeout(() => {
+    runAviatorBustedPhase(crashPoint).catch((e) => console.error("[Aviator] BUSTED error:", e));
+  }, launchDurationMs);
+}
+
+async function runAviatorBustedPhase(crashPoint: number) {
+  await writeAviatorRoundState({
+    phase: "BUSTED",
+    phase_started_at: new Date().toISOString(),
+    crash_point: crashPoint,
+  });
+  setTimeout(() => {
+    runAviatorBettingPhase().catch((e) => console.error("[Aviator] BETTING error:", e));
+  }, AVIATOR_BUSTED_MS);
+}
+
+function startAviatorRoundLoop() {
+  if (aviatorLoopStarted) return;
+  aviatorLoopStarted = true;
+  if (!supabaseAdmin) {
+    console.warn("[Aviator] Supabase haijasanidiwa — live round engine haitaanza.");
+    return;
+  }
+  console.log("[Aviator] Live round engine (24/7) inaanza...");
+  runAviatorBettingPhase().catch((e) => console.error("[Aviator] Boot error:", e));
+}
+
+app.get("/api/aviator/round", async (_req, res) => {
+  if (!supabaseAdmin) return res.status(503).json({ ok: false, message: "Database haijasanidiwa" });
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("aviator_round_state")
+      .select("round_id, phase, phase_started_at, betting_duration_ms, busted_duration_ms, crash_point, round_nonce, updated_at")
+      .eq("id", 1)
+      .maybeSingle();
+    if (error) throw error;
+    return res.json({ ok: true, round: data });
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, message: e?.message || "Imeshindwa kupata round" });
+  }
+});
 
 // In-Memory Fallback Audit Log Store
 interface AuditLogItem {
@@ -3164,6 +3264,7 @@ async function startServer() {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`[TakeTalon Server] Running on http://0.0.0.0:${PORT}`);
     console.log(`[SMS Forwarder Webhook] Active at http://0.0.0.0:${PORT}/api/sms-forwarder`);
+    startAviatorRoundLoop();
   });
 }
 
