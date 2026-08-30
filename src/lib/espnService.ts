@@ -109,9 +109,20 @@ export interface MappedEspnFixture {
   winner: "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
   home: MappedEspnTeam;
   away: MappedEspnTeam;
-  // Ephemeral, NOT persisted to DB (no column for it) — only used in the live API response.
+  // displayClock stays ephemeral (raw ESPN string, only for the live API response).
   displayClock: string | null;
   isLive: boolean;
+  // Parsed from displayClock (e.g. "90+3'" -> 90). Persisted to
+  // football_fixtures.current_minute so the live in-play odds engine
+  // (migration 009) knows how much match time is left.
+  minute: number | null;
+}
+
+/** Parse a leading minute number out of ESPN's displayClock string (e.g. "45+2'" -> 45). */
+function parseDisplayClockMinute(displayClock: string | null): number | null {
+  if (!displayClock) return null;
+  const m = displayClock.match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : null;
 }
 
 export interface MappedEspnCompetition {
@@ -249,6 +260,7 @@ export async function fetchEspnScoreboard(code: string, dateRange?: string): Pro
           away: toTeam(awayC),
           displayClock: comp.status?.displayClock ?? null,
           isLive,
+          minute: isLive ? parseDisplayClockMinute(comp.status?.displayClock ?? null) : null,
         });
       } catch {
         // One malformed event must not break the whole scoreboard batch.
@@ -348,6 +360,7 @@ export async function syncEspnCompetition(
         home_score: f.homeScore,
         away_score: f.awayScore,
         winner: f.winner,
+        current_minute: f.minute,
         live_source: f.isLive ? "espn" : null,
         last_live_update_at: f.isLive ? nowIso : null,
         last_synced_at: nowIso,
