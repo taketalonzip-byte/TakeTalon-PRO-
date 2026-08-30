@@ -19,7 +19,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { MatchTip } from "../types";
-import { FootballMatchSkeleton, SportPageSkeleton } from "./skeletons";
+import { FootballMatchSkeleton, CountryListSkeleton } from "./skeletons";
 import { getUnifiedMatchStatus } from "../lib/sportMatchStatus";
 import { ScrollingScoreBadge } from "./ScrollingScoreBadge";
 import { Flag } from "./Flag";
@@ -448,11 +448,21 @@ const SPORT_DATA: Record<string, Country[]> = {
       ],
     },
     {
+      id: "australia-bball",
+      name: "Australia",
+      flag: <Flag country="australia" size={18} />,
+      leagues: [
+        { id: "nbl", name: "NBL — National Basketball League" },
+        { id: "wnbl", name: "WNBL — Women's National Basketball League" },
+      ],
+    },
+    {
       id: "spain-bball",
       name: "Spain",
       flag: <Flag country="spain" size={18} />,
       leagues: [
         { id: "acb", name: "Liga ACB / Copa del Rey" },
+        { id: "leb-oro", name: "LEB Oro" },
       ],
     },
     {
@@ -461,22 +471,8 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="italy" size={18} />,
       leagues: [
         { id: "lba", name: "Lega Basket Serie A (LBA)" },
-      ],
-    },
-    {
-      id: "australia-bball",
-      name: "Australia & Oceania",
-      flag: <Flag country="australia" size={18} />,
-      leagues: [
-        { id: "nbl", name: "NBL — National Basketball League" },
-      ],
-    },
-    {
-      id: "brazil-bball",
-      name: "Brazil",
-      flag: <Flag country="brazil" size={18} />,
-      leagues: [
-        { id: "nbb", name: "NBB — Novo Basquete Brasil" },
+        { id: "coppa-italia-bball", name: "Coppa Italia LBA" },
+        { id: "serie-a2-bball", name: "Serie A2 Basket" },
       ],
     },
     {
@@ -485,6 +481,8 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="france" size={18} />,
       leagues: [
         { id: "lnb-pro-a", name: "LNB Pro A (Betclic Élite)" },
+        { id: "leaders-cup", name: "Leaders Cup LNB" },
+        { id: "coupe-de-france-bball", name: "Coupe de France de Basket" },
       ],
     },
     {
@@ -493,6 +491,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="germany" size={18} />,
       leagues: [
         { id: "bbl", name: "Basketball Bundesliga (BBL)" },
+        { id: "bbl-pokal", name: "BBL-Pokal" },
       ],
     },
     {
@@ -500,7 +499,8 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Greece",
       flag: <Flag country="greece" size={18} />,
       leagues: [
-        { id: "greek-basket-league", name: "Greek Basket League" },
+        { id: "greek-basket-league", name: "Greek Basket League (GBL)" },
+        { id: "greek-cup-bball", name: "Greek Basketball Cup" },
       ],
     },
     {
@@ -509,6 +509,45 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="serbia" size={18} />,
       leagues: [
         { id: "aba-liga", name: "ABA Liga (Adriatic League)" },
+        { id: "kls", name: "Košarkaška liga Srbije (KLS)" },
+        { id: "korac-cup", name: "Radivoj Korać Cup" },
+      ],
+    },
+    {
+      id: "lithuania-bball",
+      name: "Lithuania",
+      flag: <Flag country="lithuania" size={18} />,
+      leagues: [
+        { id: "lkl", name: "LKL — Lietuvos krepšinio lyga" },
+        { id: "king-mindaugas-cup", name: "King Mindaugas Cup" },
+      ],
+    },
+    {
+      id: "turkey-bball",
+      name: "Turkey",
+      flag: <Flag country="turkey" size={18} />,
+      leagues: [
+        { id: "bsl", name: "Basketbol Süper Ligi (BSL)" },
+        { id: "turkish-cup-bball", name: "Turkish Basketball Cup" },
+      ],
+    },
+    {
+      id: "japan-bball",
+      name: "Japan",
+      flag: <Flag country="japan" size={18} />,
+      leagues: [
+        { id: "b-league", name: "B.League (B1)" },
+        { id: "b2-league", name: "B2.League" },
+        { id: "emperors-cup-bball", name: "Emperor's Cup" },
+      ],
+    },
+    {
+      id: "brazil-bball",
+      name: "Brazil",
+      flag: <Flag country="brazil" size={18} />,
+      leagues: [
+        { id: "nbb", name: "NBB — Novo Basquete Brasil" },
+        { id: "copa-super-8", name: "Copa Super 8" },
       ],
     },
     {
@@ -517,6 +556,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="china" size={18} />,
       leagues: [
         { id: "cba", name: "CBA — Chinese Basketball Association" },
+        { id: "cba-allstar", name: "CBA All-Star Game" },
       ],
     },
     {
@@ -524,7 +564,104 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Argentina",
       flag: <Flag country="argentina" size={18} />,
       leagues: [
-        { id: "liga-nacional", name: "Liga Nacional de Básquet" },
+        { id: "liga-nacional", name: "Liga Nacional de Básquet (LNB)" },
+        { id: "copa-super-20", name: "Copa Súper 20" },
+      ],
+    },
+    {
+      id: "mexico-bball",
+      name: "Mexico",
+      flag: <Flag country="mexico" size={18} />,
+      leagues: [
+        { id: "lnbp", name: "LNBP — Liga Nacional de Baloncesto Profesional" },
+        { id: "copa-lnbp", name: "Copa LNBP" },
+      ],
+    },
+    {
+      id: "canada-bball",
+      name: "Canada",
+      flag: <Flag country="canada" size={18} />,
+      leagues: [
+        { id: "cebl", name: "CEBL — Canadian Elite Basketball League" },
+      ],
+    },
+    {
+      id: "russia-bball",
+      name: "Russia",
+      flag: <Flag country="russia" size={18} />,
+      leagues: [
+        { id: "vtb", name: "VTB United League" },
+        { id: "russian-cup-bball", name: "Russian Basketball Cup" },
+      ],
+    },
+    {
+      id: "poland-bball",
+      name: "Poland",
+      flag: <Flag country="poland" size={18} />,
+      leagues: [
+        { id: "plk", name: "Orlen Basket Liga (PLK)" },
+        { id: "polish-cup-bball", name: "Puchar Polski w Koszykówce" },
+      ],
+    },
+    {
+      id: "southkorea-bball",
+      name: "South Korea",
+      flag: <Flag country="southkorea" size={18} />,
+      leagues: [
+        { id: "kbl", name: "KBL — Korean Basketball League" },
+        { id: "wkbl", name: "WKBL — Women's Korean Basketball League" },
+      ],
+    },
+    {
+      id: "philippines-bball",
+      name: "Philippines",
+      flag: <Flag country="philippines" size={18} />,
+      leagues: [
+        { id: "pba", name: "PBA — Philippine Basketball Association" },
+        { id: "pba-governors-cup", name: "PBA Governors' Cup" },
+      ],
+    },
+    {
+      id: "switzerland-bball",
+      name: "Switzerland",
+      flag: <Flag country="switzerland" size={18} />,
+      leagues: [
+        { id: "sbl", name: "Swiss Basketball League (SBL)" },
+        { id: "swiss-cup-bball", name: "Patrick Baumann Swiss Cup" },
+      ],
+    },
+    {
+      id: "netherlands-bball",
+      name: "Netherlands",
+      flag: <Flag country="netherlands" size={18} />,
+      leagues: [
+        { id: "bnxt-nl", name: "BNXT League (Dutch Division)" },
+        { id: "nba-cup-nl", name: "Basketball Cup Netherlands" },
+      ],
+    },
+    {
+      id: "portugal-bball",
+      name: "Portugal",
+      flag: <Flag country="portugal" size={18} />,
+      leagues: [
+        { id: "lpb", name: "Liga Portuguesa de Basquetebol (LPB)" },
+        { id: "taca-portugal-bball", name: "Taça de Portugal de Basquetebol" },
+      ],
+    },
+    {
+      id: "saudi-bball",
+      name: "Saudi Arabia",
+      flag: <Flag country="saudiarabia" size={18} />,
+      leagues: [
+        { id: "saudi-premier-bball", name: "Saudi Basketball Premier League" },
+      ],
+    },
+    {
+      id: "india-bball",
+      name: "India",
+      flag: <Flag country="india" size={18} />,
+      leagues: [
+        { id: "inbl", name: "INBL — Indian National Basketball League" },
       ],
     },
     {
@@ -533,6 +670,9 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="europe" size={18} />,
       leagues: [
         { id: "euroleague", name: "EuroLeague Basketball" },
+        { id: "eurocup", name: "EuroCup Basketball" },
+        { id: "bcl", name: "Basketball Champions League (BCL)" },
+        { id: "fiba-europe-cup", name: "FIBA Europe Cup" },
       ],
     },
     {
@@ -542,6 +682,9 @@ const SPORT_DATA: Record<string, Country[]> = {
       leagues: [
         { id: "fiba", name: "FIBA Basketball World Cup" },
         { id: "fiba-americas", name: "FIBA AmeriCup" },
+        { id: "fiba-eurobasket", name: "FIBA EuroBasket" },
+        { id: "fiba-asiacup", name: "FIBA Asia Cup" },
+        { id: "fiba-afrobasket", name: "FIBA AfroBasket" },
         { id: "mens-olympics-basketball", name: "Olympics Men's Basketball" },
         { id: "womens-olympics-basketball", name: "Olympics Women's Basketball" },
       ],
@@ -555,9 +698,9 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="usa" size={18} />,
       leagues: [
         { id: "us-open", name: "US Open (Grand Slam)" },
-        { id: "atp-miami", name: "Miami Open (ATP Masters)" },
+        { id: "atp-miami", name: "Miami Open (ATP Masters 1000)" },
         { id: "atp-indian-wells", name: "Indian Wells (BNP Paribas Open)" },
-        { id: "cincinnati-open", name: "Cincinnati Open (ATP Masters)" },
+        { id: "cincinnati-open", name: "Cincinnati Open (ATP Masters 1000)" },
         { id: "winston-salem", name: "Winston-Salem Open" },
         { id: "washington-open", name: "Mubadala Citi DC Open" },
         { id: "atlanta-open", name: "Atlanta Open (ATP 250)" },
@@ -586,7 +729,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="france" size={18} />,
       leagues: [
         { id: "roland-garros", name: "Roland Garros (Grand Slam)" },
-        { id: "paris-masters", name: "Paris Masters (ATP Masters)" },
+        { id: "paris-masters", name: "Paris Masters (ATP Masters 1000)" },
         { id: "marseille-open", name: "Open 13 Provence (Marseille)" },
         { id: "montpellier-open", name: "Open Sud de France (Montpellier)" },
         { id: "lyon-open", name: "Open Parc Lyon (ATP 250)" },
@@ -611,8 +754,8 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Spain",
       flag: <Flag country="spain" size={18} />,
       leagues: [
-        { id: "madrid-open", name: "Madrid Open (ATP Masters)" },
-        { id: "barcelona-open", name: "Barcelona Open (ATP 500)" },
+        { id: "madrid-open", name: "Mutua Madrid Open (ATP Masters 1000)" },
+        { id: "barcelona-open", name: "Barcelona Open Banc Sabadell (ATP 500)" },
         { id: "mallorca-championships", name: "Mallorca Championships" },
         { id: "gijon-open", name: "Gijon Open" },
         { id: "valencia-open", name: "Valencia Open" },
@@ -623,7 +766,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Italy",
       flag: <Flag country="italy" size={18} />,
       leagues: [
-        { id: "italian-open", name: "Italian Open / Rome Masters" },
+        { id: "italian-open", name: "Italian Open / Rome Masters (ATP 1000)" },
         { id: "atp-finals", name: "Nitto ATP Finals (Turin)" },
         { id: "next-gen-finals", name: "Next Gen ATP Finals" },
         { id: "sardegna-open", name: "Sardegna Open" },
@@ -635,7 +778,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Switzerland",
       flag: <Flag country="switzerland" size={18} />,
       leagues: [
-        { id: "swiss-indoors", name: "Swiss Indoors (Basel)" },
+        { id: "swiss-indoors", name: "Swiss Indoors Basel (ATP 500)" },
         { id: "geneva-open", name: "Geneva Open (ATP 250)" },
         { id: "gstaad-open", name: "Swiss Open Gstaad" },
       ],
@@ -645,11 +788,11 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Germany",
       flag: <Flag country="germany" size={18} />,
       leagues: [
-        { id: "halle-open", name: "Terra Wortmann Open (Halle)" },
-        { id: "bmw-open", name: "BMW Open (Munich)" },
-        { id: "berlin-wta", name: "Berlin Ladies Open" },
+        { id: "halle-open", name: "Terra Wortmann Open (Halle, ATP 500)" },
+        { id: "bmw-open", name: "BMW Open (Munich, ATP 500)" },
+        { id: "berlin-wta", name: "Berlin Ladies Open (WTA 500)" },
         { id: "hamburg-open", name: "Hamburg European Open" },
-        { id: "stuttgart-open", name: "Stuttgart Open (Boss / Porsche GP)" },
+        { id: "stuttgart-open", name: "Stuttgart Open (Boss Open)" },
       ],
     },
     {
@@ -657,8 +800,8 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Netherlands",
       flag: <Flag country="netherlands" size={18} />,
       leagues: [
-        { id: "rotterdam-open", name: "ABN AMRO Open (Rotterdam)" },
-        { id: "libema-open", name: "Libema Open ('s-Hertogenbosch)" },
+        { id: "rotterdam-open", name: "ABN AMRO Open (Rotterdam, ATP 500)" },
+        { id: "libema-open", name: "Libéma Open ('s-Hertogenbosch)" },
       ],
     },
     {
@@ -674,8 +817,8 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Sweden",
       flag: <Flag country="sweden" size={18} />,
       leagues: [
-        { id: "stockholm-open", name: "Stockholm Open (ATP 250)" },
-        { id: "bastad-open", name: "Nordea Open (Bastad)" },
+        { id: "stockholm-open", name: "BNP Paribas Nordic Open (Stockholm)" },
+        { id: "bastad-open", name: "Nordea Open (Båstad)" },
       ],
     },
     {
@@ -683,8 +826,8 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Argentina",
       flag: <Flag country="argentina" size={18} />,
       leagues: [
-        { id: "argentina-open", name: "Argentina Open (ATP 250, Buenos Aires)" },
-        { id: "cordoba-open", name: "Cordoba Open" },
+        { id: "argentina-open", name: "IEB+ Argentina Open (Buenos Aires)" },
+        { id: "cordoba-open", name: "Córdoba Open" },
       ],
     },
     {
@@ -693,7 +836,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="brazil" size={18} />,
       leagues: [
         { id: "rio-open", name: "Rio Open (ATP 500)" },
-        { id: "brasil-open", name: "Brasil Tennis Cup" },
+        { id: "brasil-open", name: "Brasil Open" },
       ],
     },
     {
@@ -702,7 +845,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="mexico" size={18} />,
       leagues: [
         { id: "acapulco-open", name: "Abierto Mexicano Telcel (Acapulco)" },
-        { id: "los-cabos-open", name: "Los Cabos Open" },
+        { id: "los-cabos-open", name: "Mifel Tennis Open (Los Cabos)" },
         { id: "abierto-monterrey", name: "Abierto GNP Seguros (Monterrey)" },
       ],
     },
@@ -711,9 +854,9 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "China",
       flag: <Flag country="china" size={18} />,
       leagues: [
-        { id: "shanghai-masters", name: "Shanghai Masters (ATP 1000)" },
-        { id: "china-open", name: "China Open (Beijing)" },
-        { id: "wuhan-open", name: "Wuhan Open (WTA)" },
+        { id: "shanghai-masters", name: "Rolex Shanghai Masters (ATP 1000)" },
+        { id: "china-open", name: "China Open (Beijing, ATP 500)" },
+        { id: "wuhan-open", name: "Wuhan Open (WTA 1000)" },
         { id: "chengdu-open", name: "Chengdu Open" },
         { id: "zhuhai-championships", name: "Zhuhai Championships" },
       ],
@@ -723,7 +866,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Japan",
       flag: <Flag country="japan" size={18} />,
       leagues: [
-        { id: "japan-open", name: "Kinoshita Group Japan Open" },
+        { id: "japan-open", name: "Kinoshita Group Japan Open (Tokyo)" },
         { id: "pan-pacific-open", name: "Toray Pan Pacific Open (WTA)" },
       ],
     },
@@ -740,7 +883,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Canada",
       flag: <Flag country="canada" size={18} />,
       leagues: [
-        { id: "canadian-open", name: "National Bank Open (ATP/WTA 1000)" },
+        { id: "canadian-open", name: "National Bank Open (Toronto/Montreal)" },
       ],
     },
     {
@@ -757,7 +900,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Serbia",
       flag: <Flag country="serbia" size={18} />,
       leagues: [
-        { id: "serbia-open", name: "Serbia Open (Belgrade)" },
+        { id: "serbia-open", name: "Belgrade Open / Serbia Open" },
       ],
     },
     {
@@ -782,9 +925,9 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Europe",
       flag: <Flag country="europe" size={18} />,
       leagues: [
-        { id: "monte-carlo-masters", name: "Monte-Carlo Masters (ATP 1000)" },
-        { id: "vienna-open", name: "Erste Bank Open (Vienna)" },
-        { id: "umag-open", name: "Croatia Open Umag" },
+        { id: "monte-carlo-masters", name: "Rolex Monte-Carlo Masters (ATP 1000)" },
+        { id: "vienna-open", name: "Erste Bank Open (Vienna, ATP 500)" },
+        { id: "umag-open", name: "Plava Laguna Croatia Open Umag" },
         { id: "bucharest-open", name: "Tiriac Open (Bucharest)" },
       ],
     },
@@ -811,8 +954,9 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Brazil",
       flag: <Flag country="brazil" size={18} />,
       leagues: [
-        { id: "superliga-vball", name: "Superliga Brasileira" },
-        { id: "vnl-brazil", name: "VNL — Volleyball Nations League" },
+        { id: "superliga-masculina", name: "Superliga Masculina de Vôlei" },
+        { id: "superliga-feminina", name: "Superliga Feminina de Vôlei" },
+        { id: "copa-brasil-vball", name: "Copa Brasil de Voleibol" },
       ],
     },
     {
@@ -820,8 +964,10 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Italy",
       flag: <Flag country="italy" size={18} />,
       leagues: [
-        { id: "superlega", name: "SuperLega" },
-        { id: "coppa-italia-vball", name: "Coppa Italia" },
+        { id: "superlega", name: "SuperLega Credem Banca" },
+        { id: "serie-a1-femminile", name: "Serie A1 Tigotà (Women)" },
+        { id: "coppa-italia-vball", name: "Del Monte Coppa Italia" },
+        { id: "supercoppa-vball", name: "Del Monte Supercoppa" },
       ],
     },
     {
@@ -830,22 +976,29 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="poland" size={18} />,
       leagues: [
         { id: "plusliga", name: "PlusLiga" },
-        { id: "puchar-polski", name: "Puchar Polski" },
+        { id: "tauron-liga", name: "TAURON Liga (Women)" },
+        { id: "puchar-polski-vball", name: "Puchar Polski w Piłce Siatkowej" },
       ],
     },
     {
       id: "russia-vball",
       name: "Russia",
       flag: <Flag country="russia" size={18} />,
-      leagues: [{ id: "superliga-russia", name: "Superliga" }],
+      leagues: [
+        { id: "superliga-russia", name: "Super League Men (Pari Superliga)" },
+        { id: "superliga-women-russia", name: "Super League Women" },
+        { id: "russian-cup-vball", name: "Russian Cup of Volleyball" },
+      ],
     },
     {
       id: "usa-vball",
       name: "USA",
       flag: <Flag country="usa" size={18} />,
       leagues: [
-        { id: "pro-vball", name: "PVF — Pro Volleyball Federation" },
-        { id: "ncaa-vball", name: "NCAA Volleyball" },
+        { id: "pvf-vball", name: "PVF — Pro Volleyball Federation" },
+        { id: "lovb-vball", name: "LOVB — League One Volleyball" },
+        { id: "womens-college-volleyball", name: "NCAA Women's Volleyball" },
+        { id: "mens-college-volleyball", name: "NCAA Men's Volleyball" },
       ],
     },
     {
@@ -853,8 +1006,9 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "France",
       flag: <Flag country="france" size={18} />,
       leagues: [
-        { id: "ligue-a-vball", name: "Ligue A (LNV)" },
-        { id: "coupe-france-vball", name: "Coupe de France" },
+        { id: "ligue-a-vball", name: "Marmara SpikeLigue (Ligue A)" },
+        { id: "saforelle-power-6", name: "Saforelle Power 6 (Ligue A Féminine)" },
+        { id: "coupe-france-vball", name: "Coupe de France de Volley" },
       ],
     },
     {
@@ -862,7 +1016,8 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Germany",
       flag: <Flag country="germany" size={18} />,
       leagues: [
-        { id: "bundesliga-vball", name: "Volleyball Bundesliga" },
+        { id: "bundesliga-men-vball", name: "1. Bundesliga Men" },
+        { id: "bundesliga-women-vball", name: "1. Bundesliga Women" },
         { id: "dvv-pokal", name: "DVV-Pokal" },
       ],
     },
@@ -870,15 +1025,29 @@ const SPORT_DATA: Record<string, Country[]> = {
       id: "japan-vball",
       name: "Japan",
       flag: <Flag country="japan" size={18} />,
-      leagues: [{ id: "v-league", name: "V.League" }],
+      leagues: [
+        { id: "v-league-men", name: "V.League Division 1 Men" },
+        { id: "v-league-women", name: "V.League Division 1 Women" },
+        { id: "emperors-cup-vball", name: "Emperor's & Empress's Cup" },
+      ],
+    },
+    {
+      id: "turkey-vball",
+      name: "Turkey",
+      flag: <Flag country="turkey" size={18} />,
+      leagues: [
+        { id: "efeler-ligi", name: "Efeler Ligi (Men)" },
+        { id: "sultanlar-ligi", name: "Vodafone Sultanlar Ligi (Women)" },
+        { id: "kupa-voley", name: "AXA Sigorta Kupa Voley" },
+      ],
     },
     {
       id: "serbia-vball",
       name: "Serbia",
       flag: <Flag country="serbia" size={18} />,
       leagues: [
-        { id: "serbia-superliga-vball", name: "Serbian Volleyball League" },
-        { id: "serbia-cup-vball", name: "Serbia Volleyball Cup" },
+        { id: "serbia-superliga-vball", name: "Serbian Volleyball Superliga" },
+        { id: "serbia-cup-vball", name: "Serbian Volleyball Cup" },
       ],
     },
     {
@@ -886,8 +1055,26 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Greece",
       flag: <Flag country="greece" size={18} />,
       leagues: [
-        { id: "volley-league-greece", name: "Volley League" },
+        { id: "volley-league-greece", name: "Volley League Greece" },
         { id: "greek-cup-vball", name: "Greek Volleyball Cup" },
+      ],
+    },
+    {
+      id: "argentina-vball",
+      name: "Argentina",
+      flag: <Flag country="argentina" size={18} />,
+      leagues: [
+        { id: "lva-argentina", name: "Liga de Voleibol Argentina (LVA)" },
+        { id: "copa-aclav", name: "Copa ACLAV" },
+      ],
+    },
+    {
+      id: "china-vball",
+      name: "China",
+      flag: <Flag country="china" size={18} />,
+      leagues: [
+        { id: "chinese-vball-league", name: "Chinese Volleyball Super League (CVL)" },
+        { id: "china-vball-cup", name: "China Volleyball Championship" },
       ],
     },
     {
@@ -896,25 +1083,16 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="netherlands" size={18} />,
       leagues: [
         { id: "eredivisie-vball", name: "Eredivisie Volleyball" },
-        { id: "nl-cup-vball", name: "Dutch Volleyball Cup" },
+        { id: "nl-cup-vball", name: "Beker van Nederland (Volleybal)" },
       ],
     },
     {
-      id: "argentina-vball",
-      name: "Argentina",
-      flag: <Flag country="argentina" size={18} />,
+      id: "belgium-vball",
+      name: "Belgium",
+      flag: <Flag country="belgium" size={18} />,
       leagues: [
-        { id: "liga-argentina-vball", name: "Liga de Voleibol Argentina" },
-        { id: "copa-ace-vball", name: "Copa ACLAV" },
-      ],
-    },
-    {
-      id: "china-vball",
-      name: "China",
-      flag: <Flag country="china" size={18} />,
-      leagues: [
-        { id: "chinese-vball-league", name: "Chinese Volleyball League" },
-        { id: "china-vball-cup", name: "China Volleyball Cup" },
+        { id: "lotto-volley-league", name: "Lotto Volley League" },
+        { id: "belgian-cup-vball", name: "Belgian Volleyball Cup" },
       ],
     },
     {
@@ -922,8 +1100,19 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Spain",
       flag: <Flag country="spain" size={18} />,
       leagues: [
-        { id: "superliga-espanola-vball", name: "Superliga Masculina" },
+        { id: "superliga-espanola-vball", name: "Superliga Masculina de Voleibol" },
+        { id: "liga-iberdrola-vball", name: "Liga Iberdrola de Voleibol" },
         { id: "copa-del-rey-vball", name: "Copa del Rey de Voleibol" },
+      ],
+    },
+    {
+      id: "europe-vball",
+      name: "Europe",
+      flag: <Flag country="europe" size={18} />,
+      leagues: [
+        { id: "cev-champions-league", name: "CEV Champions League" },
+        { id: "cev-cup", name: "CEV Volleyball Cup" },
+        { id: "cev-challenge-cup", name: "CEV Volleyball Challenge Cup" },
       ],
     },
     {
@@ -931,31 +1120,39 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "International",
       flag: <Flag country="international" size={18} />,
       leagues: [
-        { id: "vnl", name: "FIVB Volleyball Nations League" },
+        { id: "vnl", name: "FIVB Volleyball Nations League (VNL)" },
         { id: "fivb-world-champs", name: "FIVB World Championship" },
+        { id: "fivb-club-world-champs", name: "FIVB Club World Championship" },
         { id: "olympics-vball", name: "Olympics Volleyball" },
       ],
     },
   ],
 
-  // Fallback countries for other sports (Ice Hockey, Rugby, etc.)
   "Ice Hockey": [
-    {
-      id: "canada-hockey",
-      name: "Canada",
-      flag: <Flag country="canada" size={18} />,
-      leagues: [
-        { id: "nhl-canada", name: "NHL (Canadian teams)" },
-        { id: "ahl", name: "AHL" },
-      ],
-    },
     {
       id: "usa-hockey",
       name: "USA",
       flag: <Flag country="usa" size={18} />,
       leagues: [
-        { id: "nhl-usa", name: "NHL (US teams)" },
-        { id: "ushl", name: "USHL" },
+        { id: "nhl", name: "NHL — National Hockey League" },
+        { id: "ahl", name: "AHL — American Hockey League" },
+        { id: "echl", name: "ECHL — Premier AA Hockey League" },
+        { id: "mens-college-hockey", name: "NCAA Men's Ice Hockey" },
+        { id: "womens-college-hockey", name: "NCAA Women's Ice Hockey" },
+        { id: "pwhl", name: "PWHL — Professional Women's Hockey League" },
+        { id: "ushl", name: "USHL — United States Hockey League" },
+      ],
+    },
+    {
+      id: "canada-hockey",
+      name: "Canada",
+      flag: <Flag country="canada" size={18} />,
+      leagues: [
+        { id: "nhl-canada", name: "NHL (Canadian Conferences)" },
+        { id: "ahl-canada", name: "AHL (Canadian Teams)" },
+        { id: "ohl", name: "OHL — Ontario Hockey League" },
+        { id: "whl", name: "WHL — Western Hockey League" },
+        { id: "qmjhl", name: "QMJHL — Quebec Maritimes Junior League" },
       ],
     },
     {
@@ -963,8 +1160,9 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Russia",
       flag: <Flag country="russia" size={18} />,
       leagues: [
-        { id: "khl", name: "KHL" },
-        { id: "vhl", name: "VHL" },
+        { id: "khl", name: "KHL — Kontinental Hockey League" },
+        { id: "vhl", name: "VHL — All-Russian Hockey League" },
+        { id: "mhl", name: "MHL — Junior Hockey League" },
       ],
     },
     {
@@ -973,7 +1171,16 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="sweden" size={18} />,
       leagues: [
         { id: "shl", name: "SHL — Swedish Hockey League" },
-        { id: "hockeyallsvenskan", name: "Hockeyallsvenskan" },
+        { id: "hockeyallsvenskan", name: "HockeyAllsvenskan" },
+      ],
+    },
+    {
+      id: "finland-hockey",
+      name: "Finland",
+      flag: <Flag country="finland" size={18} />,
+      leagues: [
+        { id: "liiga", name: "Liiga (Finnish Elite League)" },
+        { id: "mestis", name: "Mestis" },
       ],
     },
     {
@@ -981,57 +1188,96 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Switzerland",
       flag: <Flag country="switzerland" size={18} />,
       leagues: [
-        { id: "national-league", name: "National League" },
-        { id: "swiss-cup-hockey", name: "Swiss Cup" },
+        { id: "national-league", name: "National League (NL)" },
+        { id: "swiss-league", name: "Swiss League" },
+        { id: "swiss-cup-hockey", name: "Swiss Ice Hockey Cup" },
+      ],
+    },
+    {
+      id: "czech-hockey",
+      name: "Czech Republic",
+      flag: <Flag country="czechrepublic" size={18} />,
+      leagues: [
+        { id: "tipsport-extraliga", name: "Tipsport Extraliga" },
+        { id: "chance-liga", name: "Chance Liga" },
       ],
     },
     {
       id: "germany-hockey",
       name: "Germany",
       flag: <Flag country="germany" size={18} />,
-      leagues: [{ id: "del", name: "DEL — Deutsche Eishockey Liga" }],
-    },
-    {
-      id: "finland-hockey",
-      name: "Europe",
-      flag: <Flag country="europe" size={18} />,
       leagues: [
-        { id: "champions-hockey-league", name: "Champions Hockey League" },
-        { id: "euro-hockey-tour", name: "Euro Hockey Tour" },
+        { id: "del", name: "DEL — Deutsche Eishockey Liga" },
+        { id: "del2", name: "DEL2" },
       ],
     },
     {
-      id: "czech-hockey",
-      name: "Poland",
-      flag: <Flag country="poland" size={18} />,
-      leagues: [{ id: "polska-hokej-liga", name: "Polska Hokej Liga" }],
+      id: "austria-hockey",
+      name: "Austria",
+      flag: <Flag country="austria" size={18} />,
+      leagues: [
+        { id: "ice-hockey-league", name: "win2day ICE Hockey League" },
+        { id: "alps-hockey-league", name: "Alps Hockey League" },
+      ],
+    },
+    {
+      id: "slovakia-hockey",
+      name: "Slovakia",
+      flag: <Flag country="slovakia" size={18} />,
+      leagues: [
+        { id: "tipos-extraliga", name: "Tipos Extraliga" },
+      ],
     },
     {
       id: "france-hockey",
       name: "France",
       flag: <Flag country="france" size={18} />,
       leagues: [
-        { id: "ligue-magnus", name: "Ligue Magnus" },
+        { id: "ligue-magnus", name: "Synerglace Ligue Magnus" },
         { id: "coupe-france-hockey", name: "Coupe de France de Hockey" },
       ],
     },
     {
-      id: "italy-hockey",
-      name: "Italy",
-      flag: <Flag country="italy" size={18} />,
-      leagues: [{ id: "ihl-italy", name: "IHL — Italian Hockey League" }],
+      id: "poland-hockey",
+      name: "Poland",
+      flag: <Flag country="poland" size={18} />,
+      leagues: [
+        { id: "polska-hokej-liga", name: "Tauron Hokej Liga (THL)" },
+      ],
+    },
+    {
+      id: "norway-hockey",
+      name: "Norway",
+      flag: <Flag country="norway" size={18} />,
+      leagues: [
+        { id: "elitehockey-ligaen", name: "EHL — EliteHockey Ligaen" },
+      ],
+    },
+    {
+      id: "uk-hockey",
+      name: "England",
+      flag: <Flag country="england" size={18} />,
+      leagues: [
+        { id: "eihl", name: "EIHL — Elite Ice Hockey League" },
+      ],
     },
     {
       id: "japan-hockey",
       name: "Japan",
       flag: <Flag country="japan" size={18} />,
-      leagues: [{ id: "asia-league-hockey", name: "Asia League Ice Hockey" }],
+      leagues: [
+        { id: "asia-league-hockey", name: "Asia League Ice Hockey (ALIH)" },
+      ],
     },
     {
-      id: "china-hockey",
-      name: "China",
-      flag: <Flag country="china" size={18} />,
-      leagues: [{ id: "china-ice-hockey-league", name: "Chinese Ice Hockey League" }],
+      id: "europe-hockey",
+      name: "Europe",
+      flag: <Flag country="europe" size={18} />,
+      leagues: [
+        { id: "champions-hockey-league", name: "Champions Hockey League (CHL)" },
+        { id: "spengler-cup", name: "Spengler Cup Davos" },
+        { id: "continental-cup-hockey", name: "IIHF Continental Cup" },
+      ],
     },
     {
       id: "international-hockey",
@@ -1039,7 +1285,9 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="international" size={18} />,
       leagues: [
         { id: "iihf-worlds", name: "IIHF World Championship" },
-        { id: "olympics-hockey", name: "Olympics Ice Hockey" },
+        { id: "iihf-world-juniors", name: "IIHF World Junior Championship" },
+        { id: "hockey-world-cup", name: "World Cup of Hockey" },
+        { id: "olympics-mens-ice-hockey", name: "Winter Olympics Ice Hockey" },
       ],
     },
   ],
@@ -1051,7 +1299,8 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="england" size={18} />,
       leagues: [
         { id: "prem-rugby", name: "Gallagher Premiership" },
-        { id: "european-champions", name: "European Champions Cup" },
+        { id: "prem-rugby-cup", name: "Premiership Rugby Cup" },
+        { id: "rfu-championship", name: "RFU Championship" },
       ],
     },
     {
@@ -1061,6 +1310,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       leagues: [
         { id: "top14", name: "TOP 14" },
         { id: "pro-d2", name: "PRO D2" },
+        { id: "supersevens", name: "In Extenso Supersevens" },
       ],
     },
     {
@@ -1068,8 +1318,46 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Australia",
       flag: <Flag country="australia" size={18} />,
       leagues: [
-        { id: "super-rugby-pacific", name: "Super Rugby Pacific" },
-        { id: "nrc", name: "National Rugby Championship" },
+        { id: "super-rugby-pacific-au", name: "Super Rugby Pacific (AU)" },
+        { id: "super-rugby-au", name: "Super Rugby AU" },
+        { id: "nrl", name: "NRL — National Rugby League" },
+        { id: "state-of-origin", name: "State of Origin Series" },
+      ],
+    },
+    {
+      id: "newzealand-rugby",
+      name: "New Zealand",
+      flag: <Flag country="newzealand" size={18} />,
+      leagues: [
+        { id: "super-rugby-pacific-nz", name: "Super Rugby Pacific (NZ)" },
+        { id: "bunnings-npc", name: "Bunnings NPC (Mitre 10 Cup)" },
+        { id: "super-rugby-aotearoa", name: "Super Rugby Aotearoa" },
+      ],
+    },
+    {
+      id: "southafrica-rugby",
+      name: "South Africa",
+      flag: <Flag country="southafrica" size={18} />,
+      leagues: [
+        { id: "currie-cup", name: "Currie Cup Premier Division" },
+        { id: "sa-cup-rugby", name: "SA Cup" },
+      ],
+    },
+    {
+      id: "japan-rugby",
+      name: "Japan",
+      flag: <Flag country="japan" size={18} />,
+      leagues: [
+        { id: "japan-rugby-league-one", name: "Japan Rugby League One (D1)" },
+        { id: "japan-rugby-cup", name: "Japan Rugby Championship" },
+      ],
+    },
+    {
+      id: "usa-rugby",
+      name: "USA",
+      flag: <Flag country="usa" size={18} />,
+      leagues: [
+        { id: "major-league-rugby", name: "Major League Rugby (MLR)" },
       ],
     },
     {
@@ -1079,6 +1367,7 @@ const SPORT_DATA: Record<string, Country[]> = {
       leagues: [
         { id: "super-rugby-americas", name: "Super Rugby Americas" },
         { id: "urba-top-12", name: "URBA Top 12" },
+        { id: "urba-primera-a", name: "URBA Primera A" },
       ],
     },
     {
@@ -1086,50 +1375,37 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Italy",
       flag: <Flag country="italy" size={18} />,
       leagues: [
-        { id: "urc-italy", name: "United Rugby Championship (Italian teams)" },
-        { id: "serie-a-elite", name: "Serie A Elite" },
+        { id: "urc-italy", name: "United Rugby Championship (Italian Teams)" },
+        { id: "serie-a-elite-rugby", name: "Serie A Elite" },
       ],
-    },
-    {
-      id: "japan-rugby",
-      name: "Japan",
-      flag: <Flag country="japan" size={18} />,
-      leagues: [
-        { id: "japan-rugby-league-one", name: "Japan Rugby League One" },
-        { id: "japan-rugby-cup", name: "Japan Rugby Championship" },
-      ],
-    },
-    {
-      id: "usa-rugby",
-      name: "USA",
-      flag: <Flag country="usa" size={18} />,
-      leagues: [{ id: "major-league-rugby", name: "Major League Rugby (MLR)" }],
-    },
-    {
-      id: "canada-rugby",
-      name: "Canada",
-      flag: <Flag country="canada" size={18} />,
-      leagues: [{ id: "canada-super-series", name: "Canada Super Rugby Series" }],
     },
     {
       id: "spain-rugby",
       name: "Spain",
       flag: <Flag country="spain" size={18} />,
-      leagues: [{ id: "division-de-honor-rugby", name: "División de Honor de Rugby" }],
+      leagues: [
+        { id: "division-de-honor-rugby", name: "División de Honor de Rugby" },
+        { id: "copa-rey-rugby", name: "Copa del Rey de Rugby" },
+      ],
     },
     {
       id: "portugal-rugby",
       name: "Portugal",
       flag: <Flag country="portugal" size={18} />,
-      leagues: [{ id: "campeonato-portugal-rugby", name: "Campeonato Nacional de Rugby" }],
+      leagues: [
+        { id: "campeonato-portugal-rugby", name: "Campeonato Nacional de Rugby (Honra)" },
+      ],
     },
     {
       id: "europe-rugby",
       name: "Europe",
       flag: <Flag country="europe" size={18} />,
       leagues: [
-        { id: "urc", name: "United Rugby Championship" },
+        { id: "urc", name: "United Rugby Championship (URC)" },
+        { id: "european-champions", name: "Investec Champions Cup" },
         { id: "epcr-challenge-cup", name: "EPCR Challenge Cup" },
+        { id: "super-league-rugby", name: "Betfred Super League (Rugby League)" },
+        { id: "challenge-cup-rugby", name: "Betfred Challenge Cup" },
       ],
     },
     {
@@ -1139,7 +1415,11 @@ const SPORT_DATA: Record<string, Country[]> = {
       leagues: [
         { id: "rugby-world-cup", name: "Rugby World Cup" },
         { id: "six-nations", name: "Six Nations Championship" },
-        { id: "rugby-championship", name: "The Rugby Championship" },
+        { id: "the-rugby-championship", name: "The Rugby Championship" },
+        { id: "autumn-nations-series", name: "Autumn Nations Series" },
+        { id: "lions-tour", name: "British and Irish Lions Tour" },
+        { id: "olympic-rugby-sevens", name: "Olympic Games Rugby Sevens" },
+        { id: "svns-series", name: "HSBC SVNS Series" },
       ],
     },
   ],
@@ -1151,7 +1431,11 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="usa" size={18} />,
       leagues: [
         { id: "mlb", name: "MLB — Major League Baseball" },
-        { id: "aaa", name: "Triple-A (AAA)" },
+        { id: "triple-a", name: "Triple-A (International & Pacific)" },
+        { id: "double-a", name: "Double-A Baseball" },
+        { id: "college-baseball", name: "NCAA Division I College Baseball" },
+        { id: "college-softball", name: "NCAA College Softball" },
+        { id: "college-world-series", name: "NCAA Men's College World Series" },
       ],
     },
     {
@@ -1160,7 +1444,9 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="japan" size={18} />,
       leagues: [
         { id: "npb", name: "NPB — Nippon Professional Baseball" },
-        { id: "japan-series", name: "Japan Series" },
+        { id: "npb-central", name: "NPB Central League" },
+        { id: "npb-pacific", name: "NPB Pacific League" },
+        { id: "japan-series", name: "SMBC Nippon Series" },
       ],
     },
     {
@@ -1168,8 +1454,8 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "South Korea",
       flag: <Flag country="southkorea" size={18} />,
       leagues: [
-        { id: "kbo", name: "KBO League" },
-        { id: "korean-series", name: "Korean Series" },
+        { id: "kbo", name: "KBO League (Korean Baseball)" },
+        { id: "korean-series", name: "KBO Korean Series" },
       ],
     },
     {
@@ -1177,55 +1463,122 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Mexico",
       flag: <Flag country="mexico" size={18} />,
       leagues: [
-        { id: "lmb", name: "LMB — Liga Mexicana de Béisbol" },
-        { id: "lmp", name: "LMP — Liga Mexicana del Pacífico" },
+        { id: "lmb", name: "LMB — Liga Mexicana de Béisbol (Summer)" },
+        { id: "mexican-winter-league", name: "LMP — Liga Mexicana del Pacífico (Winter)" },
+      ],
+    },
+    {
+      id: "dominican-baseball",
+      name: "Dominican Republic",
+      flag: <Flag country="dominicanrepublic" size={18} />,
+      leagues: [
+        { id: "dominican-winter-league", name: "LIDOM — Liga de Béisbol Profesional" },
+      ],
+    },
+    {
+      id: "puerto-rico-baseball",
+      name: "Puerto Rico",
+      flag: <Flag country="puertorico" size={18} />,
+      leagues: [
+        { id: "puerto-rican-winter-league", name: "LBPRC — Liga Roberto Clemente" },
+      ],
+    },
+    {
+      id: "venezuela-baseball",
+      name: "Venezuela",
+      flag: <Flag country="venezuela" size={18} />,
+      leagues: [
+        { id: "venezuelan-winter-league", name: "LVBP — Liga Venezolana de Béisbol" },
+      ],
+    },
+    {
+      id: "taiwan-baseball",
+      name: "Taiwan",
+      flag: <Flag country="taiwan" size={18} />,
+      leagues: [
+        { id: "cpbl", name: "CPBL — Chinese Professional Baseball League" },
+        { id: "taiwan-series", name: "Taiwan Series" },
+      ],
+    },
+    {
+      id: "cuba-baseball",
+      name: "Cuba",
+      flag: <Flag country="cuba" size={18} />,
+      leagues: [
+        { id: "snb-cuba", name: "SNB — Serie Nacional de Béisbol" },
+      ],
+    },
+    {
+      id: "australia-baseball",
+      name: "Australia",
+      flag: <Flag country="australia" size={18} />,
+      leagues: [
+        { id: "abl", name: "ABL — Australian Baseball League" },
+      ],
+    },
+    {
+      id: "netherlands-baseball",
+      name: "Netherlands",
+      flag: <Flag country="netherlands" size={18} />,
+      leagues: [
+        { id: "honkbal-hoofdklasse", name: "Honkbal Hoofdklasse (Dutch Major League)" },
+      ],
+    },
+    {
+      id: "italy-baseball",
+      name: "Italy",
+      flag: <Flag country="italy" size={18} />,
+      leagues: [
+        { id: "serie-a-baseball", name: "Serie A Baseball (Italian Baseball League)" },
       ],
     },
     {
       id: "canada-baseball",
       name: "Canada",
       flag: <Flag country="canada" size={18} />,
-      leagues: [{ id: "can-am-baseball", name: "Canadian Baseball League" }],
-    },
-    {
-      id: "china-baseball",
-      name: "China",
-      flag: <Flag country="china" size={18} />,
-      leagues: [{ id: "cba-baseball", name: "China National Baseball League" }],
-    },
-    {
-      id: "netherlands-baseball",
-      name: "Netherlands",
-      flag: <Flag country="netherlands" size={18} />,
-      leagues: [{ id: "honkbal-hoofdklasse", name: "Honkbal Hoofdklasse" }],
-    },
-    {
-      id: "italy-baseball",
-      name: "Italy",
-      flag: <Flag country="italy" size={18} />,
-      leagues: [{ id: "serie-a-baseball", name: "Italian Baseball League (Serie A)" }],
+      leagues: [
+        { id: "ibl-canada", name: "IBL — Intercounty Baseball League" },
+      ],
     },
     {
       id: "international-baseball",
       name: "International",
       flag: <Flag country="international" size={18} />,
       leagues: [
-        { id: "world-baseball-classic", name: "World Baseball Classic" },
-        { id: "premier12", name: "WBSC Premier12" },
-        { id: "olympics-baseball", name: "Olympics Baseball" },
+        { id: "world-baseball-classic", name: "World Baseball Classic (WBC)" },
+        { id: "wbsc-premier12", name: "WBSC Premier12" },
+        { id: "caribbean-series", name: "Serie del Caribe (Caribbean Series)" },
+        { id: "llb", name: "Little League Baseball World Series" },
+        { id: "lls", name: "Little League Softball World Series" },
+        { id: "olympics-baseball", name: "Olympic Games Baseball" },
       ],
     },
   ],
 
   Cricket: [
     {
+      id: "india-cricket",
+      name: "India",
+      flag: <Flag country="india" size={18} />,
+      leagues: [
+        { id: "ipl", name: "IPL — Indian Premier League" },
+        { id: "wpl", name: "WPL — Women's Premier League" },
+        { id: "ranji-trophy", name: "Ranji Trophy (First-Class)" },
+        { id: "syed-mushtaq-ali", name: "Syed Mushtaq Ali T20 Trophy" },
+        { id: "vijay-hazare", name: "Vijay Hazare Trophy (One-Day)" },
+      ],
+    },
+    {
       id: "england-cricket",
       name: "England",
       flag: <Flag country="england" size={18} />,
       leagues: [
-        { id: "county-cricket", name: "County Championship" },
-        { id: "the-hundred", name: "The Hundred" },
+        { id: "county-cricket", name: "County Championship Division One" },
+        { id: "county-cricket-two", name: "County Championship Division Two" },
+        { id: "the-hundred-men", name: "The Hundred (Men's Competition)" },
+        { id: "the-hundred-women", name: "The Hundred (Women's Competition)" },
         { id: "vitality-blast", name: "Vitality T20 Blast" },
+        { id: "metro-bank-one-day", name: "Metro Bank One-Day Cup" },
       ],
     },
     {
@@ -1233,58 +1586,119 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Australia",
       flag: <Flag country="australia" size={18} />,
       leagues: [
-        { id: "bbl", name: "Big Bash League" },
-        { id: "sheffield-shield", name: "Sheffield Shield" },
+        { id: "bbl", name: "KFC Big Bash League (BBL)" },
+        { id: "wbbl", name: "Weber Women's Big Bash League (WBBL)" },
+        { id: "sheffield-shield", name: "Sheffield Shield (First-Class)" },
+        { id: "marsh-one-day", name: "Marsh One-Day Cup" },
       ],
     },
     {
-      id: "india-cricket",
-      name: "India",
-      flag: <Flag country="india" size={18} />,
+      id: "pakistan-cricket",
+      name: "Pakistan",
+      flag: <Flag country="pakistan" size={18} />,
       leagues: [
-        { id: "ipl", name: "IPL — Indian Premier League" },
-        { id: "ranji-trophy", name: "Ranji Trophy" },
+        { id: "psl", name: "PSL — HBL Pakistan Super League" },
+        { id: "national-t20-pk", name: "National T20 Cup" },
+        { id: "quaid-e-azam", name: "Quaid-e-Azam Trophy" },
       ],
     },
     {
       id: "southafrica-cricket",
-      name: "International",
-      flag: <Flag country="international" size={18} />,
+      name: "South Africa",
+      flag: <Flag country="southafrica" size={18} />,
       leagues: [
-        { id: "icc-world-cup", name: "ICC Cricket World Cup" },
-        { id: "icc-t20-world-cup", name: "ICC T20 World Cup" },
-        { id: "wtc", name: "ICC World Test Championship" },
+        { id: "sa20", name: "Betway SA20 League" },
+        { id: "csa-t20-challenge", name: "CSA T20 Challenge" },
+        { id: "csa-4day", name: "CSA 4-Day Domestic Series" },
+        { id: "supersport-cricket", name: "SuperSport Series" },
+      ],
+    },
+    {
+      id: "westindies-cricket",
+      name: "West Indies",
+      flag: <Flag country="westindies" size={18} />,
+      leagues: [
+        { id: "cpl", name: "CPL — Caribbean Premier League" },
+        { id: "super50-cup", name: "CG United Super50 Cup" },
+        { id: "west-indies-championship", name: "West Indies Championship (4-Day)" },
+      ],
+    },
+    {
+      id: "newzealand-cricket",
+      name: "New Zealand",
+      flag: <Flag country="newzealand" size={18} />,
+      leagues: [
+        { id: "super-smash-men", name: "Dream11 Super Smash (Men)" },
+        { id: "super-smash-women", name: "Dream11 Super Smash (Women)" },
+        { id: "plunket-shield", name: "Plunket Shield" },
+        { id: "ford-trophy", name: "Ford Trophy" },
+      ],
+    },
+    {
+      id: "srilanka-cricket",
+      name: "Sri Lanka",
+      flag: <Flag country="srilanka" size={18} />,
+      leagues: [
+        { id: "lpl", name: "LPL — Lanka Premier League" },
+        { id: "major-league-sri-lanka", name: "Major League Tier A Tournament" },
+      ],
+    },
+    {
+      id: "bangladesh-cricket",
+      name: "Bangladesh",
+      flag: <Flag country="bangladesh" size={18} />,
+      leagues: [
+        { id: "bpl", name: "BPL — Bangladesh Premier League" },
+        { id: "dhaka-premier", name: "Dhaka Premier Division Cricket League" },
       ],
     },
     {
       id: "usa-cricket",
       name: "USA",
       flag: <Flag country="usa" size={18} />,
-      leagues: [{ id: "mlc", name: "MLC — Major League Cricket" }],
+      leagues: [
+        { id: "mlc", name: "MLC — Major League Cricket" },
+      ],
     },
     {
-      id: "canada-cricket",
-      name: "Canada",
-      flag: <Flag country="canada" size={18} />,
-      leagues: [{ id: "gt20-canada", name: "Global T20 Canada" }],
-    },
-    {
-      id: "england-womens-cricket",
-      name: "Europe",
-      flag: <Flag country="europe" size={18} />,
-      leagues: [{ id: "european-cricket-league", name: "European Cricket League" }],
+      id: "uae-cricket",
+      name: "Saudi Arabia & UAE",
+      flag: <Flag country="saudiarabia" size={18} />,
+      leagues: [
+        { id: "ilt20", name: "DP World ILT20 (International League T20)" },
+      ],
     },
     {
       id: "netherlands-cricket",
       name: "Netherlands",
       flag: <Flag country="netherlands" size={18} />,
-      leagues: [{ id: "topklasse-cricket", name: "Topklasse Cricket" }],
+      leagues: [
+        { id: "topklasse-cricket", name: "Topklasse Cricket" },
+      ],
     },
     {
-      id: "saudi-cricket",
-      name: "Saudi Arabia",
-      flag: <Flag country="saudiarabia" size={18} />,
-      leagues: [{ id: "saudi-t20-league", name: "Saudi T20 League" }],
+      id: "europe-cricket",
+      name: "Europe",
+      flag: <Flag country="europe" size={18} />,
+      leagues: [
+        { id: "european-cricket-league", name: "European Cricket League (ECL)" },
+        { id: "european-cricket-series", name: "European Cricket Series (ECS)" },
+      ],
+    },
+    {
+      id: "international-cricket",
+      name: "International",
+      flag: <Flag country="international" size={18} />,
+      leagues: [
+        { id: "icc-world-cup", name: "ICC Men's Cricket World Cup (ODI)" },
+        { id: "icc-t20-world-cup", name: "ICC Men's T20 World Cup" },
+        { id: "icc-womens-t20-wc", name: "ICC Women's T20 World Cup" },
+        { id: "wtc", name: "ICC World Test Championship" },
+        { id: "icc-champions-trophy", name: "ICC Champions Trophy" },
+        { id: "the-ashes", name: "The Ashes Series (ENG v AUS)" },
+        { id: "bilateral-tests", name: "International Test Series" },
+        { id: "bilateral-odis", name: "International ODI & T20I Series" },
+      ],
     },
   ],
 
@@ -1294,7 +1708,8 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Germany",
       flag: <Flag country="germany" size={18} />,
       leagues: [
-        { id: "bundesliga-handball", name: "Handball Bundesliga" },
+        { id: "bundesliga-handball", name: "DAIKIN Handball-Bundesliga" },
+        { id: "2-bundesliga-handball", name: "2. Handball-Bundesliga" },
         { id: "dhb-pokal", name: "DHB-Pokal" },
       ],
     },
@@ -1303,8 +1718,9 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "France",
       flag: <Flag country="france" size={18} />,
       leagues: [
-        { id: "starligue", name: "Starligue" },
-        { id: "coupe-handball", name: "Coupe de France" },
+        { id: "starligue", name: "Liqui Moly StarLigue" },
+        { id: "proligue-handball", name: "ProLigue Handball" },
+        { id: "coupe-handball", name: "Coupe de France de Handball" },
       ],
     },
     {
@@ -1312,41 +1728,95 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Spain",
       flag: <Flag country="spain" size={18} />,
       leagues: [
-        { id: "liga-asobal", name: "Liga ASOBAL" },
-        { id: "copa-rey-handball", name: "Copa del Rey" },
+        { id: "liga-asobal", name: "Liga Plenitude ASOBAL" },
+        { id: "division-honor-plata", name: "División de Honor Plata" },
+        { id: "copa-rey-handball", name: "Copa del Rey de Balonmano" },
       ],
     },
     {
       id: "denmark-handball",
+      name: "Denmark",
+      flag: <Flag country="denmark" size={18} />,
+      leagues: [
+        { id: "herreligaen", name: "HTH Herreligaen" },
+        { id: "kvindeligaen", name: "Bambusa Kvindeligaen" },
+        { id: "santander-cup", name: "Santander Cup (Danish Cup)" },
+      ],
+    },
+    {
+      id: "poland-handball",
       name: "Poland",
       flag: <Flag country="poland" size={18} />,
-      leagues: [{ id: "superliga-handball-pl", name: "Superliga (Orlen Superliga)" }],
+      leagues: [
+        { id: "superliga-handball-pl", name: "ORLEN Superliga" },
+        { id: "superliga-women-pl", name: "ORLEN Superliga Kobiet" },
+        { id: "puchar-polski-handball", name: "Puchar Polski w Piłce Ręcznej" },
+      ],
+    },
+    {
+      id: "hungary-handball",
+      name: "Hungary",
+      flag: <Flag country="hungary" size={18} />,
+      leagues: [
+        { id: "nb1-handball", name: "K&H Férfi Kézilabda Liga (NB I)" },
+        { id: "nb1-women-handball", name: "K&H Női Kézilabda Liga" },
+        { id: "magyar-kupa-handball", name: "Magyar Kupa" },
+      ],
     },
     {
       id: "sweden-handball",
       name: "Sweden",
       flag: <Flag country="sweden" size={18} />,
-      leagues: [{ id: "handbollsligan", name: "Handbollsligan" }],
+      leagues: [
+        { id: "handbollsligan-men", name: "Handbollsligan Men" },
+        { id: "handbollsligan-women", name: "Handbollsligan Women" },
+      ],
+    },
+    {
+      id: "norway-handball",
+      name: "Norway",
+      flag: <Flag country="norway" size={18} />,
+      leagues: [
+        { id: "rema-1000-men", name: "REMA 1000-ligaen Men" },
+        { id: "rema-1000-women", name: "REMA 1000-ligaen Women" },
+      ],
     },
     {
       id: "portugal-handball",
       name: "Portugal",
       flag: <Flag country="portugal" size={18} />,
-      leagues: [{ id: "andebol-1", name: "Campeonato de Andebol 1" }],
+      leagues: [
+        { id: "andebol-1", name: "Campeonato Placard Andebol 1" },
+        { id: "taca-portugal-handball", name: "Taça de Portugal de Andebol" },
+      ],
+    },
+    {
+      id: "croatia-handball",
+      name: "Croatia",
+      flag: <Flag country="croatia" size={18} />,
+      leagues: [
+        { id: "premijer-liga-handball", name: "Paket24 Premijer liga" },
+        { id: "croatian-cup-handball", name: "Hrvatski rukometni kup" },
+      ],
     },
     {
       id: "serbia-handball",
       name: "Serbia",
       flag: <Flag country="serbia" size={18} />,
-      leagues: [{ id: "superliga-handball-rs", name: "Serbian Handball Super League" }],
+      leagues: [
+        { id: "superliga-handball-rs", name: "Serbian Handball Super League (ARKUS)" },
+        { id: "serbian-cup-handball", name: "Serbian Handball Cup" },
+      ],
     },
     {
       id: "europe-handball",
       name: "Europe",
       flag: <Flag country="europe" size={18} />,
       leagues: [
-        { id: "ehf-champions-league", name: "EHF Champions League" },
+        { id: "ehf-champions-league", name: "Machineseeker EHF Champions League" },
+        { id: "ehf-cl-women", name: "EHF Champions League Women" },
         { id: "ehf-european-league", name: "EHF European League" },
+        { id: "ehf-european-cup", name: "EHF European Cup" },
       ],
     },
     {
@@ -1354,8 +1824,11 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "International",
       flag: <Flag country="international" size={18} />,
       leagues: [
-        { id: "ihf-world-championship", name: "IHF World Championship" },
-        { id: "olympics-handball", name: "Olympics Handball" },
+        { id: "ihf-world-championship", name: "IHF World Men's Handball Championship" },
+        { id: "ihf-womens-world-championship", name: "IHF World Women's Handball Championship" },
+        { id: "ehf-euro-men", name: "Men's EHF EURO" },
+        { id: "ehf-euro-women", name: "Women's EHF EURO" },
+        { id: "olympics-handball", name: "Olympics Handball Tournament" },
       ],
     },
   ],
@@ -1366,9 +1839,10 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "USA",
       flag: <Flag country="usa" size={18} />,
       leagues: [
-        { id: "wbc", name: "WBC Championships" },
-        { id: "wba", name: "WBA Championships" },
-        { id: "ibf", name: "IBF Championships" },
+        { id: "top-rank", name: "Top Rank Boxing Championship" },
+        { id: "pbc", name: "Premier Boxing Champions (PBC)" },
+        { id: "golden-boy", name: "Golden Boy Promotions Fight Night" },
+        { id: "ring-city", name: "Ring City USA" },
       ],
     },
     {
@@ -1376,8 +1850,19 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "England",
       flag: <Flag country="england" size={18} />,
       leagues: [
-        { id: "bbc-boxing", name: "British Boxing Board of Control" },
-        { id: "wbo-uk", name: "WBO" },
+        { id: "matchroom", name: "Matchroom Boxing Championship" },
+        { id: "queensberry", name: "Queensberry Promotions Fight Night" },
+        { id: "boxxer", name: "BOXXER on Sky Sports" },
+        { id: "bbcb-boxing", name: "British Boxing Board of Control (BBBofC)" },
+      ],
+    },
+    {
+      id: "saudi-boxing",
+      name: "Saudi Arabia",
+      flag: <Flag country="saudiarabia" size={18} />,
+      leagues: [
+        { id: "riyadh-season-boxing", name: "Riyadh Season Boxing Cards" },
+        { id: "the-ring-riyadh", name: "The Ring Magazine Undisputed Super Fights" },
       ],
     },
     {
@@ -1385,48 +1870,60 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Mexico",
       flag: <Flag country="mexico" size={18} />,
       leagues: [
-        { id: "cmb", name: "CMB — Consejo Mundial de Boxeo" },
-        { id: "wbc-mexico", name: "WBC Mexico" },
+        { id: "zanfer-boxing", name: "Zanfer Boxing Promotion" },
+        { id: "promociones-pueblo", name: "Promociones del Pueblo" },
+        { id: "cmb-mexico", name: "CMB — Campeonato Nacional de Boxeo" },
       ],
     },
     {
       id: "japan-boxing",
       name: "Japan",
       flag: <Flag country="japan" size={18} />,
-      leagues: [{ id: "jbc", name: "JBC — Japan Boxing Commission" }],
-    },
-    {
-      id: "saudi-boxing",
-      name: "Saudi Arabia",
-      flag: <Flag country="saudiarabia" size={18} />,
-      leagues: [{ id: "riyadh-season-boxing", name: "Riyadh Season Boxing Cards" }],
-    },
-    {
-      id: "russia-boxing",
-      name: "Russia",
-      flag: <Flag country="russia" size={18} />,
-      leagues: [{ id: "russian-boxing-federation", name: "Russian Boxing Federation" }],
+      leagues: [
+        { id: "teiken-boxing", name: "Teiken Promotions / Dynamic Glove" },
+        { id: "ohashi-boxing", name: "Ohashi Boxing / Lemino Phoenix Battle" },
+        { id: "jbc", name: "JBC — Japan Boxing Commission Titles" },
+      ],
     },
     {
       id: "germany-boxing",
       name: "Germany",
       flag: <Flag country="germany" size={18} />,
-      leagues: [{ id: "bdb", name: "BDB — Bund Deutscher Berufsboxer" }],
+      leagues: [
+        { id: "universum-boxing", name: "Universum Box-Promotion" },
+        { id: "ses-boxing", name: "SES Boxing Fight Night" },
+        { id: "bdb-boxing", name: "BDB — Bund Deutscher Berufsboxer" },
+      ],
     },
     {
       id: "argentina-boxing",
       name: "Argentina",
       flag: <Flag country="argentina" size={18} />,
-      leagues: [{ id: "fab", name: "Federación Argentina de Box" }],
+      leagues: [
+        { id: "boxeo-de-primera", name: "Boxeo de Primera (TyC Sports)" },
+        { id: "fab-boxing", name: "FAB — Federación Argentina de Box" },
+      ],
+    },
+    {
+      id: "russia-boxing",
+      name: "Russia",
+      flag: <Flag country="russia" size={18} />,
+      leagues: [
+        { id: "rcc-boxing", name: "RCC Boxing Promotions" },
+        { id: "russian-boxing-fed", name: "Russian Boxing Federation Championship" },
+      ],
     },
     {
       id: "international-boxing",
-      name: "International",
+      name: "International & Sanctioning Bodies",
       flag: <Flag country="international" size={18} />,
       leagues: [
-        { id: "wbo-world", name: "WBO World Championships" },
-        { id: "ibo-world", name: "IBO Championships" },
-        { id: "olympics-boxing", name: "Olympics Boxing" },
+        { id: "wbc-world", name: "WBC World Championships (World Boxing Council)" },
+        { id: "wba-world", name: "WBA World Championships (World Boxing Association)" },
+        { id: "ibf-world", name: "IBF World Championships (International Boxing Fed)" },
+        { id: "wbo-world", name: "WBO World Championships (World Boxing Org)" },
+        { id: "the-ring-world", name: "The Ring Magazine World Championship Belt" },
+        { id: "olympics-boxing", name: "Olympic Games Boxing Tournament" },
       ],
     },
   ],
@@ -1437,8 +1934,10 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "USA",
       flag: <Flag country="usa" size={18} />,
       leagues: [
-        { id: "pga-tour", name: "PGA Tour" },
+        { id: "pga-tour", name: "PGA TOUR" },
         { id: "korn-ferry", name: "Korn Ferry Tour" },
+        { id: "pga-tour-champions", name: "PGA TOUR Champions" },
+        { id: "lpga-tour", name: "LPGA Tour (Women's Professional Golf)" },
       ],
     },
     {
@@ -1447,7 +1946,18 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="england" size={18} />,
       leagues: [
         { id: "dp-world-tour", name: "DP World Tour (European Tour)" },
-        { id: "the-open", name: "The Open Championship" },
+        { id: "the-open", name: "The Open Championship (British Open)" },
+        { id: "challenge-tour", name: "European Challenge Tour" },
+        { id: "let-tour", name: "Ladies European Tour (LET)" },
+      ],
+    },
+    {
+      id: "saudi-golf",
+      name: "Saudi Arabia & Global",
+      flag: <Flag country="saudiarabia" size={18} />,
+      leagues: [
+        { id: "liv-golf", name: "LIV Golf League" },
+        { id: "saudi-international", name: "PIF Saudi International" },
       ],
     },
     {
@@ -1456,7 +1966,45 @@ const SPORT_DATA: Record<string, Country[]> = {
       flag: <Flag country="japan" size={18} />,
       leagues: [
         { id: "jgto", name: "JGTO — Japan Golf Tour" },
-        { id: "jlpga", name: "JLPGA Tour" },
+        { id: "jlpga", name: "JLPGA Tour (Japan LPGA)" },
+        { id: "japan-open-golf", name: "Japan Open Golf Championship" },
+      ],
+    },
+    {
+      id: "southkorea-golf",
+      name: "South Korea",
+      flag: <Flag country="southkorea" size={18} />,
+      leagues: [
+        { id: "kpga", name: "KPGA Korean Tour" },
+        { id: "klpga", name: "KLPGA Tour (Korean LPGA)" },
+      ],
+    },
+    {
+      id: "australia-golf",
+      name: "Australia",
+      flag: <Flag country="australia" size={18} />,
+      leagues: [
+        { id: "pga-tour-australasia", name: "PGA Tour of Australasia" },
+        { id: "australian-open-golf", name: "ISPS Handa Australian Open" },
+        { id: "wpga-tour", name: "WPGA Tour of Australasia" },
+      ],
+    },
+    {
+      id: "southafrica-golf",
+      name: "South Africa",
+      flag: <Flag country="southafrica" size={18} />,
+      leagues: [
+        { id: "sunshine-tour", name: "Sunshine Tour" },
+        { id: "south-african-open", name: "Investec South African Open Championship" },
+      ],
+    },
+    {
+      id: "spain-golf",
+      name: "Spain",
+      flag: <Flag country="spain" size={18} />,
+      leagues: [
+        { id: "spanish-open-golf", name: "Acciona Open de España" },
+        { id: "andalucia-masters", name: "Estrella Damm N.A. Andalucía Masters" },
       ],
     },
     {
@@ -1464,43 +2012,26 @@ const SPORT_DATA: Record<string, Country[]> = {
       name: "Europe",
       flag: <Flag country="europe" size={18} />,
       leagues: [
-        { id: "ryder-cup", name: "Ryder Cup" },
-        { id: "challenge-tour", name: "Challenge Tour" },
+        { id: "ryder-cup", name: "Ryder Cup (Team Europe vs Team USA)" },
+        { id: "bmw-pga-championship", name: "BMW PGA Championship (Wentworth)" },
+        { id: "scottish-open", name: "Genesis Scottish Open" },
+        { id: "french-open-golf", name: "Cazoo Open de France" },
+        { id: "irish-open", name: "Horizon Irish Open" },
       ],
     },
     {
-      id: "saudi-golf",
-      name: "Saudi Arabia",
-      flag: <Flag country="saudiarabia" size={18} />,
-      leagues: [{ id: "liv-golf", name: "LIV Golf League" }],
-    },
-    {
-      id: "australia-golf",
-      name: "Australia",
-      flag: <Flag country="australia" size={18} />,
-      leagues: [{ id: "pga-tour-australasia", name: "PGA Tour of Australasia" }],
-    },
-    {
-      id: "southkorea-golf",
-      name: "South Korea",
-      flag: <Flag country="southkorea" size={18} />,
-      leagues: [{ id: "klpga", name: "KLPGA Tour" }],
-    },
-    {
-      id: "spain-golf",
-      name: "Spain",
-      flag: <Flag country="spain" size={18} />,
-      leagues: [{ id: "spanish-open-golf", name: "Open de España" }],
-    },
-    {
       id: "international-golf",
-      name: "International",
+      name: "International & Majors",
       flag: <Flag country="international" size={18} />,
       leagues: [
-        { id: "masters-tournament", name: "The Masters" },
-        { id: "us-open-golf", name: "U.S. Open" },
+        { id: "masters-tournament", name: "The Masters Tournament (Augusta National)" },
         { id: "pga-championship", name: "PGA Championship" },
-        { id: "presidents-cup", name: "Presidents Cup" },
+        { id: "us-open-golf", name: "U.S. Open Championship" },
+        { id: "the-open-championship", name: "The Open Championship" },
+        { id: "the-players", name: "THE PLAYERS Championship" },
+        { id: "presidents-cup", name: "Presidents Cup (USA vs International)" },
+        { id: "solheim-cup", name: "Solheim Cup" },
+        { id: "olympics-golf", name: "Olympic Games Men's & Women's Golf" },
       ],
     },
   ],
@@ -1864,11 +2395,29 @@ function useSportLiveData(sport: string) {
         return;
       }
       const data = await r.json();
-      const games: BballGame[] = (data.games ?? []).map((g: BballGame) => ({
-        ...g,
-        country: g.country ?? "International",
-        league_id: g.league_id ?? g.league?.toLowerCase().replace(/\s+/g, "-") ?? "unknown",
-      }));
+      const games: BballGame[] = (data.games ?? []).map((g: any) => {
+        const homeName = g.home?.name || g.home?.short_name || g.name || "Home Team";
+        const homeShort = g.home?.short_name || g.home?.name || "HOM";
+        const awayName = g.away?.name || g.away?.short_name || g.course || "Away Team";
+        const awayShort = g.away?.short_name || g.away?.name || "AWY";
+        return {
+          ...g,
+          id: String(g.id || `game-${Math.random().toString(36).slice(2, 8)}`),
+          country: g.country ?? "International",
+          league: g.league ?? "Unknown League",
+          league_id: g.league_id ?? g.league?.toLowerCase().replace(/\s+/g, "-") ?? "unknown",
+          home: {
+            name: homeName,
+            short_name: homeShort,
+            logo_url: g.home?.logo_url ?? null,
+          },
+          away: {
+            name: awayName,
+            short_name: awayShort,
+            logo_url: g.away?.logo_url ?? null,
+          },
+        };
+      });
       setAllGames(games);
       setSource(data.source ?? "");
     } catch {
@@ -2059,33 +2608,37 @@ const BballOddsButton: React.FC<{
 // toBballMatchTip — geuza BballGame → MatchTip (kwa bet handlers)
 // ---------------------------------------------------------------------------
 function toBballMatchTip(game: BballGame): MatchTip {
-  const seed = hashStr(game.id);
-  const fallbackOdds = genOdds(seed, hashStr(game.home.short_name), hashStr(game.away.short_name));
+  const homeName = game.home?.short_name || game.home?.name || "Home";
+  const awayName = game.away?.short_name || game.away?.name || "Away";
+  const homeLogo = game.home?.logo_url ?? undefined;
+  const awayLogo = game.away?.logo_url ?? undefined;
+  const seed = hashStr(game.id || "game");
+  const fallbackOdds = genOdds(seed, hashStr(homeName), hashStr(awayName));
   const isTennis = (game.sport || "").toLowerCase() === "tennis";
   const odds = {
     home: game.odds?.home ?? fallbackOdds.home,
     away: game.odds?.away ?? fallbackOdds.away,
     draw: isTennis ? 1.0 : (game.odds?.draw ?? fallbackOdds.draw ?? 15.0),
   };
-  const s = game.status.toLowerCase();
+  const s = (game.status || "").toLowerCase();
   const isLive = s.includes("live") || s.includes("inprogress") || s.includes("in_progress");
   const isEnded = s.includes("final") || s.includes("ft") || s.includes("finished");
   return {
     id: game.id,
     sport: game.sport || "Basketball",
     category: game.sport || "Basketball",
-    league: game.league,
+    league: game.league || "Unknown League",
     time: fmtTime(game.kickoff_utc),
     status: isLive ? "LIVE" : isEnded ? "ENDED" : "UPCOMING",
     confidence: 70,
     homeTeam: {
-      name: game.home.short_name,
-      logoUrl: game.home.logo_url ?? undefined,
+      name: homeName,
+      logoUrl: homeLogo,
       bgGlow: "#1e40af",
     },
     awayTeam: {
-      name: game.away.short_name,
-      logoUrl: game.away.logo_url ?? undefined,
+      name: awayName,
+      logoUrl: awayLogo,
       bgGlow: "#991b1b",
     },
     odds,
@@ -2177,9 +2730,9 @@ const BballMatchRow: React.FC<{
         {/* Home Team */}
         <div className="flex-1 flex items-center justify-end gap-1.5 max-w-[36%]">
           <span className={`text-[11px] font-black truncate text-right ${txtPrimary(theme)}`}>
-            {game.home.name || game.home.short_name}
+            {game.home?.name || game.home?.short_name || "Home"}
           </span>
-          <BballCrest src={game.home.logo_url} name={game.home.short_name} size={20} />
+          <BballCrest src={game.home?.logo_url} name={game.home?.short_name || game.home?.name || "Home"} size={20} />
         </div>
 
         {/* Center: Live/Ended Score Badge with Scrolling Sets, OR Upcoming "VS" */}
@@ -2208,9 +2761,9 @@ const BballMatchRow: React.FC<{
 
         {/* Away Team */}
         <div className="flex-1 flex items-center gap-1.5 max-w-[36%]">
-          <BballCrest src={game.away.logo_url} name={game.away.short_name} size={20} />
+          <BballCrest src={game.away?.logo_url} name={game.away?.short_name || game.away?.name || "Away"} size={20} />
           <span className={`text-[11px] font-black truncate ${txtPrimary(theme)}`}>
-            {game.away.name || game.away.short_name}
+            {game.away?.name || game.away?.short_name || "Away"}
           </span>
         </div>
       </div>
@@ -2330,9 +2883,9 @@ function CountryRow({
 
       {isOpen && (
         <div className={`border-t ${leagueBg} divide-y divide-white/5`}>
-          {country.leagues.map((league) => (
+          {country.leagues.map((league, idx) => (
             <button
-              key={league.id}
+              key={`${country.id}-${league.id}-${idx}`}
               onClick={() => onLeagueSelect?.(league, country.name)}
               className={`w-full text-left px-5 py-3 text-xs font-medium ${leagueText} hover:opacity-80 transition-opacity flex items-center justify-between gap-2.5`}
             >
@@ -2506,17 +3059,53 @@ function matchCountryName(countryA: string, countryB: string): boolean {
   if (!a || !b) return false;
   if (a === b || a.includes(b) || b.includes(a)) return true;
 
-  // England / UK / London equivalences
-  const ukTokens = ["england", "uk", "unitedkingdom", "london", "greatbritain"];
-  const isAUk = ukTokens.some((t) => a.includes(t));
-  const isBUk = ukTokens.some((t) => b.includes(t));
-  if (isAUk && isBUk) return true;
+  // England / UK / London / Great Britain equivalences
+  const ukTokens = ["england", "uk", "unitedkingdom", "london", "greatbritain", "gb"];
+  if (ukTokens.some((t) => a.includes(t)) && ukTokens.some((t) => b.includes(t))) return true;
 
   // USA equivalences
   const usaTokens = ["usa", "unitedstates", "america", "newyork", "miami", "indianwells", "us"];
-  const isAUsa = usaTokens.some((t) => a.includes(t));
-  const isBUsa = usaTokens.some((t) => b.includes(t));
-  if (isAUsa && isBUsa) return true;
+  if (usaTokens.some((t) => a.includes(t)) && usaTokens.some((t) => b.includes(t))) return true;
+
+  // Australia / Oceania
+  const ausTokens = ["australia", "aus", "oceania", "australiaoceania"];
+  if (ausTokens.some((t) => a.includes(t)) && ausTokens.some((t) => b.includes(t))) return true;
+
+  // South Korea
+  const korTokens = ["southkorea", "korea", "kor", "republicofkorea"];
+  if (korTokens.some((t) => a.includes(t)) && korTokens.some((t) => b.includes(t))) return true;
+
+  // Russia
+  const rusTokens = ["russia", "rus", "russianfederation"];
+  if (rusTokens.some((t) => a.includes(t)) && rusTokens.some((t) => b.includes(t))) return true;
+
+  // Saudi Arabia
+  const ksaTokens = ["saudi", "saudiarabia", "ksa"];
+  if (ksaTokens.some((t) => a.includes(t)) && ksaTokens.some((t) => b.includes(t))) return true;
+
+  // Netherlands / Holland
+  const nedTokens = ["netherlands", "holland", "ned", "dutch"];
+  if (nedTokens.some((t) => a.includes(t)) && nedTokens.some((t) => b.includes(t))) return true;
+
+  // Germany / Deutschland
+  const gerTokens = ["germany", "deutschland", "ger"];
+  if (gerTokens.some((t) => a.includes(t)) && gerTokens.some((t) => b.includes(t))) return true;
+
+  // Spain / España
+  const espTokens = ["spain", "espana", "spa", "esp"];
+  if (espTokens.some((t) => a.includes(t)) && espTokens.some((t) => b.includes(t))) return true;
+
+  // Italy / Italia
+  const itaTokens = ["italy", "italia", "ita"];
+  if (itaTokens.some((t) => a.includes(t)) && itaTokens.some((t) => b.includes(t))) return true;
+
+  // Brazil / Brasil
+  const braTokens = ["brazil", "brasil", "bra"];
+  if (braTokens.some((t) => a.includes(t)) && braTokens.some((t) => b.includes(t))) return true;
+
+  // Japan / Nippon
+  const jpnTokens = ["japan", "nippon", "jpn"];
+  if (jpnTokens.some((t) => a.includes(t)) && jpnTokens.some((t) => b.includes(t))) return true;
 
   return false;
 }
@@ -2564,60 +3153,73 @@ export default function SportPage({
   const staticCountries = SPORT_DATA[sport] ?? getDefaultCountries(sport);
   const icon = SPORT_ICONS[sport] ?? null;
 
-  // Countries always start from the full static catalogue, then merge in
-  // whatever ESPN (live API) reports on top — adding new countries/leagues
-  // and filling in real logos — but never removing a static country/league
-  // just because ESPN has no live games for it at this exact moment. This is
-  // what keeps e.g. Russia (Volleyball) or off-season leagues from vanishing.
+  // Countries: Merge static catalogue with ESPN live data so catalogue is full
+  // and live matches enrich leagues with real logos and real-time feeds.
   const countries = useMemo<typeof staticCountries>(() => {
     if (!hasSportApi) return staticCountries;
-    // Until the first ESPN response arrives we show nothing (a loader instead),
-    // so the list never flashes a long static list and then collapses.
     if (!liveData.loaded) return [];
-    if (liveData.grouped.size === 0) return staticCountries;
 
     const leagueLogo = (games: BballGame[]) => games[0]?.league_logo ?? null;
 
-    // Deep-clone the static catalogue so we never mutate the module-level data.
-    const merged: typeof staticCountries = staticCountries.map((c) => ({
-      ...c,
-      leagues: c.leagues.map((l) => ({ ...l })),
-    }));
+    // Start with all catalogue static countries so no country or league is ever dropped
+    const mergedCountries = staticCountries.map((sc) => {
+      let matchingGroup: Map<string, BballGame[]> | undefined;
+      for (const [cKey, lMap] of liveData.grouped.entries()) {
+        if (matchCountryName(sc.name, cKey)) {
+          matchingGroup = lMap;
+          break;
+        }
+      }
 
-    for (const [countryKey, leagueMap] of liveData.grouped) {
-      let target = merged.find((c) => matchCountryName(c.name, countryKey));
-      if (!target) {
-        // ESPN knows a country our static catalogue doesn't yet have — add it,
-        // don't drop everything else in favour of it.
-        target = {
+      if (!matchingGroup) {
+        return sc;
+      }
+
+      const leaguesMap = new Map<string, League>();
+      for (const sl of sc.leagues) {
+        leaguesMap.set(sl.id, { ...sl });
+      }
+
+      for (const [lName, gs] of matchingGroup.entries()) {
+        const matchingStatic = sc.leagues.find((l) => matchLeagueName(l.name, lName));
+        const id = matchingStatic?.id ?? lName.toLowerCase().replace(/\s+/g, "-");
+        const name = matchingStatic?.name ?? lName;
+        const logo = leagueLogo(gs) ?? matchingStatic?.logo ?? null;
+
+        if (leaguesMap.has(id)) {
+          const existing = leaguesMap.get(id)!;
+          if (logo && !existing.logo) existing.logo = logo;
+        } else {
+          leaguesMap.set(id, { id, name, logo });
+        }
+      }
+
+      return {
+        ...sc,
+        leagues: Array.from(leaguesMap.values()),
+      };
+    });
+
+    // Also include any brand-new country from ESPN that wasn't in static catalogue
+    for (const [countryKey, leagueMap] of liveData.grouped.entries()) {
+      const alreadyIncluded = mergedCountries.some((c) => matchCountryName(c.name, countryKey));
+      if (!alreadyIncluded) {
+        const leaguesMap = new Map<string, League>();
+        for (const [lName, gs] of leagueMap.entries()) {
+          const id = lName.toLowerCase().replace(/\s+/g, "-");
+          const logo = leagueLogo(gs) ?? null;
+          leaguesMap.set(id, { id, name: lName, logo });
+        }
+        mergedCountries.push({
           id: `api-${countryKey.toLowerCase().replace(/\s+/g, "-")}`,
           name: countryKey,
           flag: <Flag country={countryKey} label={countryKey} size={18} />,
-          leagues: [],
-        };
-        merged.push(target);
-      }
-      for (const [lName, gs] of leagueMap.entries()) {
-        const logo = leagueLogo(gs);
-        const existingLeague = target.leagues.find((l) => matchLeagueName(l.name, lName));
-        if (existingLeague) {
-          // Keep the static id/name (stable for bet handlers), just fill the logo in.
-          if (logo && !existingLeague.logo) existingLeague.logo = logo;
-        } else {
-          target.leagues.push({
-            id: lName.toLowerCase().replace(/\s+/g, "-"),
-            name: lName,
-            logo,
-          });
-        }
+          leagues: Array.from(leaguesMap.values()),
+        });
       }
     }
 
-    // Keep the familiar static ordering first, then any extra ESPN countries.
-    const order = new Map(staticCountries.map((c, i) => [c.name, i]));
-    return merged.sort(
-      (a, b) => (order.get(a.name) ?? 999) - (order.get(b.name) ?? 999) || a.name.localeCompare(b.name),
-    );
+    return mergedCountries;
   }, [hasSportApi, staticCountries, liveData.grouped, liveData.loaded]);
 
   // Games shown in the GamesPanel — filtered to selected country + league
@@ -2707,7 +3309,11 @@ export default function SportPage({
 
       {/* ── Country list ───────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 pb-6 no-scrollbar">
-        {hasSportApi && !liveData.loaded && <SportPageSkeleton theme={theme} />}
+        {hasSportApi && !liveData.loaded && (
+          <div className="py-2">
+            <CountryListSkeleton theme={theme} />
+          </div>
+        )}
         {hasSportApi && liveData.loaded && countries.length === 0 && (
           <p className={`text-xs py-6 text-center ${subtitleText}`}>No countries available right now.</p>
         )}

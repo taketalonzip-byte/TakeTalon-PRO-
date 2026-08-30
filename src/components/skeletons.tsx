@@ -450,3 +450,32 @@ export function SportPageSkeleton({ theme }: { theme: Theme }) {
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CountryListSkeleton — vertical country rows skeleton for SportPage
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function CountryListSkeleton({ theme }: { theme: Theme }) {
+  return (
+    <div className="space-y-2 py-1">
+      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+        <div
+          key={i}
+          className={`rounded-xl border overflow-hidden ${cardBg(theme)}`}
+        >
+          <div className="flex items-center justify-between px-4 py-3.5">
+            <div className="flex items-center gap-3">
+              <div className={pulse(theme, "w-8 h-8 rounded-md shrink-0")} />
+              <div className={pulse(theme, i % 2 === 0 ? "w-28 h-4" : "w-36 h-4")} />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={pulse(theme, "w-5 h-3")} />
+              <div className={pulse(theme, "w-4 h-4 rounded")} />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+

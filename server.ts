@@ -955,26 +955,40 @@ app.get("/api/sports/:sport/games", async (req, res) => {
     try {
       const tournaments = await getGolfTournamentsFromEspn();
       return res.json({
-        games: tournaments.map((t) => ({
-          id: t.id,
-          sport: "Golf",
-          league: t.tour.name,
-          league_logo: t.tour.emblem,
-          country: t.tour.country,
-          league_id: t.tour.code.toLowerCase(),
-          name: t.name,
-          course: t.course,
-          kickoff_utc: t.startDate,
-          end_utc: t.endDate,
-          status: t.isLive ? t.shortDetail || `Round ${t.round}` : t.status,
-          short_detail: t.shortDetail,
-          period: t.round,
-          is_live: t.isLive,
-          score: null,
-          broadcast: t.broadcast || "ESPN Golf",
-          has_odds: true,
-          leaderboard: t.leaderboard.slice(0, 20),
-        })),
+        games: tournaments.map((t) => {
+          const leader = t.leaderboard && t.leaderboard.length > 0 ? t.leaderboard[0] : null;
+          const runnerUp = t.leaderboard && t.leaderboard.length > 1 ? t.leaderboard[1] : null;
+          return {
+            id: t.id,
+            sport: "Golf",
+            league: t.tour.name,
+            league_logo: t.tour.emblem,
+            country: t.tour.country,
+            league_id: t.tour.code.toLowerCase(),
+            name: t.name,
+            course: t.course,
+            home: {
+              name: leader ? leader.name : (t.name || "Tournament Leader"),
+              short_name: leader ? (leader.shortName || leader.name.slice(0, 3).toUpperCase()) : "LDR",
+              logo_url: null,
+            },
+            away: {
+              name: runnerUp ? runnerUp.name : (t.course || "Field"),
+              short_name: runnerUp ? (runnerUp.shortName || runnerUp.name.slice(0, 3).toUpperCase()) : "FLD",
+              logo_url: null,
+            },
+            kickoff_utc: t.startDate,
+            end_utc: t.endDate,
+            status: t.isLive ? t.shortDetail || `Round ${t.round}` : t.status,
+            short_detail: t.shortDetail,
+            period: t.round,
+            is_live: t.isLive,
+            score: null,
+            broadcast: t.broadcast || "ESPN Golf",
+            has_odds: true,
+            leaderboard: t.leaderboard.slice(0, 20),
+          };
+        }),
         source: "espn",
       });
     } catch (e: any) {
