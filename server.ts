@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import crypto from "crypto";
 import { hush } from "./src/lib/hush/presentation/hush-facade";
+import { HUSH_MAX_MULTIPLIER } from "./src/lib/hush/domain/fairness";
 import { syncEspnCompetition, fetchEspnScoreboard, ESPN_LEAGUE_SLUGS } from "./src/lib/espnService";
 import {
   getBasketballMatchesFromEspn,
@@ -175,11 +176,13 @@ async function runAviatorLaunchedPhase() {
     const outcome = await hush.generateNextOutcome();
     const generatedCrashPoint = Number(outcome.multiplier);
     if (Number.isFinite(generatedCrashPoint) && generatedCrashPoint >= 1) {
-      crashPoint = parseFloat(generatedCrashPoint.toFixed(2));
+      crashPoint = parseFloat(Math.min(HUSH_MAX_MULTIPLIER, generatedCrashPoint).toFixed(2));
     }
   } catch (e: any) {
-    console.error("[Aviator] HUSH generation error, natumia fallback ya nasibu:", e?.message || e);
-    crashPoint = parseFloat((1.05 + Math.random() * 5.0).toFixed(2));
+    console.error("[Aviator] HUSH generation error, natumia CSPRNG fallback:", e?.message || e);
+    // Availability fallback only: use Node's OS-backed CSPRNG, never Math.random().
+    const fallbackCents = crypto.randomInt(105, 50001);
+    crashPoint = Math.min(HUSH_MAX_MULTIPLIER, fallbackCents / 100);
   }
 
   // Never expose the crash point before the BUSTED phase.

@@ -5,6 +5,7 @@
 
 import { ProvablyFairOutcome, SeedPair } from "../domain/entities";
 import { ICryptoService, IAuditLogger } from "../domain/interfaces";
+import { multiplierFromHmac } from "../domain/fairness";
 
 /**
  * Use case to generate a verifiable round outcome (multiplier) using HMAC-SHA256.
@@ -42,29 +43,10 @@ export class GenerateRoundOutcomeUseCase {
         verificationString,
       );
 
-      // 4. Hex-to-Float mapping (standard 52-bit integer conversion)
-      // We extract 13 hex characters (13 * 4 = 52 bits of entropy)
-      const hexEntropy = hmacSignature.substring(0, 13);
-      const decimalEntropy = parseInt(hexEntropy, 16);
-
-      // Calculate fraction in [0, 1)
-      const r = decimalEntropy / Math.pow(2, 52);
-
-      // 5. Apply House Edge and standard crash formula
-      // Typical house edge: 3% (0.03)
-      // If r is less than house edge, multiplier is 1.00 (instant bust)
-      // Otherwise, outcome = (1 - houseEdge) / (1 - r)
-      const houseEdge = 0.03;
-      let multiplier = 1.0;
-
-      if (r >= houseEdge) {
-        const rawMultiplier = (1 - houseEdge) / (1 - r);
-        // Floor to 2 decimal places to match casino standard and avoid floating precision noise
-        multiplier = Math.floor(rawMultiplier * 100) / 100;
-      }
-
-      // Ensure lower boundary is exactly 1.00
-      multiplier = Math.max(1.0, multiplier);
+      // 4. Deterministic 52-bit mapping with the same bounded rule used by verification.
+      // HMAC-SHA256 remains the entropy source; the ceiling prevents an extreme tail
+      // from keeping the live round open for hours.
+      const multiplier = multiplierFromHmac(hmacSignature);
 
       this.auditLogger.log(
         "ROUND_GENERATION",

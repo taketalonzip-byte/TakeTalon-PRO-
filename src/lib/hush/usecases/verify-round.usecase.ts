@@ -4,6 +4,7 @@
  */
 
 import { ICryptoService, IAuditLogger } from "../domain/interfaces";
+import { multiplierFromHmac } from "../domain/fairness";
 
 export interface VerificationResult {
   readonly isValid: boolean;
@@ -38,23 +39,10 @@ export class VerifyRoundUseCase {
       const actualCommitmentHash = await this.cryptoService.sha256(serverSeed);
       const commitmentMatch = actualCommitmentHash === claimedCommitmentHash;
 
-      // 2. Re-calculate the outcome using HMAC-SHA256
+      // 2. Re-calculate the outcome using the exact same bounded HMAC mapping.
       const verificationString = `${clientSeed}-${nonce}`;
       const calculatedHmac = await this.cryptoService.hmacSha256(serverSeed, verificationString);
-
-      // Extract 13 characters of entropy (52 bits)
-      const hexEntropy = calculatedHmac.substring(0, 13);
-      const decimalEntropy = parseInt(hexEntropy, 16);
-      const r = decimalEntropy / Math.pow(2, 52);
-
-      const houseEdge = 0.03;
-      let calculatedMultiplier = 1.0;
-
-      if (r >= houseEdge) {
-        const rawMultiplier = (1 - houseEdge) / (1 - r);
-        calculatedMultiplier = Math.floor(rawMultiplier * 100) / 100;
-      }
-      calculatedMultiplier = Math.max(1.0, calculatedMultiplier);
+      const calculatedMultiplier = multiplierFromHmac(calculatedHmac);
 
       // Check if outcome aligns with the visual or database record
       const multiplierMatch =
