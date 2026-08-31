@@ -22,7 +22,7 @@ import {
   FootballCountrySkeleton,
   SportPageSkeleton,
 } from "./components/skeletons";
-import { getFixtures, getCompetitionFixtures } from "./lib/footballCache";
+import { getFixtures, getCompetitionFixtures, invalidateCompetitions } from "./lib/footballCache";
 import { syncPendingPhotoUploads } from "./lib/photoUploader";
 
 import type { LegalSectionId } from "./components/LegalView";
@@ -1285,6 +1285,9 @@ export default function App() {
           status = "ENDED";
         }
 
+        const homeScore = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
+        const awayScore = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
+
         let category = "International";
         if (match.competition?.code === "PL" || match.competition?.code === "ELC") category = "UK";
         else if (match.competition?.code === "PD") category = "Espagne";
@@ -1295,9 +1298,17 @@ export default function App() {
         const homeGlow = hash % 2 === 0 ? "rgba(59, 130, 246, 0.4)" : "rgba(239, 68, 68, 0.4)";
         const awayGlow = hash % 2 === 0 ? "rgba(16, 185, 129, 0.4)" : "rgba(234, 179, 8, 0.4)";
 
-        const homeOdds = parseFloat((1.5 + (hash % 10) / 4).toFixed(2));
-        const drawOdds = parseFloat((3.0 + (hash % 5) / 5).toFixed(2));
-        const awayOdds = parseFloat((2.0 + (hash % 8) / 3).toFixed(2));
+        const oddsAvailable =
+          match.odds != null &&
+          Number.isFinite(Number(match.odds.home)) && Number(match.odds.home) > 1 &&
+          Number.isFinite(Number(match.odds.draw)) && Number(match.odds.draw) > 1 &&
+          Number.isFinite(Number(match.odds.away)) && Number(match.odds.away) > 1;
+        const odds = oddsAvailable
+          ? { home: Number(match.odds.home), draw: Number(match.odds.draw), away: Number(match.odds.away) }
+          : { home: 0, draw: 0, away: 0 };
+        const suspended = Boolean(
+          match.bettingSuspendedUntil && new Date(match.bettingSuspendedUntil).getTime() > Date.now(),
+        );
 
         return {
           id: `api-tip-${matchId}`,
@@ -1307,7 +1318,11 @@ export default function App() {
           gender: "Man",
           time: timeDisplay,
           status,
-          liveMinutes: status === "LIVE" ? `${Math.floor(45 + hash * 2)}'` : undefined,
+          liveMinutes: status === "LIVE" ? (match.displayClock ?? (match.minute != null ? `${match.minute}'` : undefined)) : undefined,
+          liveClock: match.displayClock ?? (match.minute != null ? `${match.minute}'` : null),
+          homeScore,
+          awayScore,
+          score: homeScore != null && awayScore != null ? { home: homeScore, away: awayScore } : undefined,
           confidence,
           homeTeam: {
             name: match.homeTeam.shortName || match.homeTeam.name,
@@ -1319,14 +1334,11 @@ export default function App() {
             bgGlow: awayGlow,
             logoUrl: match.awayTeam.crest,
           },
-          odds: {
-            home: homeOdds,
-            draw: drawOdds,
-            away: awayOdds,
-          },
+            odds,
+            oddsAvailable: oddsAvailable && !suspended,
           payoutBadge: `FBU ${(500 + hash * 30).toLocaleString()}k`,
-          isPremium: hash % 3 === 0,
-          isLocked: hash % 3 === 0,
+            isPremium: hash % 3 === 0,
+            isLocked: hash % 3 === 0 || suspended,
           tipster: {
             name: hash % 2 === 0 ? "TalonTake J." : "TakeTalon Pro",
             avatarLetter: "T",
@@ -1478,9 +1490,37 @@ export default function App() {
     }
   };
 
-  // Fetch real-time football matches on component load
+  // Fetch football matches on load and refresh the homepage feed when the DB changes.
   useEffect(() => {
     fetchRealTimeMatches();
+    if (!isSupabaseConfigured) return;
+
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const channel = supabase
+      .channel("football-home-live")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "football_fixtures",
+          filter: "provider=eq.espn",
+        },
+        () => {
+          invalidateCompetitions(["PL", "PD", "BL1", "FL1", "SA"]);
+          if (refreshTimer) return;
+          refreshTimer = setTimeout(() => {
+            refreshTimer = null;
+            fetchRealTimeMatches();
+          }, 250);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const [leagueLoadingStates, setLeagueLoadingStates] = useState<Record<string, boolean>>({});
@@ -1529,13 +1569,26 @@ export default function App() {
           }
 
           const timeDisplay = formatSwahiliDateTime(match.utcDate);
+          const normalizedStatus = String(match.status || "").toUpperCase();
+          const liveStatus = ["IN_PLAY", "PAUSED", "LIVE"].includes(normalizedStatus);
+          const endedStatus = ["FINISHED", "AWARDED", "ENDED", "FINAL", "FT"].includes(normalizedStatus);
+          const liveHomeScore = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
+          const liveAwayScore = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
 
           const homeGlow = hash % 2 === 0 ? "rgba(59, 130, 246, 0.45)" : "rgba(239, 68, 68, 0.45)";
           const awayGlow = hash % 2 === 0 ? "rgba(16, 185, 129, 0.45)" : "rgba(234, 179, 8, 0.45)";
 
-          const homeOdds = parseFloat((1.4 + (hash % 10) / 4).toFixed(2));
-          const drawOdds = parseFloat((3.1 + (hash % 5) / 5).toFixed(2));
-          const awayOdds = parseFloat((1.9 + (hash % 8) / 3).toFixed(2));
+          const oddsAvailable =
+            match.odds != null &&
+            Number.isFinite(Number(match.odds.home)) && Number(match.odds.home) > 1 &&
+            Number.isFinite(Number(match.odds.draw)) && Number(match.odds.draw) > 1 &&
+            Number.isFinite(Number(match.odds.away)) && Number(match.odds.away) > 1;
+          const odds = oddsAvailable
+            ? { home: Number(match.odds.home), draw: Number(match.odds.draw), away: Number(match.odds.away) }
+            : { home: 0, draw: 0, away: 0 };
+          const suspended = Boolean(
+            match.bettingSuspendedUntil && new Date(match.bettingSuspendedUntil).getTime() > Date.now(),
+          );
 
           return {
             id: `api-tip-${matchId}`,
@@ -1544,7 +1597,11 @@ export default function App() {
             league: match.competition.name,
             gender: "Man",
             time: timeDisplay,
-            status: "UPCOMING" as const,
+            status: liveStatus ? "LIVE" : endedStatus ? "ENDED" : "UPCOMING",
+            liveClock: match.displayClock ?? (match.minute != null ? `${match.minute}'` : null),
+            homeScore: liveHomeScore,
+            awayScore: liveAwayScore,
+            score: liveHomeScore != null && liveAwayScore != null ? { home: liveHomeScore, away: liveAwayScore } : undefined,
             confidence,
             homeTeam: {
               name: match.homeTeam.shortName || match.homeTeam.name,
@@ -1556,14 +1613,11 @@ export default function App() {
               bgGlow: awayGlow,
               logoUrl: match.awayTeam.crest,
             },
-            odds: {
-              home: homeOdds,
-              draw: drawOdds,
-              away: awayOdds,
-            },
+            odds,
+            oddsAvailable: oddsAvailable && !suspended,
             payoutBadge: `FBU ${(600 + hash * 35).toLocaleString()}k`,
             isPremium: hash % 3 === 0,
-            isLocked: hash % 3 === 0,
+            isLocked: hash % 3 === 0 || suspended,
             tipster: {
               name: hash % 2 === 0 ? "Kwako Specialist" : "LaLiga Maestro",
               avatarLetter: "L",

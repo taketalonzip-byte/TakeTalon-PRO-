@@ -1584,8 +1584,8 @@ async function resolveCompetitionForRead(code: string): Promise<{ id: string; pr
 
 async function getMatchesForCode(
   code: string,
-  opts: { dateFrom?: string; dateTo?: string; status?: string } = {}
-): Promise<{ matches: any[]; source: string }> {
+  opts: { dateFrom?: string; dateTo?: string; status?: string } = {},
+): Promise<{ matches: any[]; source: string; competitionDbId?: string }> {
   if (!supabaseAdmin) return { matches: [], source: "empty" };
 
   let liveClocks: Record<number, string> = {};
@@ -1676,7 +1676,7 @@ async function getMatchesForCode(
   });
 
   const source = comp.provider === "espn" ? (espnSyncOk ? "espn" : "cache") : "cache";
-  return { matches, source };
+  return { matches, source, competitionDbId: String(comp.id) };
 }
 
 app.get("/api/football/matches", async (req, res) => {

@@ -644,6 +644,7 @@ export interface FootballMatch {
 interface MatchesResponse {
   matches: FootballMatch[];
   source?: string;
+  competitionDbId?: string;
 }
 
 export interface StandingRow {

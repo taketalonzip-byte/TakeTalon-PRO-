@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import { MatchTip, CartItem } from "../types";
 import { FootballMatchSkeleton } from "./skeletons";
-import { getCompetitionFixtures } from "../lib/footballCache";
+import { getCompetitionFixtures, invalidateCompetitions } from "../lib/footballCache";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { ESPN_LEAGUE_LOGOS } from "../lib/leagueLogos";
 import { getUnifiedMatchStatus } from "../lib/sportMatchStatus";
 import { ScrollingScoreBadge } from "./ScrollingScoreBadge";
@@ -71,6 +72,7 @@ interface ApiMatch {
   odds?: { home: number; draw: number; away: number };
   odds_model?: string | null;
   odds_updated_at?: string | null;
+  bettingSuspendedUntil?: string | null;
 }
 
 interface FootballPageProps {
@@ -109,7 +111,9 @@ function fmtDate(utc: string) {
 }
 
 function toMatchTip(match: ApiMatch, leagueName: string): MatchTip {
+  const isSuspended = Boolean(match.bettingSuspendedUntil && new Date(match.bettingSuspendedUntil).getTime() > Date.now());
   const oddsAvailable =
+    !isSuspended &&
     match.odds != null &&
     Number.isFinite(match.odds.home) && match.odds.home > 1 &&
     Number.isFinite(match.odds.draw) && match.odds.draw > 1 &&
@@ -149,7 +153,7 @@ function toMatchTip(match: ApiMatch, leagueName: string): MatchTip {
     odds,
     oddsAvailable,
     isPremium: false,
-    isLocked: false,
+    isLocked: isSuspended,
     tipster: {
       name: "TakeTalon",
       avatarLetter: "T",
@@ -469,7 +473,9 @@ const MatchRow: React.FC<{
       <div className="flex items-center justify-between gap-2">
         {!oddsAvailable ? (
           <span className={`text-[9px] font-black uppercase tracking-wide ${textSecondary(theme)}`}>
-            Odds coming soon
+            {match.bettingSuspendedUntil && new Date(match.bettingSuspendedUntil).getTime() > Date.now()
+              ? "Updating — betting paused"
+              : "Odds coming soon"}
           </span>
         ) : (
         <div className="flex items-center gap-1">
@@ -532,6 +538,7 @@ const MatchRow: React.FC<{
 
 function useLeagueMatches(apiCode: string | undefined) {
   const [matches, setMatches] = useState<ApiMatch[]>([]);
+  const [competitionDbId, setCompetitionDbId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
 
@@ -543,6 +550,7 @@ function useLeagueMatches(apiCode: string | undefined) {
     if (!isBackground) setLoading(true);
     try {
       const res = await getCompetitionFixtures(apiCode);
+      setCompetitionDbId(res?.competitionDbId ?? null);
       const all: ApiMatch[] = (res?.matches as unknown as ApiMatch[]) ?? [];
       
       // Intelligent sorting:
@@ -574,12 +582,43 @@ function useLeagueMatches(apiCode: string | undefined) {
 
   useEffect(() => {
     fetch_();
-    // Auto-refresh interval (every 30s) to keep live scores and time movements updated
+    // Polling remains as a fallback if Realtime is disconnected.
     const interval = setInterval(() => {
       fetch_(true);
     }, 30000);
-    return () => clearInterval(interval);
-  }, [fetch_]);
+
+    if (!apiCode || !competitionDbId || !isSupabaseConfigured) {
+      return () => clearInterval(interval);
+    }
+
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const channel = supabase
+      .channel(`football-live:${competitionDbId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "football_fixtures",
+          filter: `competition_id=eq.${competitionDbId}`,
+        },
+        () => {
+          invalidateCompetitions([apiCode]);
+          if (refreshTimer) return;
+          refreshTimer = setTimeout(() => {
+            refreshTimer = null;
+            fetch_(true);
+          }, 250);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      if (refreshTimer) clearTimeout(refreshTimer);
+      supabase.removeChannel(channel);
+    };
+  }, [apiCode, competitionDbId, fetch_]);
 
   return { matches, loading, fetched };
 }
