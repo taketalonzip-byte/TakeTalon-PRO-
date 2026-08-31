@@ -1608,7 +1608,7 @@ async function getMatchesForCode(
     .select(
       `
         external_id, utc_kickoff, status, home_score, away_score, winner, matchday, provider,
-        odds_home, odds_draw, odds_away, odds_model,
+        odds_home, odds_draw, odds_away, odds_model, odds_updated_at, current_minute, betting_suspended_until,
         home_team:football_teams!football_fixtures_home_team_id_fkey ( external_id, name, short_name, tla, crest_url ),
         away_team:football_teams!football_fixtures_away_team_id_fkey ( external_id, name, short_name, tla, crest_url )
       `
@@ -1640,8 +1640,9 @@ async function getMatchesForCode(
       id: r.external_id,
       utcDate: r.utc_kickoff,
       status: r.status,
-      minute: isLive ? parseDisplayClockMinute(displayClock) : null,
+      minute: isLive ? (r.current_minute ?? parseDisplayClockMinute(displayClock)) : null,
       displayClock: isLive ? displayClock : null,
+      bettingSuspendedUntil: r.betting_suspended_until ?? null,
       matchday: r.matchday ?? null,
       competition: {
         id: 0,
@@ -1669,6 +1670,8 @@ async function getMatchesForCode(
         halfTime: { home: null, away: null },
       },
       odds: dbOdds,
+      odds_model: r.odds_model ?? null,
+      odds_updated_at: r.odds_updated_at ?? null,
     };
   });
 

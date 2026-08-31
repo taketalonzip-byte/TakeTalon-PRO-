@@ -68,6 +68,9 @@ interface ApiMatch {
     fullTime: { home: number | null; away: number | null };
     halfTime: { home: number | null; away: number | null };
   };
+  odds?: { home: number; draw: number; away: number };
+  odds_model?: string | null;
+  odds_updated_at?: string | null;
 }
 
 interface FootballPageProps {
@@ -78,31 +81,6 @@ interface FootballPageProps {
   onBetNow?: (match: MatchTip, oddType: "home" | "draw" | "away", value: number) => void;
   onBuyNow?: (match: MatchTip) => void;
   selectedBets?: Record<string, "home" | "draw" | "away">;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Odds generator (deterministic — API free tier haitoi odds)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function seedRng(seed: number) {
-  let s = seed >>> 0;
-  return () => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    return s / 0x100000000;
-  };
-}
-
-function genOdds(matchId: number, homeId: number, awayId: number) {
-  const rng = seedRng((matchId ^ (homeId * 31) ^ (awayId * 17)) >>> 0);
-  const homeP = 0.28 + rng() * 0.28;
-  const drawP = 0.2 + rng() * 0.13;
-  const awayP = Math.max(0.12, 1 - homeP - drawP);
-  const k = 1.07;
-  return {
-    home: +(k / homeP).toFixed(2),
-    draw: +(k / drawP).toFixed(2),
-    away: +(k / awayP).toFixed(2),
-  };
 }
 
 function fmtTime(utc: string) {
@@ -131,9 +109,12 @@ function fmtDate(utc: string) {
 }
 
 function toMatchTip(match: ApiMatch, leagueName: string): MatchTip {
-  const homeId = match.homeTeam?.id || 0;
-  const awayId = match.awayTeam?.id || 0;
-  const odds = genOdds(match.id, homeId, awayId);
+  const oddsAvailable =
+    match.odds != null &&
+    Number.isFinite(match.odds.home) && match.odds.home > 1 &&
+    Number.isFinite(match.odds.draw) && match.odds.draw > 1 &&
+    Number.isFinite(match.odds.away) && match.odds.away > 1;
+  const odds = oddsAvailable ? match.odds! : { home: 0, draw: 0, away: 0 };
   const s = (match.status || "").toUpperCase();
   const isLive = s === "IN_PLAY" || s === "PAUSED" || s === "LIVE" || s === "INPROGRESS";
   const isEnded = s === "FINISHED" || s === "AWARDED" || s === "ENDED" || s === "FINAL" || s === "FT";
@@ -165,11 +146,8 @@ function toMatchTip(match: ApiMatch, leagueName: string): MatchTip {
       logoUrl: match.awayTeam?.crest || "",
       bgGlow: "from-red-600/30",
     },
-    odds: {
-      home: odds.home,
-      draw: odds.draw,
-      away: odds.away,
-    },
+    odds,
+    oddsAvailable,
     isPremium: false,
     isLocked: false,
     tipster: {
@@ -393,6 +371,7 @@ const MatchRow: React.FC<{
 
   const tip = toMatchTip(match, leagueName);
   const odds = tip.odds;
+  const oddsAvailable = tip.oddsAvailable === true;
 
   const scoreHome = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
   const scoreAway = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
@@ -486,9 +465,13 @@ const MatchRow: React.FC<{
         </div>
       </div>
 
-      {/* Odds + Action buttons row — iga MatchList line 1362-1441 */}
+      {/* Real database odds and betting controls. Never fabricate odds for card bets. */}
       <div className="flex items-center justify-between gap-2">
-        {/* Odds */}
+        {!oddsAvailable ? (
+          <span className={`text-[9px] font-black uppercase tracking-wide ${textSecondary(theme)}`}>
+            Odds coming soon
+          </span>
+        ) : (
         <div className="flex items-center gap-1">
           <OddsButton
             label="1"
@@ -512,9 +495,10 @@ const MatchRow: React.FC<{
             onClick={() => onPlaceBet?.(tip, "away", odds.away)}
           />
         </div>
+        )}
 
         {/* Action buttons */}
-        <div className="flex items-center gap-1 shrink-0">
+        {oddsAvailable && <div className="flex items-center gap-1 shrink-0">
           {/* BET NOW — rangi sawa na MatchList: bg-emerald-600 */}
           <button
             onClick={() => {
@@ -536,7 +520,7 @@ const MatchRow: React.FC<{
             <ShoppingBag className="w-2.5 h-2.5" />
             <span>BUY</span>
           </button>
-        </div>
+        </div>}
       </div>
     </div>
   );

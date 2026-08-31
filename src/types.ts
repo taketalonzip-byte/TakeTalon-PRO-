@@ -34,6 +34,8 @@ export interface MatchTip {
     draw: number;
     away: number;
   };
+  /** True only when all displayed odds came from a trusted match-data response. */
+  oddsAvailable?: boolean;
   payoutBadge?: string;
   isPremium: boolean;
   isLocked: boolean;

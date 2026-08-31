@@ -72,7 +72,7 @@ export function normalizeAndCorrectMatch(m: any): FootballMatch {
   // 1) Explicit `odds` object ({ home, draw, away })
   // 2) Supabase snake_case columns (`odds_home`, `odds_draw`, `odds_away`)
   // 3) CamelCase properties (`oddsHome`, `oddsDraw`, `oddsAway`)
-  // 4) Fallback pseudo-random model (only if no DB/API odds exist)
+  // Only trusted API/database odds are accepted; missing odds stay unavailable.
   let odds = m.odds;
   if (!odds && m.odds_home != null && m.odds_draw != null && m.odds_away != null) {
     odds = {
@@ -88,22 +88,6 @@ export function normalizeAndCorrectMatch(m: any): FootballMatch {
     };
   }
 
-  if (!odds) {
-    let s = (matchId ^ (homeId * 31) ^ (awayId * 17)) >>> 0;
-    const rng = () => {
-      s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-      return s / 0x100000000;
-    };
-    const hp = 0.28 + rng() * 0.28;
-    const dp = 0.2 + rng() * 0.13;
-    const ap = Math.max(0.12, 1 - hp - dp);
-    const k = 1.07;
-    odds = {
-      home: +(k / hp).toFixed(2),
-      draw: +(k / dp).toFixed(2),
-      away: +(k / ap).toFixed(2),
-    };
-  }
 
   return {
     id: matchId,

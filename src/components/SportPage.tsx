@@ -2453,31 +2453,6 @@ function useSportLiveData(sport: string) {
 // ---------------------------------------------------------------------------
 // Odds helpers (deterministic — same algorithm as FootballPage)
 // ---------------------------------------------------------------------------
-function seedRng(seed: number) {
-  let s = seed >>> 0;
-  return () => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    return s / 0x100000000;
-  };
-}
-function hashStr(str: string): number {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-function genOdds(matchId: number, homeId: number, awayId: number) {
-  const rng = seedRng((matchId ^ (homeId * 31) ^ (awayId * 17)) >>> 0);
-  const homeP = 0.28 + rng() * 0.28;
-  const drawP = 0.2 + rng() * 0.13;
-  const awayP = Math.max(0.12, 1 - homeP - drawP);
-  const k = 1.07;
-  return {
-    home: +(k / homeP).toFixed(2),
-    draw: +(k / drawP).toFixed(2),
-    away: +(k / awayP).toFixed(2),
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Theme helpers — identiques à FootballPage
 // ---------------------------------------------------------------------------
@@ -2612,14 +2587,20 @@ function toBballMatchTip(game: BballGame): MatchTip {
   const awayName = game.away?.short_name || game.away?.name || "Away";
   const homeLogo = game.home?.logo_url ?? undefined;
   const awayLogo = game.away?.logo_url ?? undefined;
-  const seed = hashStr(game.id || "game");
-  const fallbackOdds = genOdds(seed, hashStr(homeName), hashStr(awayName));
   const isTennis = (game.sport || "").toLowerCase() === "tennis";
-  const odds = {
-    home: game.odds?.home ?? fallbackOdds.home,
-    away: game.odds?.away ?? fallbackOdds.away,
-    draw: isTennis ? 1.0 : (game.odds?.draw ?? fallbackOdds.draw ?? 15.0),
-  };
+  const suppliedOdds = game.odds;
+  const oddsAvailable =
+    suppliedOdds != null &&
+    Number.isFinite(suppliedOdds.home) && suppliedOdds.home > 1 &&
+    Number.isFinite(suppliedOdds.away) && suppliedOdds.away > 1 &&
+    (isTennis || (suppliedOdds.draw != null && Number.isFinite(suppliedOdds.draw) && suppliedOdds.draw > 1));
+  const odds = oddsAvailable
+    ? {
+        home: suppliedOdds!.home,
+        away: suppliedOdds!.away,
+        draw: isTennis ? 1.0 : suppliedOdds!.draw!,
+      }
+    : { home: 0, away: 0, draw: 0 };
   const s = (game.status || "").toLowerCase();
   const isLive = s.includes("live") || s.includes("inprogress") || s.includes("in_progress");
   const isEnded = s.includes("final") || s.includes("ft") || s.includes("finished");
@@ -2642,6 +2623,7 @@ function toBballMatchTip(game: BballGame): MatchTip {
       bgGlow: "#991b1b",
     },
     odds,
+    oddsAvailable,
     isPremium: false,
     isLocked: false,
     tipster: { name: `TT ${game.sport || "Sports"}`, avatarLetter: "T", isOfficial: true },
@@ -2670,6 +2652,7 @@ const BballMatchRow: React.FC<{
 
   const tip = toBballMatchTip(game);
   const odds = tip.odds;
+  const oddsAvailable = tip.oddsAvailable === true;
   const isTwoWaySport =
     (game.sport || "").toLowerCase() === "tennis" ||
     (game.sport || "").toLowerCase() === "volleyball";
@@ -2768,8 +2751,13 @@ const BballMatchRow: React.FC<{
         </div>
       </div>
 
-      {/* Odds + Action buttons row */}
+      {/* Only trusted supplied odds may enable card betting. */}
       <div className="flex items-center justify-between gap-2">
+        {!oddsAvailable ? (
+          <span className={`text-[9px] font-black uppercase tracking-wide ${txtSecondary(theme)}`}>
+            Odds coming soon
+          </span>
+        ) : (
         <div className="flex items-center gap-1">
           <BballOddsButton
             label="1"
@@ -2795,8 +2783,9 @@ const BballMatchRow: React.FC<{
             onClick={() => onPlaceBet?.(tip, "away", odds.away)}
           />
         </div>
+        )}
 
-        <div className="flex items-center gap-1 shrink-0">
+        {oddsAvailable && <div className="flex items-center gap-1 shrink-0">
           {/* BET NOW */}
           <button
             onClick={() => {
@@ -2818,7 +2807,7 @@ const BballMatchRow: React.FC<{
             <ShoppingBag className="w-2.5 h-2.5" />
             <span>BUY</span>
           </button>
-        </div>
+        </div>}
       </div>
     </div>
   );

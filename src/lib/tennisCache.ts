@@ -87,21 +87,6 @@ export function normalizeTennisMatch(m: any): TennisMatch {
     };
   }
 
-  if (!odds) {
-    let s = (Number(matchId) || 1) ^ (p1Id * 41) ^ (p2Id * 23);
-    const rng = () => {
-      s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-      return s / 0x100000000;
-    };
-    const p1Prob = 0.35 + rng() * 0.3;
-    const p2Prob = Math.max(0.15, 1 - p1Prob);
-    const margin = 1.07;
-    odds = {
-      home: +(margin / p1Prob).toFixed(2),
-      away: +(margin / p2Prob).toFixed(2),
-      draw: 1.0,
-    };
-  }
 
   return {
     id: m.id,

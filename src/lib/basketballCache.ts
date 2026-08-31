@@ -89,7 +89,6 @@ function cacheSet<T>(key: string, data: T): void {
 }
 
 export function normalizeBasketballMatch(m: any): BasketballMatch {
-  const matchId = Number(m.id) || 1;
   const homeId = Number(m.homeTeam?.id || m.home?.id || 1);
   const awayId = Number(m.awayTeam?.id || m.away?.id || 2);
 
@@ -102,21 +101,6 @@ export function normalizeBasketballMatch(m: any): BasketballMatch {
     };
   }
 
-  if (!odds) {
-    let s = (matchId ^ (homeId * 37) ^ (awayId * 19)) >>> 0;
-    const rng = () => {
-      s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-      return s / 0x100000000;
-    };
-    const homeProb = 0.35 + rng() * 0.3;
-    const awayProb = Math.max(0.15, 1 - homeProb);
-    const margin = 1.07;
-    odds = {
-      home: +(margin / homeProb).toFixed(2),
-      away: +(margin / awayProb).toFixed(2),
-      draw: +(margin / 0.08).toFixed(2),
-    };
-  }
 
   return {
     id: m.id,

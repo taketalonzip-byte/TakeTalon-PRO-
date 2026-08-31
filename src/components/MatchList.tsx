@@ -1607,6 +1607,7 @@ export default function MatchList({
     const isHomeSelected = selectedBets?.[match.id] === "home";
     const isDrawSelected = selectedBets?.[match.id] === "draw";
     const isAwaySelected = selectedBets?.[match.id] === "away";
+    const oddsAvailable = match.oddsAvailable === true;
 
     const isSwahiliLang =
       (t.prediction || "").includes("Doti") ||
@@ -1763,7 +1764,7 @@ export default function MatchList({
           {/* Odds Buttons */}
           <div className="flex items-center space-x-1 text-xs font-bold">
             <button
-              onClick={() => onPlaceBetClick?.(match, "home", match.odds.home)}
+              onClick={() => oddsAvailable && onPlaceBetClick?.(match, "home", match.odds.home)}
               className={`px-1.5 py-0.5 rounded transition-all active:scale-95 text-[10px] font-bold flex items-center ${
                 isHomeSelected
                   ? "bg-blue-600 text-white shadow-sm border border-blue-600 font-extrabold"
@@ -1779,10 +1780,10 @@ export default function MatchList({
               >
                 1
               </span>
-              {match.odds?.home || "1.95"}
+              {oddsAvailable ? match.odds.home.toFixed(2) : "—"}
             </button>
             <button
-              onClick={() => onPlaceBetClick?.(match, "draw", match.odds.draw)}
+              onClick={() => oddsAvailable && onPlaceBetClick?.(match, "draw", match.odds.draw)}
               className={`px-1.5 py-0.5 rounded transition-all active:scale-95 text-[10px] font-bold flex items-center ${
                 isDrawSelected
                   ? "bg-blue-600 text-white shadow-sm border border-blue-600 font-extrabold"
@@ -1798,10 +1799,10 @@ export default function MatchList({
               >
                 X
               </span>
-              {match.odds?.draw || "3.25"}
+              {oddsAvailable ? match.odds.draw.toFixed(2) : "—"}
             </button>
             <button
-              onClick={() => onPlaceBetClick?.(match, "away", match.odds.away)}
+              onClick={() => oddsAvailable && onPlaceBetClick?.(match, "away", match.odds.away)}
               className={`px-1.5 py-0.5 rounded transition-all active:scale-95 text-[10px] font-bold flex items-center ${
                 isAwaySelected
                   ? "bg-blue-600 text-white shadow-sm border border-blue-600 font-extrabold"
@@ -1817,7 +1818,7 @@ export default function MatchList({
               >
                 2
               </span>
-              {match.odds?.away || "2.75"}
+              {oddsAvailable ? match.odds.away.toFixed(2) : "—"}
             </button>
           </div>
 
@@ -1825,9 +1826,11 @@ export default function MatchList({
           <div className="flex items-center space-x-1 shrink-0">
             {/* BET NOW */}
             <button
+              disabled={!oddsAvailable}
               onClick={() => {
+                if (!oddsAvailable) return;
                 const currentSelectedType = selectedBets?.[match.id] || "home";
-                const currentSelectedOdd = match.odds?.[currentSelectedType] || 1.8;
+                const currentSelectedOdd = match.odds[currentSelectedType];
                 if (onBetNowClick) {
                   onBetNowClick(match, currentSelectedType, currentSelectedOdd);
                 } else {
@@ -2705,6 +2708,7 @@ export default function MatchList({
                   const isHomeSelected = selectedBets?.[match.id] === "home";
                   const isDrawSelected = selectedBets?.[match.id] === "draw";
                   const isAwaySelected = selectedBets?.[match.id] === "away";
+                  const oddsAvailable = match.oddsAvailable === true;
 
                   if (match.category === "Aviator") {
                     return (
@@ -2725,7 +2729,7 @@ export default function MatchList({
                       {/* 1 Button */}
                       <button
                         id={`odd-home-${match.id}`}
-                        onClick={() => onPlaceBetClick?.(match, "home", match.odds.home)}
+                        onClick={() => oddsAvailable && onPlaceBetClick?.(match, "home", match.odds.home)}
                         className={`py-1 rounded-xl text-center transition-all cursor-pointer group active:scale-95 border flex flex-col items-center justify-center h-[34px] ${
                           isHomeSelected
                             ? "bg-emerald-600 text-white border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.35)] scale-[1.03]"
@@ -2754,14 +2758,14 @@ export default function MatchList({
                                 : "text-sky-400"
                           }`}
                         >
-                          {match.odds.home.toFixed(2)}
+                          {oddsAvailable ? match.odds.home.toFixed(2) : "—"}
                         </span>
                       </button>
 
                       {/* Draw Button */}
                       <button
                         id={`odd-draw-${match.id}`}
-                        onClick={() => onPlaceBetClick?.(match, "draw", match.odds.draw)}
+                        onClick={() => oddsAvailable && onPlaceBetClick?.(match, "draw", match.odds.draw)}
                         className={`py-1 rounded-xl text-center transition-all cursor-pointer group active:scale-95 border flex flex-col items-center justify-center h-[34px] ${
                           isDrawSelected
                             ? "bg-emerald-600 text-white border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.35)] scale-[1.03]"
@@ -2790,14 +2794,14 @@ export default function MatchList({
                                 : "text-sky-400"
                           }`}
                         >
-                          {match.odds.draw.toFixed(2)}
+                          {oddsAvailable ? match.odds.draw.toFixed(2) : "—"}
                         </span>
                       </button>
 
                       {/* 2 Button */}
                       <button
                         id={`odd-away-${match.id}`}
-                        onClick={() => onPlaceBetClick?.(match, "away", match.odds.away)}
+                        onClick={() => oddsAvailable && onPlaceBetClick?.(match, "away", match.odds.away)}
                         className={`py-1 rounded-xl text-center transition-all cursor-pointer group active:scale-95 border flex flex-col items-center justify-center h-[34px] ${
                           isAwaySelected
                             ? "bg-emerald-600 text-white border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.35)] scale-[1.03]"
@@ -2826,14 +2830,16 @@ export default function MatchList({
                                 : "text-sky-400"
                           }`}
                         >
-                          {match.odds.away.toFixed(2)}
+                          {oddsAvailable ? match.odds.away.toFixed(2) : "—"}
                         </span>
                       </button>
 
                       {/* BET NOW Button */}
                       <button
                         id={`weka-bashiri-${match.id}`}
+                        disabled={!oddsAvailable}
                         onClick={() => {
+                          if (!oddsAvailable) return;
                           const currentSelectedType = selectedBets?.[match.id] || "home";
                           const currentSelectedOdd = match.odds[currentSelectedType];
                           if (onBetNowClick) {
