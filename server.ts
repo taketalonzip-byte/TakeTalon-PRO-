@@ -1559,12 +1559,37 @@ function parseDisplayClockMinute(displayClock: string | null): number | null {
   return m ? parseInt(m[1], 10) : null;
 }
 
-async function resolveCompetitionForRead(code: string): Promise<{ id: string; provider: string; name: string; emblem_url: string | null } | null> {
+/**
+ * The country catalogue uses ESPN's expanded codes (for example ESP_1 and
+ * GER_1), while older fixture rows in Supabase use the established short
+ * codes (PD and BL1). Resolve every code that points to the same ESPN slug,
+ * so a cache or a failed live refresh never makes a populated league appear
+ * empty to the player.
+ */
+function getEquivalentFootballCompetitionCodes(code: string): string[] {
+  const requestedCode = code.trim().toUpperCase();
+  const targetSlug = ESPN_LEAGUE_SLUGS[requestedCode];
+  if (!targetSlug) return [requestedCode];
+
+  return Array.from(
+    new Set(
+      Object.entries(ESPN_LEAGUE_SLUGS)
+        .filter(([, slug]) => slug === targetSlug)
+        .map(([candidateCode]) => candidateCode)
+        .concat(requestedCode),
+    ),
+  );
+}
+
+async function resolveCompetitionForRead(
+  code: string,
+): Promise<{ id: string; code: string; provider: string; name: string; emblem_url: string | null } | null> {
   if (!supabaseAdmin) return null;
+  const equivalentCodes = getEquivalentFootballCompetitionCodes(code);
   const { data: comps } = await supabaseAdmin
     .from("football_competitions")
-    .select("id, provider, name, emblem_url")
-    .eq("code", code);
+    .select("id, code, provider, name, emblem_url")
+    .in("code", equivalentCodes);
 
   if (!comps || comps.length === 0) return null;
 
@@ -1647,8 +1672,8 @@ async function getMatchesForCode(
       competition: {
         id: 0,
         name: comp.name,
-        code,
-        emblem: getLeagueLogoUrl(code) || comp.emblem_url || "",
+        code: comp.code || code,
+        emblem: getLeagueLogoUrl(comp.code || code) || comp.emblem_url || "",
       },
       homeTeam: {
         id: r.home_team?.external_id ?? 0,
