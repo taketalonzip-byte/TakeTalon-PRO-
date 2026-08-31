@@ -120,9 +120,10 @@ const rawSupabaseUrl =
   "https://placeholder-project.supabase.co";
 
 const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
-const supabaseServiceKey =
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "").trim() ||
-  "placeholder-key";
+// Admin writes must use the server-only service-role key. Never fall back to the
+// browser anon key: anon writes are normally blocked by RLS and can make the
+// live engine appear to be running while no state is actually persisted.
+const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim() || "placeholder-key";
 
 const isDbConfigured =
   supabaseUrl !== "https://placeholder-project.supabase.co" &&
@@ -138,8 +139,11 @@ const supabaseAdmin = isDbConfigured
 
 const AVIATOR_BETTING_MS = 10_000;
 const AVIATOR_BUSTED_MS = 4_000;
+const AVIATOR_RECONCILE_INTERVAL_MS = 500;
 let aviatorRoundNonce = 0;
 let aviatorLoopStarted = false;
+let aviatorTransitionInFlight = false;
+let aviatorReconcileTimer: NodeJS.Timeout | null = null;
 
 async function writeAviatorRoundState(patch: Record<string, any>) {
   if (!supabaseAdmin) return;
@@ -150,6 +154,7 @@ async function writeAviatorRoundState(patch: Record<string, any>) {
     if (error) throw error;
   } catch (e: any) {
     console.error("[Aviator] Imeshindwa kuandika round state:", e?.message || e);
+    throw e;
   }
 }
 
@@ -164,9 +169,6 @@ async function runAviatorBettingPhase() {
     crash_point: null,
     round_nonce: aviatorRoundNonce,
   });
-  setTimeout(() => {
-    runAviatorLaunchedPhase().catch((e) => console.error("[Aviator] LAUNCHED error:", e));
-  }, AVIATOR_BETTING_MS);
 }
 
 async function runAviatorLaunchedPhase() {
@@ -185,19 +187,13 @@ async function runAviatorLaunchedPhase() {
     crashPoint = Math.min(HUSH_MAX_MULTIPLIER, fallbackCents / 100);
   }
 
-  // Never expose the crash point before the BUSTED phase.
+  // Keep the crash point in the server-side row so a sleeping/restarted
+  // instance can finish the round. The API below masks it until BUSTED.
   await writeAviatorRoundState({
     phase: "LAUNCHED",
     phase_started_at: new Date().toISOString(),
-    crash_point: null,
+    crash_point: crashPoint,
   });
-
-  const elapsedForCrash = Math.pow(Math.max(0, crashPoint - 1.0) / 0.08, 1 / 1.3);
-  const launchDurationMs = Math.max(200, elapsedForCrash * 1000);
-
-  setTimeout(() => {
-    runAviatorBustedPhase(crashPoint).catch((e) => console.error("[Aviator] BUSTED error:", e));
-  }, launchDurationMs);
 }
 
 async function runAviatorBustedPhase(crashPoint: number) {
@@ -206,32 +202,101 @@ async function runAviatorBustedPhase(crashPoint: number) {
     phase_started_at: new Date().toISOString(),
     crash_point: crashPoint,
   });
-  setTimeout(() => {
-    runAviatorBettingPhase().catch((e) => console.error("[Aviator] BETTING error:", e));
-  }, AVIATOR_BUSTED_MS);
+}
+
+async function reconcileAviatorRound() {
+  if (!supabaseAdmin || aviatorTransitionInFlight) return;
+
+  const { data, error } = await supabaseAdmin
+    .from("aviator_round_state")
+    .select("phase, phase_started_at, betting_duration_ms, busted_duration_ms, crash_point, round_nonce")
+    .eq("id", 1)
+    .maybeSingle();
+  if (error) throw error;
+
+  if (!data) {
+    aviatorTransitionInFlight = true;
+    try {
+      await runAviatorBettingPhase();
+    } finally {
+      aviatorTransitionInFlight = false;
+    }
+    return;
+  }
+
+  const phaseStartedAt = new Date(data.phase_started_at).getTime();
+  const ageMs = Date.now() - phaseStartedAt;
+  if (!Number.isFinite(ageMs)) return;
+  const durationMs = data.phase === "BETTING"
+    ? data.betting_duration_ms
+    : data.phase === "BUSTED"
+      ? data.busted_duration_ms
+      : Math.max(200, Math.pow(Math.max(0, Number(data.crash_point ?? 1) - 1) / 0.08, 1 / 1.3) * 1000);
+
+  if (ageMs < durationMs) return;
+
+  aviatorTransitionInFlight = true;
+  try {
+    if (data.phase === "BETTING") {
+      await runAviatorLaunchedPhase();
+    } else if (data.phase === "LAUNCHED") {
+      // The persisted value is never sent to clients during LAUNCHED.
+      await runAviatorBustedPhase(Number(data.crash_point) >= 1 ? Number(data.crash_point) : 1.15);
+    } else {
+      aviatorRoundNonce = Math.max(aviatorRoundNonce, Number(data.round_nonce) || 0);
+      await runAviatorBettingPhase();
+    }
+  } finally {
+    aviatorTransitionInFlight = false;
+  }
+}
+
+function scheduleAviatorReconcile() {
+  if (aviatorReconcileTimer) clearTimeout(aviatorReconcileTimer);
+  aviatorReconcileTimer = setTimeout(async () => {
+    try {
+      await reconcileAviatorRound();
+    } catch (e: any) {
+      console.error("[Aviator] Reconcile error:", e?.message || e);
+    } finally {
+      scheduleAviatorReconcile();
+    }
+  }, AVIATOR_RECONCILE_INTERVAL_MS);
 }
 
 function startAviatorRoundLoop() {
   if (aviatorLoopStarted) return;
   aviatorLoopStarted = true;
   if (!supabaseAdmin) {
-    console.warn("[Aviator] Supabase haijasanidiwa — live round engine haitaanza.");
+    console.warn("[Aviator] Supabase service role haijasaniwa — live round engine haitaanza.");
     return;
   }
-  console.log("[Aviator] Live round engine (24/7) inaanza...");
-  runAviatorBettingPhase().catch((e) => console.error("[Aviator] Boot error:", e));
+  console.log("[Aviator] Live round engine (database-reconciled) inaanza...");
+  scheduleAviatorReconcile();
+  reconcileAviatorRound().catch((e) => console.error("[Aviator] Boot error:", e));
 }
 
+app.get("/api/health", async (_req, res) => {
+  res.json({ ok: true, databaseConfigured: Boolean(supabaseAdmin), service: "taketalon-pro" });
+});
+
 app.get("/api/aviator/round", async (_req, res) => {
-  if (!supabaseAdmin) return res.status(503).json({ ok: false, message: "Database haijasanidiwa" });
+  if (!supabaseAdmin) return res.status(503).json({ ok: false, message: "Supabase service role haijasanidiwa" });
   try {
+    // A request after Render free-tier sleep immediately repairs any stale phase.
+    await reconcileAviatorRound();
     const { data, error } = await supabaseAdmin
       .from("aviator_round_state")
       .select("round_id, phase, phase_started_at, betting_duration_ms, busted_duration_ms, crash_point, round_nonce, updated_at")
       .eq("id", 1)
       .maybeSingle();
     if (error) throw error;
-    return res.json({ ok: true, round: data });
+    return res.json({
+      ok: true,
+      round: data
+        ? { ...data, crash_point: data.phase === "BUSTED" ? data.crash_point : null }
+        : data,
+    });
   } catch (e: any) {
     return res.status(500).json({ ok: false, message: e?.message || "Imeshindwa kupata round" });
   }
