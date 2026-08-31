@@ -1,10 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Salama kwa ujenzi (safe for building/linting): Kama hakuna funguo tunatumia placeholder ili isiharibu dev server au build.
+// Safe in both Vite/browser and Node: `globalThis.process` exists only server-side.
+const runtimeEnv = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
 const rawSupabaseUrl =
   import.meta.env?.VITE_SUPABASE_URL ||
-  process.env?.VITE_SUPABASE_URL ||
-  process.env?.SUPABASE_URL ||
+  runtimeEnv?.VITE_SUPABASE_URL ||
+  runtimeEnv?.SUPABASE_URL ||
   "https://placeholder-project.supabase.co";
 
 // Safely clean the URL if it contains "/rest/v1" or trailing slashes
@@ -12,7 +13,7 @@ const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, "").replace(/\/+$/,
 
 const supabaseAnonKey =
   import.meta.env?.VITE_SUPABASE_ANON_KEY ||
-  process.env?.VITE_SUPABASE_ANON_KEY ||
+  runtimeEnv?.VITE_SUPABASE_ANON_KEY ||
   "placeholder-key";
 
 export const isSupabaseConfigured =
@@ -37,7 +38,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Admin / Service Role client — SERVER-SIDE ONLY, never expose to browser
 // Set SUPABASE_SERVICE_ROLE_KEY in your .env / hosting env (never with a VITE_ prefix)
 // ─────────────────────────────────────────────────────────────────────────────
-const supabaseServiceKey = process.env?.SUPABASE_SERVICE_ROLE_KEY || "";
+const supabaseServiceKey = runtimeEnv?.SUPABASE_SERVICE_ROLE_KEY || "";
 
 export const supabaseAdmin = supabaseServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey, {
