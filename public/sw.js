@@ -1,15 +1,22 @@
-const CACHE_NAME = "taketalon-pwa-v2";
+const CACHE_NAME = "taketalon-pwa-v3";
+
+// Keep every asset rendered by the initial splash local and mandatory. If any
+// of these fails during install, this worker must not claim the page.
+const SPLASH_ASSETS = [
+  "/icon-512.png",
+  "/icon.svg",
+  "/tt-logo.png",
+  "/tt-logo.webp",
+];
+
 const APP_SHELL = [
   "/",
   "/manifest.json",
-  "/icon.svg",
   "/icon-192.png",
-  "/icon-512.png",
   "/apple-touch-icon.png",
   "/favicon.png",
   "/favicon.ico",
-  "/tt-logo.png",
-  "/tt-logo.webp",
+  ...SPLASH_ASSETS,
 ];
 
 async function precacheAppShell() {
@@ -27,7 +34,7 @@ async function precacheAppShell() {
     ...html.matchAll(/(?:src|href)=["'](\/assets\/[^"']+)["']/g),
   ].map((match) => match[1]);
   const assetsToCache = [
-    ...new Set([...APP_SHELL.filter((asset) => asset !== "/"), ...buildAssets]),
+    ...new Set([...APP_SHELL.filter((asset) => asset !== "/"), ...SPLASH_ASSETS, ...buildAssets]),
   ];
 
   // These are critical shell assets. If any is unavailable, installation must fail

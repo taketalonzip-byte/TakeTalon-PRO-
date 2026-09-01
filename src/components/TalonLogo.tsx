@@ -1,16 +1,14 @@
 /**
- * TalonLogo — logo halisi ya TakeTalon kutoka public/tt-logo.webp
- * Inabadilisha SVG iliyochorwa awali na picha halisi.
+ * TalonLogo — local-first TakeTalon mark with a network-safe fallback chain.
  */
 
 import React, { useState } from "react";
-import { Zap } from "lucide-react";
 
 interface TalonLogoProps {
   className?: string;
   glow?: boolean;
   theme?: "blue" | "dark" | "light";
-  /** Use a bundled asset first for critical UI that must render offline. */
+  /** Use bundled assets first for critical UI that must render offline. */
   localFirst?: boolean;
 }
 
@@ -18,38 +16,82 @@ const PRIMARY_LOGO_URL = import.meta.env.VITE_SUPABASE_URL
   ? `${import.meta.env.VITE_SUPABASE_URL.replace(/\/+$/, "")}/storage/v1/object/public/esports-images/tt-logo.png`
   : "/tt-logo.png";
 
+const LOCAL_LOGO_URLS = [
+  "/icon-512.png",
+  "/tt-logo.png",
+  "/tt-logo.webp",
+  "/icon.svg",
+] as const;
+
+function InlineTalonMark() {
+  return (
+    <svg
+      viewBox="0 0 512 512"
+      role="img"
+      aria-label="TakeTalon Logo"
+      className="relative z-10 h-full w-full drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)]"
+    >
+      <rect width="512" height="512" rx="112" fill="#090e1a" />
+      <circle
+        cx="256"
+        cy="256"
+        r="210"
+        fill="none"
+        stroke="#38bdf8"
+        strokeWidth="4"
+        strokeOpacity="0.25"
+        strokeDasharray="8 8"
+      />
+      <circle
+        cx="256"
+        cy="256"
+        r="230"
+        fill="none"
+        stroke="#0369a1"
+        strokeWidth="2"
+        strokeOpacity="0.35"
+      />
+      <g fill="#f8fafc" stroke="#000000" strokeWidth="2.5" strokeLinejoin="miter">
+        <polygon points="115.6,170 289.4,170 289.4,196.4 269.6,196.4 269.6,346 230,297.6 230,196.4 197,196.4" />
+        <polygon points="436.4,170 262.6,170 262.6,196.4 282.4,196.4 282.4,346 322,297.6 322,196.4 355,196.4" />
+      </g>
+      <polygon points="256,134 266,144 256,154 246,144" fill="#38bdf8" />
+    </svg>
+  );
+}
+
 export default function TalonLogo({
   className = "w-28 h-28",
   glow = true,
   theme = "blue",
   localFirst = false,
 }: TalonLogoProps) {
-  const LOCAL_LOGO_URL = "/icon.svg";
-  const initialLogoUrl = localFirst ? LOCAL_LOGO_URL : PRIMARY_LOGO_URL;
-  const [imgSrc, setImgSrc] = useState(initialLogoUrl);
+  const fallbackLogoUrls = localFirst
+    ? [...LOCAL_LOGO_URLS]
+    : [
+        PRIMARY_LOGO_URL,
+        ...LOCAL_LOGO_URLS.filter((url) => url !== PRIMARY_LOGO_URL),
+      ];
+  const [imgSrc, setImgSrc] = useState<string>(fallbackLogoUrls[0]);
   const [hasError, setHasError] = useState(false);
 
   const handleError = () => {
-    if (imgSrc === PRIMARY_LOGO_URL) {
-      setImgSrc(localFirst ? LOCAL_LOGO_URL : "/tt-logo.png");
-    } else if (imgSrc === "/tt-logo.png") {
-      setImgSrc("/tt-logo.webp");
-    } else if (imgSrc === "/tt-logo.webp") {
-      setImgSrc(LOCAL_LOGO_URL);
+    const currentIndex = fallbackLogoUrls.indexOf(imgSrc);
+    const nextUrl = fallbackLogoUrls[currentIndex + 1];
+    if (nextUrl) {
+      setImgSrc(nextUrl);
     } else {
       setHasError(true);
     }
   };
 
-  // Kwenye dark mode: Sehemu nyeupe inakuwa nyeusi, na sehemu nyeusi inakuwa nyeupe (Invert colors)
-  // Kwenye blue mode na light mode: Inabaki katika rangi zake asili
   const invertFilter = theme === "dark" ? "invert brightness-110 contrast-125" : "";
 
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
       {glow && (
         <div
-          className={`absolute inset-0 rounded-full blur-2xl scale-125 animate-pulse pointer-events-none ${
+          className={`pointer-events-none absolute inset-0 scale-125 animate-pulse rounded-full blur-2xl ${
             theme === "dark" ? "bg-white/15" : "bg-blue-500/20"
           }`}
         />
@@ -59,21 +101,12 @@ export default function TalonLogo({
           src={imgSrc}
           alt="TakeTalon Logo"
           onError={handleError}
-          className={`relative z-10 w-full h-full object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] transition-all duration-300 ${invertFilter}`}
+          className={`relative z-10 h-full w-full object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] transition-all duration-300 ${invertFilter}`}
           draggable={false}
         />
       ) : (
-        /* Fallback SVG Emblem if image files fail to load */
-        <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-2 rounded-2xl bg-gradient-to-br from-blue-900 via-slate-900 to-blue-950 border border-blue-500/30 shadow-xl">
-          <div className="p-3 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-400/30">
-            <Zap className="w-8 h-8 animate-bounce text-amber-400" />
-          </div>
-          <span className="text-[10px] font-black font-mono tracking-widest text-blue-300 mt-1 uppercase">
-            TAKETALON
-          </span>
-        </div>
+        <InlineTalonMark />
       )}
     </div>
   );
 }
-
