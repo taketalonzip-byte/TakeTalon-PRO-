@@ -2651,11 +2651,53 @@ function sendBrevoEmailViaHttps(apiKey: string, payload: Record<string, unknown>
   });
 }
 
+const waitForBrevoRetry = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+async function sendBrevoEmailWithRetry(
+  apiKey: string,
+  payload: Record<string, unknown>,
+): Promise<{ ok: boolean; statusCode: number; body: string }> {
+  const maxAttempts = 2;
+  let lastResponse: { ok: boolean; statusCode: number; body: string } | null = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await sendBrevoEmailViaHttps(apiKey, payload);
+      lastResponse = response;
+
+      // Do not retry permanent client-side configuration/validation errors.
+      const retryableStatus = response.statusCode === 429 || response.statusCode >= 500;
+      if (response.ok || !retryableStatus || attempt === maxAttempts) {
+        return response;
+      }
+
+      console.warn(`[OTP-SERVICE] Brevo temporary response ${response.statusCode}; retrying once.`);
+      await waitForBrevoRetry(500);
+    } catch (err: any) {
+      const message = err?.message || String(err);
+      const isTimeout = message.toLowerCase().includes("timed out");
+      // A timed-out request can have been accepted upstream; retrying could create duplicate emails.
+      if (isTimeout || attempt === maxAttempts) throw err;
+
+      console.warn("[OTP-SERVICE] Brevo network error; retrying once:", message);
+      await waitForBrevoRetry(500);
+    }
+  }
+
+  return lastResponse || { ok: false, statusCode: 500, body: "Brevo request did not complete" };
+}
+
 async function sendOtpEmail(email: string, firstName: string | undefined, otp: string): Promise<boolean> {
-  const brevoKey = process.env.BREVO_API_KEY;
+  const brevoKey = process.env.BREVO_API_KEY?.trim();
+  const senderEmail = process.env.BREVO_SENDER_EMAIL?.trim();
 
   if (!brevoKey) {
     console.error("[OTP-SERVICE] BREVO_API_KEY is missing; OTP email was not sent.");
+    return false;
+  }
+
+  if (!senderEmail) {
+    console.error("[OTP-SERVICE] BREVO_SENDER_EMAIL is missing; OTP email was not sent.");
     return false;
   }
 
@@ -2680,10 +2722,10 @@ async function sendOtpEmail(email: string, firstName: string | undefined, otp: s
       </div>
     `;
 
-        const response = await sendBrevoEmailViaHttps(brevoKey, {
+    const response = await sendBrevoEmailWithRetry(brevoKey, {
       sender: {
         name: process.env.BREVO_SENDER_NAME || "TakeTalon PRO",
-        email: process.env.BREVO_SENDER_EMAIL || "support@taketalon.com",
+        email: senderEmail,
       },
       to: [{ email, name: firstName || email }],
       subject: `[TakeTalon PRO] ${otp} ni Nambari Yako ya Uthibitisho (OTP)`,
