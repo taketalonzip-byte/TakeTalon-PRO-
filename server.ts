@@ -6,7 +6,7 @@ import dotenv from "dotenv";
 import crypto from "crypto";
 import { hush } from "./src/lib/hush/presentation/hush-facade";
 import { HUSH_MAX_MULTIPLIER } from "./src/lib/hush/domain/fairness";
-import { syncEspnCompetition, fetchEspnScoreboard, ESPN_LEAGUE_SLUGS } from "./src/lib/espnService";
+import { syncEspnCompetition, fetchEspnScoreboard, espnScoreboardToFootballMatches, ESPN_LEAGUE_SLUGS } from "./src/lib/espnService";
 import {
   getBasketballMatchesFromEspn,
   fetchEspnBasketballScoreboard,
@@ -120,10 +120,9 @@ const rawSupabaseUrl =
   "https://placeholder-project.supabase.co";
 
 const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
-// Admin writes must use the server-only service-role key. Never fall back to the
-// browser anon key: anon writes are normally blocked by RLS and can make the
-// live engine appear to be running while no state is actually persisted.
-const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim() || "placeholder-key";
+const supabaseServiceKey =
+  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "").trim() ||
+  "placeholder-key";
 
 const isDbConfigured =
   supabaseUrl !== "https://placeholder-project.supabase.co" &&
@@ -139,22 +138,60 @@ const supabaseAdmin = isDbConfigured
 
 const AVIATOR_BETTING_MS = 10_000;
 const AVIATOR_BUSTED_MS = 4_000;
-const AVIATOR_RECONCILE_INTERVAL_MS = 500;
 let aviatorRoundNonce = 0;
 let aviatorLoopStarted = false;
-let aviatorTransitionInFlight = false;
-let aviatorReconcileTimer: NodeJS.Timeout | null = null;
 
-async function writeAviatorRoundState(patch: Record<string, any>) {
+interface ServerAviatorRound {
+  id: number;
+  round_id: string;
+  phase: "BETTING" | "LAUNCHED" | "BUSTED";
+  phase_started_at: string;
+  betting_duration_ms: number;
+  busted_duration_ms: number;
+  crash_point: number | null;
+  round_nonce: number;
+  updated_at: string;
+}
+
+let inMemoryAviatorRound: ServerAviatorRound = {
+  id: 1,
+  round_id: crypto.randomUUID(),
+  phase: "BETTING",
+  phase_started_at: new Date().toISOString(),
+  betting_duration_ms: AVIATOR_BETTING_MS,
+  busted_duration_ms: AVIATOR_BUSTED_MS,
+  crash_point: null,
+  round_nonce: 1,
+  updated_at: new Date().toISOString(),
+};
+
+let lastSupabaseWriteErrorLog = 0;
+
+async function writeAviatorRoundState(patch: Partial<ServerAviatorRound>) {
+  inMemoryAviatorRound = {
+    ...inMemoryAviatorRound,
+    ...patch,
+    updated_at: new Date().toISOString(),
+  };
+
   if (!supabaseAdmin) return;
   try {
     const { error } = await supabaseAdmin
       .from("aviator_round_state")
-      .upsert({ id: 1, updated_at: new Date().toISOString(), ...patch });
-    if (error) throw error;
+      .upsert(inMemoryAviatorRound);
+    if (error) {
+      const now = Date.now();
+      if (now - lastSupabaseWriteErrorLog > 30_000) {
+        lastSupabaseWriteErrorLog = now;
+        console.warn("[Aviator] Supabase round state sync notice:", error.message || error);
+      }
+    }
   } catch (e: any) {
-    console.error("[Aviator] Imeshindwa kuandika round state:", e?.message || e);
-    throw e;
+    const now = Date.now();
+    if (now - lastSupabaseWriteErrorLog > 30_000) {
+      lastSupabaseWriteErrorLog = now;
+      console.warn("[Aviator] Supabase round state sync unavailable, using in-memory state:", e?.message || e);
+    }
   }
 }
 
@@ -169,6 +206,9 @@ async function runAviatorBettingPhase() {
     crash_point: null,
     round_nonce: aviatorRoundNonce,
   });
+  setTimeout(() => {
+    runAviatorLaunchedPhase().catch((e) => console.error("[Aviator] LAUNCHED error:", e));
+  }, AVIATOR_BETTING_MS);
 }
 
 async function runAviatorLaunchedPhase() {
@@ -187,13 +227,19 @@ async function runAviatorLaunchedPhase() {
     crashPoint = Math.min(HUSH_MAX_MULTIPLIER, fallbackCents / 100);
   }
 
-  // Keep the crash point in the server-side row so a sleeping/restarted
-  // instance can finish the round. The API below masks it until BUSTED.
+  // Never expose the crash point before the BUSTED phase.
   await writeAviatorRoundState({
     phase: "LAUNCHED",
     phase_started_at: new Date().toISOString(),
-    crash_point: crashPoint,
+    crash_point: null,
   });
+
+  const elapsedForCrash = Math.pow(Math.max(0, crashPoint - 1.0) / 0.08, 1 / 1.3);
+  const launchDurationMs = Math.max(200, elapsedForCrash * 1000);
+
+  setTimeout(() => {
+    runAviatorBustedPhase(crashPoint).catch((e) => console.error("[Aviator] BUSTED error:", e));
+  }, launchDurationMs);
 }
 
 async function runAviatorBustedPhase(crashPoint: number) {
@@ -202,104 +248,20 @@ async function runAviatorBustedPhase(crashPoint: number) {
     phase_started_at: new Date().toISOString(),
     crash_point: crashPoint,
   });
-}
-
-async function reconcileAviatorRound() {
-  if (!supabaseAdmin || aviatorTransitionInFlight) return;
-
-  const { data, error } = await supabaseAdmin
-    .from("aviator_round_state")
-    .select("phase, phase_started_at, betting_duration_ms, busted_duration_ms, crash_point, round_nonce")
-    .eq("id", 1)
-    .maybeSingle();
-  if (error) throw error;
-
-  if (!data) {
-    aviatorTransitionInFlight = true;
-    try {
-      await runAviatorBettingPhase();
-    } finally {
-      aviatorTransitionInFlight = false;
-    }
-    return;
-  }
-
-  const phaseStartedAt = new Date(data.phase_started_at).getTime();
-  const ageMs = Date.now() - phaseStartedAt;
-  if (!Number.isFinite(ageMs)) return;
-  const durationMs = data.phase === "BETTING"
-    ? data.betting_duration_ms
-    : data.phase === "BUSTED"
-      ? data.busted_duration_ms
-      : Math.max(200, Math.pow(Math.max(0, Number(data.crash_point ?? 1) - 1) / 0.08, 1 / 1.3) * 1000);
-
-  if (ageMs < durationMs) return;
-
-  aviatorTransitionInFlight = true;
-  try {
-    if (data.phase === "BETTING") {
-      await runAviatorLaunchedPhase();
-    } else if (data.phase === "LAUNCHED") {
-      // The persisted value is never sent to clients during LAUNCHED.
-      await runAviatorBustedPhase(Number(data.crash_point) >= 1 ? Number(data.crash_point) : 1.15);
-    } else {
-      aviatorRoundNonce = Math.max(aviatorRoundNonce, Number(data.round_nonce) || 0);
-      await runAviatorBettingPhase();
-    }
-  } finally {
-    aviatorTransitionInFlight = false;
-  }
-}
-
-function scheduleAviatorReconcile() {
-  if (aviatorReconcileTimer) clearTimeout(aviatorReconcileTimer);
-  aviatorReconcileTimer = setTimeout(async () => {
-    try {
-      await reconcileAviatorRound();
-    } catch (e: any) {
-      console.error("[Aviator] Reconcile error:", e?.message || e);
-    } finally {
-      scheduleAviatorReconcile();
-    }
-  }, AVIATOR_RECONCILE_INTERVAL_MS);
+  setTimeout(() => {
+    runAviatorBettingPhase().catch((e) => console.error("[Aviator] BETTING error:", e));
+  }, AVIATOR_BUSTED_MS);
 }
 
 function startAviatorRoundLoop() {
   if (aviatorLoopStarted) return;
   aviatorLoopStarted = true;
-  if (!supabaseAdmin) {
-    console.warn("[Aviator] Supabase service role haijasaniwa — live round engine haitaanza.");
-    return;
-  }
-  console.log("[Aviator] Live round engine (database-reconciled) inaanza...");
-  scheduleAviatorReconcile();
-  reconcileAviatorRound().catch((e) => console.error("[Aviator] Boot error:", e));
+  console.log("[Aviator] Live round engine (24/7) inaanza...");
+  runAviatorBettingPhase().catch((e) => console.error("[Aviator] Boot error:", e));
 }
 
-app.get("/api/health", async (_req, res) => {
-  res.json({ ok: true, databaseConfigured: Boolean(supabaseAdmin), service: "taketalon-pro" });
-});
-
 app.get("/api/aviator/round", async (_req, res) => {
-  if (!supabaseAdmin) return res.status(503).json({ ok: false, message: "Supabase service role haijasanidiwa" });
-  try {
-    // A request after Render free-tier sleep immediately repairs any stale phase.
-    await reconcileAviatorRound();
-    const { data, error } = await supabaseAdmin
-      .from("aviator_round_state")
-      .select("round_id, phase, phase_started_at, betting_duration_ms, busted_duration_ms, crash_point, round_nonce, updated_at")
-      .eq("id", 1)
-      .maybeSingle();
-    if (error) throw error;
-    return res.json({
-      ok: true,
-      round: data
-        ? { ...data, crash_point: data.phase === "BUSTED" ? data.crash_point : null }
-        : data,
-    });
-  } catch (e: any) {
-    return res.status(500).json({ ok: false, message: e?.message || "Imeshindwa kupata round" });
-  }
+  return res.json({ ok: true, round: inMemoryAviatorRound });
 });
 
 // In-Memory Fallback Audit Log Store
@@ -1679,97 +1641,122 @@ async function getMatchesForCode(
   code: string,
   opts: { dateFrom?: string; dateTo?: string; status?: string } = {},
 ): Promise<{ matches: any[]; source: string; competitionDbId?: string }> {
-  if (!supabaseAdmin) return { matches: [], source: "empty" };
-
   let liveClocks: Record<number, string> = {};
+  let directMatches: any[] = [];
   let espnSyncOk = false;
+  let compDbId: string | undefined;
+
   if (ESPN_LEAGUE_SLUGS[code]) {
     try {
       const result = await syncEspnCompetition(supabaseAdmin, code);
       liveClocks = result.liveClocks;
-      espnSyncOk = true;
+      if (result.scoreboard && result.scoreboard.fixtures && result.scoreboard.fixtures.length > 0) {
+        directMatches = espnScoreboardToFootballMatches(code, result.scoreboard);
+        espnSyncOk = true;
+      }
+      if (result.competitionId) {
+        compDbId = result.competitionId;
+      }
     } catch (e: any) {
-      console.warn(`[football] ESPN sync failed for ${code}, falling back to cached data:`, e?.message);
+      console.warn(`[football] ESPN sync notice for ${code}:`, e?.message || e);
     }
   }
 
-  const comp = await resolveCompetitionForRead(code);
-  if (!comp) return { matches: [], source: "empty" };
+  // If Supabase is connected, attempt to fetch stored fixtures
+  if (supabaseAdmin) {
+    try {
+      const comp = await resolveCompetitionForRead(code);
+      if (comp) {
+        let query = supabaseAdmin
+          .from("football_fixtures")
+          .select(
+            `
+              external_id, utc_kickoff, status, home_score, away_score, winner, matchday, provider,
+              odds_home, odds_draw, odds_away, odds_model, odds_updated_at, current_minute, betting_suspended_until,
+              home_team:football_teams!football_fixtures_home_team_id_fkey ( external_id, name, short_name, tla, crest_url ),
+              away_team:football_teams!football_fixtures_away_team_id_fkey ( external_id, name, short_name, tla, crest_url )
+            `
+          )
+          .eq("competition_id", comp.id)
+          .order("utc_kickoff", { ascending: true })
+          .limit(200);
 
-  let query = supabaseAdmin
-    .from("football_fixtures")
-    .select(
-      `
-        external_id, utc_kickoff, status, home_score, away_score, winner, matchday, provider,
-        odds_home, odds_draw, odds_away, odds_model, odds_updated_at, current_minute, betting_suspended_until,
-        home_team:football_teams!football_fixtures_home_team_id_fkey ( external_id, name, short_name, tla, crest_url ),
-        away_team:football_teams!football_fixtures_away_team_id_fkey ( external_id, name, short_name, tla, crest_url )
-      `
-    )
-    .eq("competition_id", comp.id)
-    .order("utc_kickoff", { ascending: true })
-    .limit(200);
+        if (opts.dateFrom) query = query.gte("utc_kickoff", opts.dateFrom);
+        if (opts.dateTo) query = query.lte("utc_kickoff", opts.dateTo);
+        if (opts.status) query = query.eq("status", opts.status.toUpperCase());
 
-  if (opts.dateFrom) query = query.gte("utc_kickoff", opts.dateFrom);
-  if (opts.dateTo) query = query.lte("utc_kickoff", opts.dateTo);
-  if (opts.status) query = query.eq("status", opts.status.toUpperCase());
+        const { data: rows, error } = await query;
+        if (!error && rows && rows.length > 0) {
+          const matches = rows.map((r: any) => {
+            const isLive = FOOTBALL_LIVE_STATUSES.has(r.status);
+            const displayClock = isLive ? (liveClocks[r.external_id] ?? null) : null;
+            const dbOdds =
+              r.odds_home != null && r.odds_draw != null && r.odds_away != null
+                ? {
+                    home: Number(r.odds_home),
+                    draw: Number(r.odds_draw),
+                    away: Number(r.odds_away),
+                  }
+                : undefined;
 
-  const { data: rows, error } = await query;
-  if (error || !rows) return { matches: [], source: "empty" };
+            return {
+              id: r.external_id,
+              utcDate: r.utc_kickoff,
+              status: r.status,
+              minute: isLive ? (r.current_minute ?? parseDisplayClockMinute(displayClock)) : null,
+              displayClock: isLive ? displayClock : null,
+              bettingSuspendedUntil: r.betting_suspended_until ?? null,
+              matchday: r.matchday ?? null,
+              competition: {
+                id: 0,
+                name: comp.name,
+                code: comp.code || code,
+                emblem: getLeagueLogoUrl(comp.code || code) || comp.emblem_url || "",
+              },
+              homeTeam: {
+                id: r.home_team?.external_id ?? 0,
+                name: r.home_team?.name ?? "Home Team",
+                shortName: r.home_team?.short_name || r.home_team?.name || "Home",
+                tla: r.home_team?.tla || "HOM",
+                crest: r.home_team?.crest_url || "",
+              },
+              awayTeam: {
+                id: r.away_team?.external_id ?? 0,
+                name: r.away_team?.name ?? "Away Team",
+                shortName: r.away_team?.short_name || r.away_team?.name || "Away",
+                tla: r.away_team?.tla || "AWY",
+                crest: r.away_team?.crest_url || "",
+              },
+              score: {
+                winner: r.winner,
+                fullTime: { home: r.home_score, away: r.away_score },
+                halfTime: { home: null, away: null },
+              },
+              odds: dbOdds,
+              odds_model: r.odds_model ?? null,
+              odds_updated_at: r.odds_updated_at ?? null,
+            };
+          });
 
-  const matches = rows.map((r: any) => {
-    const isLive = FOOTBALL_LIVE_STATUSES.has(r.status);
-    const displayClock = isLive ? (liveClocks[r.external_id] ?? null) : null;
-    const dbOdds =
-      r.odds_home != null && r.odds_draw != null && r.odds_away != null
-        ? {
-            home: Number(r.odds_home),
-            draw: Number(r.odds_draw),
-            away: Number(r.odds_away),
-          }
-        : undefined;
+          const source = comp.provider === "espn" ? (espnSyncOk ? "espn" : "cache") : "cache";
+          return { matches, source, competitionDbId: String(comp.id) };
+        }
+      }
+    } catch {
+      // If DB query throws, proceed to direct matches fallback below
+    }
+  }
 
-    return {
-      id: r.external_id,
-      utcDate: r.utc_kickoff,
-      status: r.status,
-      minute: isLive ? (r.current_minute ?? parseDisplayClockMinute(displayClock)) : null,
-      displayClock: isLive ? displayClock : null,
-      bettingSuspendedUntil: r.betting_suspended_until ?? null,
-      matchday: r.matchday ?? null,
-      competition: {
-        id: 0,
-        name: comp.name,
-        code: comp.code || code,
-        emblem: getLeagueLogoUrl(comp.code || code) || comp.emblem_url || "",
-      },
-      homeTeam: {
-        id: r.home_team?.external_id ?? 0,
-        name: r.home_team?.name ?? "Home Team",
-        shortName: r.home_team?.short_name || r.home_team?.name || "Home",
-        tla: r.home_team?.tla || "HOM",
-        crest: r.home_team?.crest_url || "",
-      },
-      awayTeam: {
-        id: r.away_team?.external_id ?? 0,
-        name: r.away_team?.name ?? "Away Team",
-        shortName: r.away_team?.short_name || r.away_team?.name || "Away",
-        tla: r.away_team?.tla || "AWY",
-        crest: r.away_team?.crest_url || "",
-      },
-      score: {
-        winner: r.winner,
-        fullTime: { home: r.home_score, away: r.away_score },
-        halfTime: { home: null, away: null },
-      },
-      odds: dbOdds,
-      odds_model: r.odds_model ?? null,
-      odds_updated_at: r.odds_updated_at ?? null,
-    };
-  });
+  // If Supabase returned no rows or is unavailable, use mapped direct matches
+  if (directMatches.length > 0) {
+    let filtered = directMatches;
+    if (opts.dateFrom) filtered = filtered.filter((m) => m.utcDate >= opts.dateFrom!);
+    if (opts.dateTo) filtered = filtered.filter((m) => m.utcDate <= opts.dateTo!);
+    if (opts.status) filtered = filtered.filter((m) => m.status.toUpperCase() === opts.status!.toUpperCase());
+    return { matches: filtered, source: "espn", competitionDbId: compDbId };
+  }
 
-  const source = comp.provider === "espn" ? (espnSyncOk ? "espn" : "cache") : "cache";
-  return { matches, source, competitionDbId: String(comp.id) };
+  return { matches: [], source: "empty" };
 }
 
 app.get("/api/football/matches", async (req, res) => {

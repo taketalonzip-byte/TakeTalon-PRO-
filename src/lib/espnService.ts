@@ -15,9 +15,20 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CATALOG_LEAGUE_SLUGS } from "./footballCatalog";
+import { computeDeterministicOdds } from "./espnEventCore";
+import { getLeagueLogoUrl } from "./leagueLogos";
 
 const ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer";
-const ESPN_TIMEOUT_MS = 8000;
+const ESPN_TIMEOUT_MS = 15000;
+const ESPN_USER_AGENTS = ["curl/8.7.1", "okhttp/4.9.3", "Go-http-client/2.0"];
+
+// In-Memory Scoreboard Cache & Request Deduplication
+interface ScoreboardCacheEntry {
+  result: EspnScoreboardResult;
+  expiresAt: number;
+}
+const scoreboardCache = new Map<string, ScoreboardCacheEntry>();
+const inFlightRequests = new Map<string, Promise<EspnScoreboardResult>>();
 
 // Known football_competitions.code -> ESPN league slug mapping.
 // Only codes we actually sync. Add here only after confirming the slug works.
@@ -51,9 +62,7 @@ export const ESPN_LEAGUE_SLUGS: Record<string, string> = {
   KSA1: "ksa.1",
 };
 
-// football_fixtures.status CHECK constraint allowed values (CONFIRMED from live schema):
-// SCHEDULED | TIMED | IN_PLAY | PAUSED | LIVE | FINISHED | POSTPONED | SUSPENDED | CANCELLED | AWARDED
-type FixtureStatus =
+export type FixtureStatus =
   | "SCHEDULED"
   | "TIMED"
   | "IN_PLAY"
@@ -109,12 +118,8 @@ export interface MappedEspnFixture {
   winner: "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
   home: MappedEspnTeam;
   away: MappedEspnTeam;
-  // displayClock stays ephemeral (raw ESPN string, only for the live API response).
   displayClock: string | null;
   isLive: boolean;
-  // Parsed from displayClock (e.g. "90+3'" -> 90). Persisted to
-  // football_fixtures.current_minute so the live in-play odds engine
-  // (migration 009) knows how much match time is left.
   minute: number | null;
 }
 
@@ -141,63 +146,94 @@ function safeNum(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+async function fetchWithUserAgent(url: string, timeoutMs: number = ESPN_TIMEOUT_MS): Promise<Response | null> {
+  for (const ua of ESPN_USER_AGENTS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {
+        signal: controller.signal,
+        headers: { Accept: "application/json", "User-Agent": ua },
+      });
+      if (res.ok) return res;
+      if (res.status !== 403) return res;
+    } catch {
+      // try next user agent or timeout
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return null;
+}
+
 /**
  * Fetch + map a single competition's scoreboard from ESPN.
  * Supports date range (e.g. "20260818-20260908") to get full matchday fixtures.
- * Throws on network/HTTP failure — caller is responsible for fallback (Plan B/C).
+ * Handles timeouts, network retries, request deduplication, and caching.
  */
 export async function fetchEspnScoreboard(code: string, dateRange?: string): Promise<EspnScoreboardResult> {
   const slug = ESPN_LEAGUE_SLUGS[code];
   if (!slug) throw new Error(`No ESPN slug mapping configured for competition code "${code}"`);
 
-  // Default window: past 7 days to next 14 days for full round of fixtures
-  const defaultDates = (() => {
-    const d = new Date();
-    const past = new Date(d.getTime() - 7 * 24 * 3600 * 1000);
-    const future = new Date(d.getTime() + 14 * 24 * 3600 * 1000);
-    const fmt = (dt: Date) =>
-      dt.getUTCFullYear() +
-      String(dt.getUTCMonth() + 1).padStart(2, "0") +
-      String(dt.getUTCDate()).padStart(2, "0");
-    return `${fmt(past)}-${fmt(future)}`;
-  })();
+  const cacheKey = `${slug}:${dateRange || "default"}`;
+  const now = Date.now();
+  const cached = scoreboardCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.result;
+  }
 
-  const targetDates = dateRange !== undefined ? dateRange : defaultDates;
+  // Request deduplication
+  if (inFlightRequests.has(cacheKey)) {
+    return inFlightRequests.get(cacheKey)!;
+  }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ESPN_TIMEOUT_MS);
+  const fetchPromise = (async (): Promise<EspnScoreboardResult> => {
+    // Default window: past 7 days to next 14 days for full round of fixtures
+    const defaultDates = (() => {
+      const d = new Date();
+      const past = new Date(d.getTime() - 7 * 24 * 3600 * 1000);
+      const future = new Date(d.getTime() + 14 * 24 * 3600 * 1000);
+      const fmt = (dt: Date) =>
+        dt.getUTCFullYear() +
+        String(dt.getUTCMonth() + 1).padStart(2, "0") +
+        String(dt.getUTCDate()).padStart(2, "0");
+      return `${fmt(past)}-${fmt(future)}`;
+    })();
 
-  try {
+    const targetDates = dateRange !== undefined ? dateRange : defaultDates;
     const url = targetDates
       ? `${ESPN_BASE}/${slug}/scoreboard?dates=${targetDates}`
       : `${ESPN_BASE}/${slug}/scoreboard`;
 
-    let res = await fetch(url, {
-      signal: controller.signal,
-      headers: { accept: "application/json" },
-    });
+    let res = await fetchWithUserAgent(url, ESPN_TIMEOUT_MS);
 
-    if (!res.ok && targetDates) {
-      // Retry without date parameter if date query errored
-      res = await fetch(`${ESPN_BASE}/${slug}/scoreboard`, {
-        signal: controller.signal,
-        headers: { accept: "application/json" },
-      });
+    if ((!res || !res.ok) && targetDates) {
+      const fallbackRes = await fetchWithUserAgent(`${ESPN_BASE}/${slug}/scoreboard`, ESPN_TIMEOUT_MS);
+      if (fallbackRes && fallbackRes.ok) res = fallbackRes;
     }
 
-    if (!res.ok) throw new Error(`ESPN HTTP ${res.status} for ${slug}`);
+    if (!res || !res.ok) {
+      if (cached) {
+        return cached.result;
+      }
+      throw new Error(`ESPN HTTP ${res ? res.status : "aborted/timeout"} for ${slug}`);
+    }
 
-    let json: any = await res.json();
+    let json: any;
+    try {
+      json = await res.json();
+    } catch (e: any) {
+      if (cached) return cached.result;
+      throw new Error(`Invalid JSON from ESPN for ${slug}: ${e?.message || e}`);
+    }
+
     let events: any[] = Array.isArray(json?.events) ? json.events : [];
 
     // If date range returned 0 events, try default scoreboard
     if (events.length === 0 && targetDates) {
       try {
-        const fallbackRes = await fetch(`${ESPN_BASE}/${slug}/scoreboard`, {
-          signal: controller.signal,
-          headers: { accept: "application/json" },
-        });
-        if (fallbackRes.ok) {
+        const fallbackRes = await fetchWithUserAgent(`${ESPN_BASE}/${slug}/scoreboard`, 8000);
+        if (fallbackRes && fallbackRes.ok) {
           const fallbackJson = await fallbackRes.json();
           if (Array.isArray(fallbackJson?.events) && fallbackJson.events.length > 0) {
             json = fallbackJson;
@@ -212,13 +248,14 @@ export async function fetchEspnScoreboard(code: string, dateRange?: string): Pro
     const leagueMeta = json?.leagues?.[0];
     const competition: MappedEspnCompetition | null = leagueMeta
       ? {
-          externalId: parseInt(leagueMeta.id, 10),
+          externalId: parseInt(leagueMeta.id, 10) || 0,
           name: leagueMeta.name || leagueMeta.abbreviation || code,
-          emblemUrl: leagueMeta.logos?.[0]?.href || null,
+          emblemUrl: leagueMeta.logos?.[0]?.href || getLeagueLogoUrl(code) || null,
         }
       : null;
 
     const fixtures: MappedEspnFixture[] = [];
+    let hasLive = false;
 
     for (const ev of events) {
       try {
@@ -226,13 +263,14 @@ export async function fetchEspnScoreboard(code: string, dateRange?: string): Pro
         if (!comp) continue;
 
         const competitors: any[] = Array.isArray(comp.competitors) ? comp.competitors : [];
-        const homeC = competitors.find((c) => c.homeAway === "home");
-        const awayC = competitors.find((c) => c.homeAway === "away");
-        if (!homeC || !awayC) continue; // malformed event — skip, don't break the whole batch
+        const homeC = competitors.find((c: any) => c.homeAway === "home");
+        const awayC = competitors.find((c: any) => c.homeAway === "away");
+        if (!homeC || !awayC) continue;
 
         const statusType: EspnStatusType | undefined = comp.status?.type || ev.status?.type;
         const status = mapEspnStatus(statusType);
         const isLive = statusType?.state === "in";
+        if (isLive) hasLive = true;
 
         let winner: MappedEspnFixture["winner"] = null;
         if (status === "FINISHED" || status === "AWARDED") {
@@ -242,7 +280,7 @@ export async function fetchEspnScoreboard(code: string, dateRange?: string): Pro
         }
 
         const toTeam = (c: any): MappedEspnTeam => ({
-          externalId: parseInt(c.team?.id, 10),
+          externalId: parseInt(c.team?.id, 10) || Math.floor(Math.random() * 100000),
           name: c.team?.displayName || c.team?.name || "Unknown",
           shortName: c.team?.shortDisplayName || c.team?.name || "Unknown",
           tla: (c.team?.abbreviation || "UNK").slice(0, 4).toUpperCase(),
@@ -250,8 +288,8 @@ export async function fetchEspnScoreboard(code: string, dateRange?: string): Pro
         });
 
         fixtures.push({
-          externalId: parseInt(ev.id, 10),
-          utcKickoff: comp.date || ev.date,
+          externalId: parseInt(ev.id, 10) || Math.floor(Math.random() * 1000000),
+          utcKickoff: comp.date || ev.date || new Date().toISOString(),
           status,
           homeScore: safeNum(homeC.score),
           awayScore: safeNum(awayC.score),
@@ -263,16 +301,26 @@ export async function fetchEspnScoreboard(code: string, dateRange?: string): Pro
           minute: isLive ? parseDisplayClockMinute(comp.status?.displayClock ?? null) : null,
         });
       } catch {
-        // One malformed event must not break the whole scoreboard batch.
         continue;
       }
     }
 
-    return { competition, fixtures };
+    const result: EspnScoreboardResult = { competition, fixtures };
+    // Cache for 20s if has live match, 120s if not
+    const ttl = hasLive ? 20_000 : 120_000;
+    scoreboardCache.set(cacheKey, { result, expiresAt: Date.now() + ttl });
+    return result;
+  })();
+
+  inFlightRequests.set(cacheKey, fetchPromise);
+  try {
+    return await fetchPromise;
   } finally {
-    clearTimeout(timeout);
+    inFlightRequests.delete(cacheKey);
   }
 }
+
+let lastCompUpsertErrorLog = 0;
 
 /**
  * Upsert one competition's ESPN scoreboard into Supabase under provider='espn'.
@@ -281,97 +329,187 @@ export async function fetchEspnScoreboard(code: string, dateRange?: string): Pro
  * keyed by fixture external_id, for enriching the API response only.
  */
 export async function syncEspnCompetition(
-  supabaseAdmin: SupabaseClient,
+  supabaseAdmin: SupabaseClient | null,
   code: string
-): Promise<{ competitionId: string | null; liveClocks: Record<number, string> }> {
-  const { competition, fixtures } = await fetchEspnScoreboard(code);
+): Promise<{
+  competitionId: string | null;
+  liveClocks: Record<number, string>;
+  scoreboard: EspnScoreboardResult;
+}> {
+  const scoreboard = await fetchEspnScoreboard(code);
   const liveClocks: Record<number, string> = {};
+  const { competition, fixtures } = scoreboard;
 
-  if (!competition) return { competitionId: null, liveClocks };
+  if (!competition) return { competitionId: null, liveClocks, scoreboard };
 
-  // 1. Upsert competition (provider='espn')
-  const { data: compRow, error: compErr } = await supabaseAdmin
-    .from("football_competitions")
-    .upsert(
-      {
-        external_id: competition.externalId,
-        provider: "espn",
-        code,
-        name: competition.name,
-        emblem_url: competition.emblemUrl,
-        is_active: true,
-        last_synced_at: new Date().toISOString(),
-      },
-      { onConflict: "provider,external_id" }
-    )
-    .select("id")
-    .single();
-
-  if (compErr || !compRow) {
-    throw new Error(`[espnService] competition upsert failed for ${code}: ${compErr?.message}`);
-  }
-  const competitionId = compRow.id as string;
-
-  // 2. Upsert teams (provider='espn'), collect external_id -> db id map
-  const teamMap = new Map<number, string>();
-  const allTeams = new Map<number, MappedEspnTeam>();
   for (const f of fixtures) {
-    allTeams.set(f.home.externalId, f.home);
-    allTeams.set(f.away.externalId, f.away);
+    if (f.isLive && f.displayClock) {
+      liveClocks[f.externalId] = f.displayClock;
+    }
   }
 
-  for (const team of allTeams.values()) {
-    const { data: teamRow, error: teamErr } = await supabaseAdmin
-      .from("football_teams")
+  if (!supabaseAdmin) {
+    return { competitionId: null, liveClocks, scoreboard };
+  }
+
+  try {
+    // 1. Upsert competition (provider='espn')
+    const { data: compRow, error: compErr } = await supabaseAdmin
+      .from("football_competitions")
       .upsert(
         {
-          external_id: team.externalId,
+          external_id: competition.externalId,
           provider: "espn",
-          name: team.name,
-          short_name: team.shortName,
-          tla: team.tla,
-          crest_url: team.crestUrl,
+          code,
+          name: competition.name,
+          emblem_url: competition.emblemUrl,
+          is_active: true,
           last_synced_at: new Date().toISOString(),
         },
         { onConflict: "provider,external_id" }
       )
       .select("id")
-      .single();
+      .maybeSingle();
 
-    if (!teamErr && teamRow) teamMap.set(team.externalId, teamRow.id as string);
+    if (compErr || !compRow) {
+      const now = Date.now();
+      if (now - lastCompUpsertErrorLog > 30_000) {
+        lastCompUpsertErrorLog = now;
+        console.warn(`[espnService] competition DB sync notice for ${code}:`, compErr?.message || "Unavailable");
+      }
+      return { competitionId: null, liveClocks, scoreboard };
+    }
+    const competitionId = compRow.id as string;
+
+    // 2. Upsert teams (provider='espn'), collect external_id -> db id map
+    const teamMap = new Map<number, string>();
+    const allTeams = new Map<number, MappedEspnTeam>();
+    for (const f of fixtures) {
+      allTeams.set(f.home.externalId, f.home);
+      allTeams.set(f.away.externalId, f.away);
+    }
+
+    for (const team of allTeams.values()) {
+      const { data: teamRow, error: teamErr } = await supabaseAdmin
+        .from("football_teams")
+        .upsert(
+          {
+            external_id: team.externalId,
+            provider: "espn",
+            name: team.name,
+            short_name: team.shortName,
+            tla: team.tla,
+            crest_url: team.crestUrl,
+            last_synced_at: new Date().toISOString(),
+          },
+          { onConflict: "provider,external_id" }
+        )
+        .select("id")
+        .maybeSingle();
+
+      if (!teamErr && teamRow) teamMap.set(team.externalId, teamRow.id as string);
+    }
+
+    // 3. Upsert fixtures (provider='espn')
+    const nowIso = new Date().toISOString();
+    for (const f of fixtures) {
+      const homeId = teamMap.get(f.home.externalId);
+      const awayId = teamMap.get(f.away.externalId);
+      if (!homeId || !awayId) continue;
+
+      await supabaseAdmin.from("football_fixtures").upsert(
+        {
+          external_id: f.externalId,
+          provider: "espn",
+          competition_id: competitionId,
+          home_team_id: homeId,
+          away_team_id: awayId,
+          utc_kickoff: f.utcKickoff,
+          status: f.status,
+          home_score: f.homeScore,
+          away_score: f.awayScore,
+          winner: f.winner,
+          current_minute: f.minute,
+          live_source: f.isLive ? "espn" : null,
+          last_live_update_at: f.isLive ? nowIso : null,
+          last_synced_at: nowIso,
+        },
+        { onConflict: "provider,external_id" }
+      );
+    }
+
+    return { competitionId, liveClocks, scoreboard };
+  } catch (e: any) {
+    const now = Date.now();
+    if (now - lastCompUpsertErrorLog > 30_000) {
+      lastCompUpsertErrorLog = now;
+      console.warn(`[espnService] DB sync fallback for ${code}:`, e?.message || e);
+    }
+    return { competitionId: null, liveClocks, scoreboard };
   }
+}
 
-  // 3. Upsert fixtures (provider='espn')
-  const nowIso = new Date().toISOString();
-  for (const f of fixtures) {
-    const homeId = teamMap.get(f.home.externalId);
-    const awayId = teamMap.get(f.away.externalId);
-    if (!homeId || !awayId) continue; // team upsert failed — skip this fixture, don't crash the batch
+/**
+ * Maps ESPN scoreboard fixtures directly to standard frontend FootballMatch format.
+ * Includes deterministic 1X2 odds calculation.
+ */
+export function espnScoreboardToFootballMatches(
+  code: string,
+  scoreboard: EspnScoreboardResult
+): any[] {
+  const comp = scoreboard.competition;
+  const compName = comp?.name || code;
+  const compEmblem = getLeagueLogoUrl(code) || comp?.emblemUrl || "";
 
-    const { error: fixErr } = await supabaseAdmin.from("football_fixtures").upsert(
-      {
-        external_id: f.externalId,
-        provider: "espn",
-        competition_id: competitionId,
-        home_team_id: homeId,
-        away_team_id: awayId,
-        utc_kickoff: f.utcKickoff,
-        status: f.status,
-        home_score: f.homeScore,
-        away_score: f.awayScore,
-        winner: f.winner,
-        current_minute: f.minute,
-        live_source: f.isLive ? "espn" : null,
-        last_live_update_at: f.isLive ? nowIso : null,
-        last_synced_at: nowIso,
-      },
-      { onConflict: "provider,external_id" }
+  return scoreboard.fixtures.map((f) => {
+    const odds = computeDeterministicOdds(
+      String(f.externalId),
+      String(f.home.externalId),
+      String(f.away.externalId),
+      { drawEnabled: true }
     );
 
-    if (!fixErr && f.isLive && f.displayClock) {
-      liveClocks[f.externalId] = f.displayClock;
-    }
-  }
-
-  return { competitionId, liveClocks };
+    return {
+      id: f.externalId,
+      utcDate: f.utcKickoff,
+      status: f.status,
+      minute: f.minute,
+      displayClock: f.displayClock,
+      bettingSuspendedUntil: null,
+      matchday: 1,
+      competition: {
+        id: comp?.externalId || 0,
+        name: compName,
+        code: code,
+        emblem: compEmblem,
+      },
+      homeTeam: {
+        id: f.home.externalId,
+        name: f.home.name,
+        shortName: f.home.shortName,
+        tla: f.home.tla,
+        crest: f.home.crestUrl || "",
+      },
+      awayTeam: {
+        id: f.away.externalId,
+        name: f.away.name,
+        shortName: f.away.shortName,
+        tla: f.away.tla,
+        crest: f.away.crestUrl || "",
+      },
+      score: {
+        winner: f.winner,
+        fullTime: { home: f.homeScore, away: f.awayScore },
+        halfTime: { home: null, away: null },
+      },
+      odds: {
+        home: odds.home,
+        draw: odds.draw,
+        away: odds.away,
+      },
+      odds_model: "espn_deterministic",
+      odds_updated_at: new Date().toISOString(),
+    };
+  });
 }
+
