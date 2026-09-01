@@ -10,6 +10,8 @@ interface TalonLogoProps {
   className?: string;
   glow?: boolean;
   theme?: "blue" | "dark" | "light";
+  /** Use a bundled asset first for critical UI that must render offline. */
+  localFirst?: boolean;
 }
 
 const PRIMARY_LOGO_URL = import.meta.env.VITE_SUPABASE_URL
@@ -20,15 +22,20 @@ export default function TalonLogo({
   className = "w-28 h-28",
   glow = true,
   theme = "blue",
+  localFirst = false,
 }: TalonLogoProps) {
-  const [imgSrc, setImgSrc] = useState(PRIMARY_LOGO_URL);
+  const LOCAL_LOGO_URL = "/icon.svg";
+  const initialLogoUrl = localFirst ? LOCAL_LOGO_URL : PRIMARY_LOGO_URL;
+  const [imgSrc, setImgSrc] = useState(initialLogoUrl);
   const [hasError, setHasError] = useState(false);
 
   const handleError = () => {
     if (imgSrc === PRIMARY_LOGO_URL) {
-      setImgSrc("/tt-logo.png");
+      setImgSrc(localFirst ? LOCAL_LOGO_URL : "/tt-logo.png");
     } else if (imgSrc === "/tt-logo.png") {
       setImgSrc("/tt-logo.webp");
+    } else if (imgSrc === "/tt-logo.webp") {
+      setImgSrc(LOCAL_LOGO_URL);
     } else {
       setHasError(true);
     }

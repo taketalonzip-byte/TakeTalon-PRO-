@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import Header from "./components/Header";
 import TalonLogo from "./components/TalonLogo";
 import CategoryChips from "./components/CategoryChips";
@@ -105,8 +105,62 @@ const formatVirtualName = (name: string) => {
 };
 
 export default function App() {
-  // Splash state
+  // Splash and network state
   const [showSplash, setShowSplash] = useState(true);
+  const [isOffline, setIsOffline] = useState(
+    () => typeof navigator !== "undefined" && !navigator.onLine,
+  );
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false);
+
+  const handleRetryConnection = useCallback(async () => {
+    if (!navigator.onLine) {
+      setIsOffline(true);
+      setIsCheckingConnection(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 10000);
+    setIsCheckingConnection(true);
+
+    try {
+      const response = await fetch(`/api/health?offline_probe=${Date.now()}`, {
+        cache: "no-store",
+        credentials: "same-origin",
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`Connectivity probe failed: ${response.status}`);
+      setIsOffline(false);
+    } catch {
+      setIsOffline(true);
+    } finally {
+      window.clearTimeout(timeoutId);
+      setIsCheckingConnection(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleOffline = () => {
+      setIsOffline(true);
+      setIsCheckingConnection(false);
+    };
+    const handleOnline = () => {
+      void handleRetryConnection();
+    };
+
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [handleRetryConnection]);
+
+  // Verify real app reachability as well as navigator.onLine before leaving the splash.
+  useEffect(() => {
+    void handleRetryConnection();
+  }, [handleRetryConnection]);
 
   // Language switcher state
   const [lang, setLang] = useState<"en" | "fr" | "sw">("en");
@@ -2224,8 +2278,18 @@ export default function App() {
       return tip;
     });
 
-  if (showSplash) {
-    return <Splash theme={theme} onComplete={() => setShowSplash(false)} />;
+  if (showSplash || isOffline || isCheckingConnection) {
+    return (
+      <Splash
+        theme={theme}
+        isOffline={isOffline}
+        isCheckingConnection={isCheckingConnection}
+        onRetry={handleRetryConnection}
+        onComplete={() => {
+          if (!isOffline && !isCheckingConnection) setShowSplash(false);
+        }}
+      />
+    );
   }
 
   const selectedBets = cartItems.reduce<{ [matchId: string]: "home" | "draw" | "away" }>(
