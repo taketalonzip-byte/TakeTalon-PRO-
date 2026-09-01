@@ -4,6 +4,7 @@ import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import crypto from "crypto";
+import https from "https";
 import { hush } from "./src/lib/hush/presentation/hush-facade";
 import { HUSH_MAX_MULTIPLIER } from "./src/lib/hush/domain/fairness";
 import { syncEspnCompetition, fetchEspnScoreboard, espnScoreboardToFootballMatches, ESPN_LEAGUE_SLUGS } from "./src/lib/espnService";
@@ -2622,6 +2623,34 @@ interface OtpRecord {
 
 const otpStore = new Map<string, OtpRecord>();
 
+function sendBrevoEmailViaHttps(apiKey: string, payload: Record<string, unknown>): Promise<{ ok: boolean; statusCode: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(payload);
+    const request = https.request("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": apiKey,
+        "content-type": "application/json",
+        "content-length": Buffer.byteLength(body),
+      },
+      timeout: 20000,
+    }, (response) => {
+      let responseBody = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => { responseBody += chunk; });
+      response.on("end", () => {
+        const statusCode = response.statusCode || 500;
+        resolve({ ok: statusCode >= 200 && statusCode < 300, statusCode, body: responseBody });
+      });
+    });
+    request.on("timeout", () => request.destroy(new Error("Brevo request timed out")));
+    request.on("error", reject);
+    request.write(body);
+    request.end();
+  });
+}
+
 async function sendOtpEmail(email: string, firstName: string | undefined, otp: string): Promise<boolean> {
   const brevoKey = process.env.BREVO_API_KEY;
 
@@ -2651,27 +2680,17 @@ async function sendOtpEmail(email: string, firstName: string | undefined, otp: s
       </div>
     `;
 
-    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        "api-key": brevoKey,
-        "content-type": "application/json",
+        const response = await sendBrevoEmailViaHttps(brevoKey, {
+      sender: {
+        name: process.env.BREVO_SENDER_NAME || "TakeTalon PRO",
+        email: process.env.BREVO_SENDER_EMAIL || "support@taketalon.com",
       },
-      body: JSON.stringify({
-        sender: {
-          name: process.env.BREVO_SENDER_NAME || "TakeTalon PRO",
-          email: process.env.BREVO_SENDER_EMAIL || "support@taketalon.com",
-        },
-        to: [{ email, name: firstName || email }],
-        subject: `[TakeTalon PRO] ${otp} ni Nambari Yako ya Uthibitisho (OTP)`,
-        htmlContent: html,
-      }),
+      to: [{ email, name: firstName || email }],
+      subject: `[TakeTalon PRO] ${otp} ni Nambari Yako ya Uthibitisho (OTP)`,
+      htmlContent: html,
     });
-
     if (!response.ok) {
-      const errText = await response.text();
-      console.warn("[OTP-SERVICE] Brevo API send error:", errText);
+      console.warn(`[OTP-SERVICE] Brevo API send error (${response.statusCode}):`, response.body.slice(0, 500));
     }
     return response.ok;
   } catch (err: any) {
