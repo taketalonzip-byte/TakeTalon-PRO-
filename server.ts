@@ -137,6 +137,14 @@ const supabaseAdmin = isDbConfigured
     })
   : null;
 
+const supabaseAnonKey =
+  (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "").trim();
+const supabaseAuthClient = supabaseUrl !== "https://placeholder-project.supabase.co" && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+  : null;
+
 const AVIATOR_BETTING_MS = 10_000;
 const AVIATOR_BUSTED_MS = 4_000;
 let aviatorRoundNonce = 0;
@@ -3144,6 +3152,25 @@ app.post("/api/auth/login", async (req, res) => {
     const { data: profile, error: pErr } = await query.maybeSingle();
 
     if (!profile) {
+      return res.status(401).json({
+        ok: false,
+        error: "Maelezo ya kuingia si sahihi au akaunti haijapatikana.",
+      });
+    }
+
+    // Never authorize from a public profile row alone. The password must be
+    // verified by Supabase Auth before any profile or wallet data is returned.
+    if (!supabaseAuthClient || !profile.auth_user_id || !profile.email) {
+      console.error("[api/auth/login] Supabase Auth verification is not configured for this account.");
+      return res.status(503).json({ ok: false, error: "Uthibitishaji wa login haujasanidiwa." });
+    }
+
+    const { data: authData, error: authError } = await supabaseAuthClient.auth.signInWithPassword({
+      email: profile.email,
+      password: cleanPassword,
+    });
+
+    if (authError || !authData?.user || authData.user.id !== profile.auth_user_id) {
       return res.status(401).json({
         ok: false,
         error: "Maelezo ya kuingia si sahihi au akaunti haijapatikana.",

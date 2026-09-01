@@ -613,50 +613,16 @@ export default function AuthPage({
       let friendlyError = err?.message || "Imeshindikana kuingia kwenye akaunti.";
       const errMsg = String(err?.message || "").toLowerCase();
 
-      // If auth fails, try database profile-lookup fallback
-      if (
-        errMsg.includes("invalid login credentials") ||
-        errMsg.includes("failed to fetch") ||
-        errMsg.includes("network") ||
-        errMsg.includes("error")
-      ) {
-        try {
-          const lookupRes = await fetch(
-            `/api/auth/profile-lookup?id=${encodeURIComponent(loginId.trim())}`
-          );
-          if (lookupRes.ok) {
-            const lookupData = await lookupRes.json();
-            if (lookupData?.profile) {
-              const prof = lookupData.profile;
-              onAuthSuccess({
-                username: prof.username || prof.first_name || "User",
-                email: prof.email || "",
-                phone: prof.phone || "",
-                role: prof.role || "USER",
-              });
-              setSuccessMsg(t.successLogin);
-              setTimeout(() => {
-                onClose();
-                resetForm();
-              }, 700);
-              return;
-            }
-          }
-        } catch (fallbackErr) {
-          console.warn("[LOGIN-FALLBACK-WARN]", fallbackErr);
-        }
-
-        if (errMsg.includes("invalid login credentials")) {
-          friendlyError =
-            lang === "sw"
-              ? "Maelezo ya kuingia si sahihi au akaunti haijapatikana. Tafadhali hakiki, au tumia 'Kuingia Haraka (Quick Demo)'."
-              : "Invalid login credentials or account not found. Please double check or use 'Quick Demo Login'.";
-        } else if (errMsg.includes("failed to fetch")) {
-          friendlyError =
-            lang === "sw"
-              ? "Imeshindikana kuunganisha na server ya Auth. Mfumo umetumia akaunti yako ya database kuingia."
-              : "Auth network error. Retrying with database account credentials.";
-        }
+      if (errMsg.includes("invalid login credentials")) {
+        friendlyError =
+          lang === "sw"
+            ? "Maelezo ya kuingia si sahihi au akaunti haijapatikana."
+            : "Invalid login credentials or account not found.";
+      } else if (errMsg.includes("failed to fetch")) {
+        friendlyError =
+          lang === "sw"
+            ? "Imeshindikana kuunganisha na server ya Auth. Tafadhali jaribu tena."
+            : "Auth network error. Please try again.";
       } else if (errMsg.includes("email not confirmed")) {
         friendlyError =
           lang === "sw"
