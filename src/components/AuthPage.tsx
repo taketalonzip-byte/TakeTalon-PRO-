@@ -29,6 +29,22 @@ import {
   UserCheck,
 } from "lucide-react";
 
+const REGISTER_DRAFT_KEY = "taketalon.register.draft.v1";
+
+type RegisterDraft = {
+  regStep: 1 | 2 | 3;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  gender: "MALE" | "FEMALE" | "OTHER" | "";
+  birthday: string;
+  acceptTerms: boolean;
+  otpSentAt?: number;
+  otpVerifiedAt?: number;
+  updatedAt: number;
+};
+
 export interface AuthPageProps {
   isOpen?: boolean;
   onClose: () => void;
@@ -238,6 +254,8 @@ export default function AuthPage({
   const [cooldownSeconds, setCooldownSeconds] = useState(60);
   const [resendsRemaining, setResendsRemaining] = useState(3);
   const [attemptsRemaining, setAttemptsRemaining] = useState(5);
+  const [otpSentAt, setOtpSentAt] = useState<number | null>(null);
+  const [otpVerifiedAt, setOtpVerifiedAt] = useState<number | null>(null);
 
   // Step 3 Finalization State
   const [gender, setGender] = useState<"MALE" | "FEMALE" | "OTHER" | "">("");
@@ -269,11 +287,68 @@ export default function AuthPage({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Sync initialMode on mount or change
+  // Restore register draft after refresh/reconnect. Never restore password, retype-password, or OTP.
   useEffect(() => {
-    setMode(initialMode === "register" ? "register" : "login");
-    resetForm();
+    if (initialMode !== "register") {
+      setMode("login");
+      resetForm();
+      return;
+    }
+    setMode("register");
+    try {
+      const raw = window.localStorage.getItem(REGISTER_DRAFT_KEY);
+      if (!raw) {
+        resetForm();
+        return;
+      }
+      const draft = JSON.parse(raw) as Partial<RegisterDraft>;
+      if (!draft.updatedAt || Date.now() - draft.updatedAt > 24 * 60 * 60 * 1000) {
+        window.localStorage.removeItem(REGISTER_DRAFT_KEY);
+        resetForm();
+        return;
+      }
+      setRegStep(draft.regStep === 2 || draft.regStep === 3 ? draft.regStep : 1);
+      setFirstName(draft.firstName || "");
+      setLastName(draft.lastName || "");
+      setPhone(draft.phone || "");
+      setEmail(draft.email || "");
+      setGender(draft.gender || "");
+      setBirthday(draft.birthday || "");
+      setAcceptTerms(Boolean(draft.acceptTerms));
+      setOtpSentAt(draft.otpSentAt || null);
+      setOtpVerifiedAt(draft.otpVerifiedAt || null);
+      const sentAt = draft.otpSentAt || Date.now();
+      setOtpExpirySeconds(Math.max(0, 600 - Math.floor((Date.now() - sentAt) / 1000)));
+      setCooldownSeconds(Math.max(0, 60 - Math.floor((Date.now() - sentAt) / 1000)));
+    } catch {
+      window.localStorage.removeItem(REGISTER_DRAFT_KEY);
+      resetForm();
+    }
   }, [initialMode]);
+
+  // Persist only non-sensitive registration fields and current step.
+  useEffect(() => {
+    if (mode !== "register") return;
+    if (![firstName, lastName, phone, email, gender, birthday].some(Boolean)) return;
+    const draft: RegisterDraft = {
+      regStep,
+      firstName,
+      lastName,
+      phone,
+      email,
+      gender,
+      birthday,
+      acceptTerms,
+      otpSentAt: otpSentAt || undefined,
+      otpVerifiedAt: otpVerifiedAt || undefined,
+      updatedAt: Date.now(),
+    };
+    try {
+      window.localStorage.setItem(REGISTER_DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // Storage may be unavailable in private browsing; registration still works normally.
+    }
+  }, [mode, regStep, firstName, lastName, phone, email, gender, birthday, acceptTerms, otpSentAt, otpVerifiedAt]);
 
   // Timer effect for OTP step
   useEffect(() => {
@@ -327,6 +402,8 @@ export default function AuthPage({
     setCooldownSeconds(60);
     setResendsRemaining(3);
     setAttemptsRemaining(5);
+    setOtpSentAt(null);
+    setOtpVerifiedAt(null);
     setGender("");
     setBirthday("");
     setAcceptTerms(false);
@@ -654,6 +731,9 @@ export default function AuthPage({
         return;
       }
 
+      const sentAt = Date.now();
+      setOtpSentAt(sentAt);
+      setOtpVerifiedAt(null);
       setOtpExpirySeconds((data.expiry_minutes || 10) * 60);
       setCooldownSeconds(60);
       setAttemptsRemaining(5);
@@ -715,6 +795,7 @@ export default function AuthPage({
         return;
       }
 
+      setOtpVerifiedAt(Date.now());
       setRegStep(3);
       const message = "Code ya OTP imethibitishwa kwa mafanikio! Sasa kamilisha usajili wako.";
       setSuccessMsg(message);
@@ -856,6 +937,9 @@ export default function AuthPage({
       );
 
       // REDIRECT TO HOME PAGE DIRECTLY
+      try {
+        window.localStorage.removeItem(REGISTER_DRAFT_KEY);
+      } catch {}
       setTimeout(() => {
         onClose();
         resetForm();

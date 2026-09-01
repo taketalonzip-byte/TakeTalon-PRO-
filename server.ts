@@ -2918,8 +2918,16 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
 
     let authUserId = "";
     let profileRecord: any = null;
+    let createdAuthUser = false;
 
-    if (supabaseAdmin) {
+    if (!supabaseAdmin) {
+      return res.status(503).json({
+        success: false,
+        error: "Auth server haijaunganishwa na Supabase. Tafadhali wasiliana na support.",
+      });
+    }
+
+    {
       try {
         const { data: authCreated, error: authErr } = await supabaseAdmin.auth.admin.createUser({
           email: cleanEmail,
@@ -2952,6 +2960,8 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
                   last_name: cleanLastName,
                   username: finalUsername,
                   phone: cleanPhone,
+                  gender: gender || null,
+                  birthday: birthday || null,
                 },
               });
             }
@@ -2960,9 +2970,21 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
           }
         } else if (authCreated?.user) {
           authUserId = authCreated.user.id;
+          createdAuthUser = true;
+        }
+
+        if (authErr && !authUserId) {
+          return res.status(409).json({
+            success: false,
+            error: authErr.message || "Supabase imeshindwa kuunda akaunti.",
+          });
         }
       } catch (authException: any) {
-        console.warn("[create-account] Auth admin exception:", authException?.message || authException);
+        console.error("[create-account] Auth admin exception:", authException?.message || authException);
+        return res.status(502).json({
+          success: false,
+          error: "Supabase Auth haikupatikana kwa sasa. Tafadhali jaribu tena.",
+        });
       }
 
       try {
@@ -2995,25 +3017,33 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
           .select("*")
           .maybeSingle();
 
-        if (pErr) {
-          console.warn("[create-account] Profile upsert notice:", pErr.message);
-          const { data: existingProf } = await supabaseAdmin
-            .from("profiles")
-            .select("*")
-            .eq("email", cleanEmail)
-            .maybeSingle();
-          profileRecord = existingProf;
-        } else {
-          profileRecord = upsertedProfile;
+        if (pErr || !upsertedProfile?.id) {
+          if (createdAuthUser && authUserId) {
+            await supabaseAdmin.auth.admin.deleteUser(authUserId).catch(() => {});
+          }
+          console.error("[create-account] Profile persistence failed:", pErr?.message || "No profile returned");
+          return res.status(500).json({
+            success: false,
+            error: "Akaunti ya Auth haikuweza kuhifadhiwa kikamilifu kwenye profile database. Tafadhali jaribu tena.",
+          });
         }
+        profileRecord = upsertedProfile;
 
-        if (profileRecord?.id) {
-          await supabaseAdmin
-            .from("wallets")
-            .upsert({ profile_id: profileRecord.id, balance: 0, reserved_balance: 0 }, { onConflict: "profile_id" });
+        const { error: walletErr } = await supabaseAdmin
+          .from("wallets")
+          .upsert({ profile_id: profileRecord.id, balance: 0, reserved_balance: 0 }, { onConflict: "profile_id" });
+        if (walletErr) {
+          console.warn("[create-account] Wallet initialization notice:", walletErr.message);
         }
       } catch (dbErr: any) {
-        console.warn("[create-account] DB insert error:", dbErr?.message || dbErr);
+        if (createdAuthUser && authUserId) {
+          await supabaseAdmin.auth.admin.deleteUser(authUserId).catch(() => {});
+        }
+        console.error("[create-account] DB insert error:", dbErr?.message || dbErr);
+        return res.status(500).json({
+          success: false,
+          error: "Database haikuweza kuhifadhi taarifa za profile. Tafadhali jaribu tena.",
+        });
       }
     }
 
