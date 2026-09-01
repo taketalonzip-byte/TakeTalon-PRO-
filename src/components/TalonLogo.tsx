@@ -96,7 +96,10 @@ export default function TalonLogo({
           }`}
         />
       )}
-      {!hasError ? (
+      {localFirst ? (
+        // Critical Splash path: inline SVG has no image request or decode race.
+        <InlineTalonMark />
+      ) : !hasError ? (
         <img
           src={imgSrc}
           alt="TakeTalon Logo"

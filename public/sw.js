@@ -1,4 +1,4 @@
-const CACHE_NAME = "taketalon-pwa-v3";
+const CACHE_NAME = "taketalon-pwa-v4";
 
 // Keep every asset rendered by the initial splash local and mandatory. If any
 // of these fails during install, this worker must not claim the page.
