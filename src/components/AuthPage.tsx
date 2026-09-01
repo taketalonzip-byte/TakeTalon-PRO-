@@ -34,6 +34,7 @@ export interface AuthPageProps {
   onClose: () => void;
   theme: "light" | "dark" | "blue";
   onAuthSuccess: (user: { username: string; email: string; phone: string; role?: string }) => void;
+  onNotification?: (message: string, type?: "success" | "error" | "info") => void;
   initialMode?: "login" | "register" | "forgot";
   lang?: string;
 }
@@ -209,6 +210,7 @@ export default function AuthPage({
   onClose,
   theme,
   onAuthSuccess,
+  onNotification,
   initialMode = "login",
   lang = "sw",
 }: AuthPageProps) {
@@ -646,7 +648,9 @@ export default function AuthPage({
 
       if (!res.ok) {
         if (data?.cooldown_left) setCooldownSeconds(data.cooldown_left);
-        setError(data?.error || "Imeshindikana kutuma OTP.");
+        const message = data?.error || "Imeshindikana kutuma OTP.";
+        setError(message);
+        onNotification?.(message, "error");
         return;
       }
 
@@ -654,10 +658,14 @@ export default function AuthPage({
       setCooldownSeconds(60);
       setAttemptsRemaining(5);
       setResendsRemaining(3);
-      setSuccessMsg(data.message || `Code ya OTP imetumwa kwa barua pepe ${emailToSend}`);
+      const message = data.message || `Code ya OTP imetumwa kwa barua pepe ${emailToSend}`;
+      setSuccessMsg(message);
+      onNotification?.(message, "success");
     } catch (err: any) {
       console.error("[SEND-OTP-ERROR]", err);
-      setError(err?.message || "Imeshindikana kuwasiliana na server kutuma OTP.");
+      const message = err?.message || "Imeshindikana kuwasiliana na server kutuma OTP.";
+      setError(message);
+      onNotification?.(message, "error");
     } finally {
       setLoading(false);
     }
@@ -701,12 +709,16 @@ export default function AuthPage({
         if (data?.remaining_attempts !== undefined) {
           setAttemptsRemaining(data.remaining_attempts);
         }
-        setError(data?.error || "Code ya OTP si sahihi.");
+        const message = data?.error || "Code ya OTP si sahihi.";
+        setError(message);
+        onNotification?.(message, "error");
         return;
       }
 
       setRegStep(3);
-      setSuccessMsg("Code ya OTP imethibitishwa kwa mafanikio! Sasa kamilisha usajili wako.");
+      const message = "Code ya OTP imethibitishwa kwa mafanikio! Sasa kamilisha usajili wako.";
+      setSuccessMsg(message);
+      onNotification?.(message, "success");
     } catch (err: any) {
       console.error("[STEP2-ERROR]", err);
       setError(err?.message || "Imeshindikana kuhakiki OTP.");
@@ -743,14 +755,18 @@ export default function AuthPage({
 
       if (!res.ok) {
         if (data?.cooldown_left) setCooldownSeconds(data.cooldown_left);
-        setError(data?.error || "Imeshindikana kutuma OTP mpya.");
+        const message = data?.error || "Imeshindikana kutuma OTP mpya.";
+        setError(message);
+        onNotification?.(message, "error");
         return;
       }
 
       setResendsRemaining((prev) => Math.max(0, prev - 1));
       setCooldownSeconds(60);
       setAttemptsRemaining(5);
-      setSuccessMsg(data.message || "Code mpya ya OTP imetumwa kwenye barua pepe yako!");
+      const message = data.message || "Code mpya ya OTP imetumwa kwenye barua pepe yako!";
+      setSuccessMsg(message);
+      onNotification?.(message, "success");
     } catch (err: any) {
       console.error("[RESEND-OTP-ERROR]", err);
       setError(err?.message || "Imeshindikana kutuma OTP.");

@@ -304,10 +304,7 @@ export default function App() {
   };
 
   const addNotification = (message: string, type: "success" | "error" | "info" = "info") => {
-    // Zuia notification zote wakati mtumiaji bado hajalogin
-    if (!currentUser || !currentUser.isLoggedIn) {
-      return;
-    }
+    // OTP notifications must also work while registration is still in progress.
     const id = `${Date.now()}-${Math.random()}`;
     const timestamp = new Date().toLocaleTimeString();
 
@@ -4877,7 +4874,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Global floating system notifications center */}
-      <div className="fixed bottom-20 left-4 right-4 max-w-sm mx-auto space-y-2 pointer-events-none z-[99999]">
+      <div className="fixed top-4 left-4 right-4 max-w-sm mx-auto space-y-2 pointer-events-none z-[99999]">
         <AnimatePresence>
           {notifications.map((notif) => (
             <motion.div
@@ -4938,6 +4935,7 @@ export default function App() {
             theme={theme}
             initialMode={authModalMode}
             lang={lang}
+            onNotification={addNotification}
             onAuthSuccess={async (user) => {
               const updatedUser = {
                 ...user,

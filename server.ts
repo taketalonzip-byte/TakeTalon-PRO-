@@ -2625,12 +2625,9 @@ const otpStore = new Map<string, OtpRecord>();
 async function sendOtpEmail(email: string, firstName: string | undefined, otp: string): Promise<boolean> {
   const brevoKey = process.env.BREVO_API_KEY;
 
-  console.log(`[OTP-SERVICE] ==========================================`);
-  console.log(`[OTP-SERVICE] Verification Code for ${email} (${firstName || "User"}): ${otp}`);
-  console.log(`[OTP-SERVICE] ==========================================`);
-
   if (!brevoKey) {
-    return true;
+    console.error("[OTP-SERVICE] BREVO_API_KEY is missing; OTP email was not sent.");
+    return false;
   }
 
   try {
@@ -2662,7 +2659,10 @@ async function sendOtpEmail(email: string, firstName: string | undefined, otp: s
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        sender: { name: "TakeTalon PRO", email: "support@taketalon.com" },
+        sender: {
+          name: process.env.BREVO_SENDER_NAME || "TakeTalon PRO",
+          email: process.env.BREVO_SENDER_EMAIL || "support@taketalon.com",
+        },
         to: [{ email, name: firstName || email }],
         subject: `[TakeTalon PRO] ${otp} ni Nambari Yako ya Uthibitisho (OTP)`,
         htmlContent: html,
@@ -2701,7 +2701,14 @@ const handleSendOtpRoute = async (req: Request, res: Response) => {
       });
     }
 
-    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const generatedOtp = crypto.randomInt(100000, 1000000).toString();
+    const delivered = await sendOtpEmail(rawEmail, firstName, generatedOtp);
+    if (!delivered) {
+      return res.status(502).json({
+        success: false,
+        error: "Imeshindikana kutuma OTP. Tafadhali jaribu tena baadaye.",
+      });
+    }
 
     otpStore.set(rawEmail, {
       otp: generatedOtp,
@@ -2713,8 +2720,6 @@ const handleSendOtpRoute = async (req: Request, res: Response) => {
       resendCount: existing ? existing.resendCount + 1 : 0,
       verified: false,
     });
-
-    sendOtpEmail(rawEmail, firstName, generatedOtp).catch(() => {});
 
     return res.status(200).json({
       success: true,
@@ -2815,8 +2820,15 @@ const handleResendOtpRoute = async (req: Request, res: Response) => {
       }
     }
 
-    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const generatedOtp = crypto.randomInt(100000, 1000000).toString();
     const firstName = existing?.firstName || "";
+    const delivered = await sendOtpEmail(rawEmail, firstName, generatedOtp);
+    if (!delivered) {
+      return res.status(502).json({
+        success: false,
+        error: "Imeshindikana kutuma OTP mpya. Tafadhali jaribu tena baadaye.",
+      });
+    }
 
     otpStore.set(rawEmail, {
       otp: generatedOtp,
@@ -2828,8 +2840,6 @@ const handleResendOtpRoute = async (req: Request, res: Response) => {
       resendCount: (existing?.resendCount || 0) + 1,
       verified: false,
     });
-
-    sendOtpEmail(rawEmail, firstName, generatedOtp).catch(() => {});
 
     return res.status(200).json({
       success: true,
@@ -2869,6 +2879,14 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
     }
     if (!cleanPassword || cleanPassword.length < 6) {
       return res.status(400).json({ success: false, error: "Neno la siri (password) lazima liwe na angalau herufi 6." });
+    }
+
+    const otpRecord = otpStore.get(cleanEmail);
+    if (!otpRecord?.verified) {
+      return res.status(403).json({
+        success: false,
+        error: "Tafadhali thibitisha OTP ya barua pepe kabla ya kuunda akaunti.",
+      });
     }
 
     let finalUsername = (reqUsername || "").toString().trim();
