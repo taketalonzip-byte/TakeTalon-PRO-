@@ -2644,7 +2644,7 @@ function toOtpRecord(row: any): OtpRecord {
     attemptsLeft: Number(row.attempts_left),
     lastSentAt: new Date(row.last_sent_at).getTime(),
     resendCount: Number(row.resend_count),
-    verified: Boolean(row.verified),
+    verified: Boolean(row.verified || row.verified_at),
   };
 }
 
@@ -2654,7 +2654,7 @@ async function getOtpRecord(email: string): Promise<OtpRecord | null> {
   try {
     const { data, error } = await supabaseAdmin
       .from(OTP_TABLE)
-      .select("email, otp_hash, first_name, expires_at, attempts_left, last_sent_at, resend_count, verified")
+      .select("email, otp_hash, first_name, expires_at, attempts_left, last_sent_at, resend_count, verified, verified_at")
       .eq("email", normalizedEmail)
       .eq("purpose", "registration")
       .maybeSingle();
@@ -2682,10 +2682,14 @@ async function saveOtpRecord(record: OtpRecord): Promise<void> {
     otp_hash: record.otpHash,
     first_name: record.firstName || "",
     expires_at: new Date(record.expiresAt).toISOString(),
+    attempts: Math.max(0, 5 - record.attemptsLeft),
+    max_attempts: 5,
     attempts_left: record.attemptsLeft,
     last_sent_at: new Date(record.lastSentAt).toISOString(),
     resend_count: record.resendCount,
+    max_resends: 5,
     verified: record.verified,
+    verified_at: record.verified ? new Date().toISOString() : null,
     updated_at: new Date().toISOString(),
   }, { onConflict: "email,purpose" });
   if (error) throw error;
