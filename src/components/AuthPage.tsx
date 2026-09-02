@@ -34,7 +34,7 @@ const AUTH_REQUEST_TIMEOUT_MS = 90_000;
 
 function isAuthRequestAbort(error: unknown): boolean {
   const candidate = error as { name?: string; message?: string } | null;
-  return candidate?.name === "AbortError" || /signal is aborted|aborted without reason/i.test(candidate?.message || "");
+  return candidate?.name === "AbortError" || candidate?.name === "TimeoutError" || /signal is aborted|aborted without reason|timed out|timeout/i.test(candidate?.message || "");
 }
 
 async function fetchAuthRequest(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -789,9 +789,11 @@ export default function AuthPage({
       onNotification?.(message, "success");
     } catch (err: any) {
       console.error("[STEP2-ERROR]", err);
-      setError(isAuthRequestAbort(err)
-        ? "Uhakiki umechelewa kwa sababu ya connection. Tafadhali jaribu tena."
-        : "Imeshindikana kuhakiki OTP.");
+      const message = isAuthRequestAbort(err)
+        ? "Uhakiki umechelewa kwa sababu ya connection/server. Tafadhali subiri kidogo kisha ujaribu tena."
+        : "Imeshindikana kuhakiki OTP kwa sasa. Tafadhali jaribu tena.";
+      setError(message);
+      onNotification?.(message, "error");
     } finally {
       setLoading(false);
     }
