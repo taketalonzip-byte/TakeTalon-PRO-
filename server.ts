@@ -3017,7 +3017,8 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
     const cleanFirstName = (first_name || "").toString().trim();
     const cleanLastName = (last_name || "").toString().trim();
     const cleanPhone = (phone || "").toString().trim();
-
+    const genderValue = (gender || "").toString().trim().toUpperCase();
+    const cleanGender = ["MALE", "FEMALE", "OTHER"].includes(genderValue) ? genderValue : "";
     if (!cleanEmail || !cleanEmail.includes("@")) {
       return res.status(400).json({ success: false, error: "Barua pepe (email) inahitajika." });
     }
@@ -3063,7 +3064,7 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
             last_name: cleanLastName,
             username: finalUsername,
             phone: cleanPhone,
-            gender: gender || null,
+            gender: cleanGender || null,
             birthday: birthday || null,
           },
         });
@@ -3119,7 +3120,7 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
           last_name: cleanLastName,
           email: cleanEmail,
           phone: cleanPhone,
-          gender: gender || null,
+          gender: cleanGender || null,
           birthday: birthday || null,
           role:
             cleanPhone.includes("68769887") || finalUsername.toLowerCase().includes("amissi640")
@@ -3147,9 +3148,15 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
             await supabaseAdmin.auth.admin.deleteUser(authUserId).catch(() => {});
           }
           console.error("[create-account] Profile persistence failed:", pErr?.message || "No profile returned");
+          const dbMessage = (pErr?.message || "").toLowerCase();
+          const profileError = dbMessage.includes("gender") || dbMessage.includes("check constraint")
+            ? "Jinsia au tarehe ya kuzaliwa haikubaliki. Chagua jinsia na hakikisha una miaka 18 au zaidi."
+            : dbMessage.includes("duplicate") || dbMessage.includes("unique")
+              ? "Email, username au namba ya simu tayari inatumika kwenye akaunti nyingine."
+              : "Profile database haikuweza kuhifadhi taarifa za akaunti kwa sasa. Tafadhali jaribu tena.";
           return res.status(500).json({
             success: false,
-            error: "Akaunti ya Auth haikuweza kuhifadhiwa kikamilifu kwenye profile database. Tafadhali jaribu tena.",
+            error: profileError,
           });
         }
         profileRecord = upsertedProfile;
