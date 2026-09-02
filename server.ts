@@ -2619,7 +2619,7 @@ app.get("/api/agent/sync-role", async (req, res) => {
 // OTP & Authentication Endpoints
 // ─────────────────────────────────────────────────────────────────────────────
 interface OtpRecord {
-  otp: string;
+  otpHash: string;
   email: string;
   firstName?: string;
   expiresAt: number;
@@ -2628,8 +2628,75 @@ interface OtpRecord {
   resendCount: number;
   verified: boolean;
 }
-
 const otpStore = new Map<string, OtpRecord>();
+const OTP_TABLE = "otp_verifications";
+
+function hashOtp(email: string, otp: string): string {
+  return crypto.createHash("sha256").update(`${email}:${otp}`).digest("hex");
+}
+
+function toOtpRecord(row: any): OtpRecord {
+  return {
+    otpHash: String(row.otp_hash || ""),
+    email: String(row.email || "").toLowerCase(),
+    firstName: row.first_name || "",
+    expiresAt: new Date(row.expires_at).getTime(),
+    attemptsLeft: Number(row.attempts_left),
+    lastSentAt: new Date(row.last_sent_at).getTime(),
+    resendCount: Number(row.resend_count),
+    verified: Boolean(row.verified),
+  };
+}
+
+async function getOtpRecord(email: string): Promise<OtpRecord | null> {
+  const normalizedEmail = email.toLowerCase();
+  if (!supabaseAdmin) return otpStore.get(normalizedEmail) || null;
+  try {
+    const { data, error } = await supabaseAdmin
+      .from(OTP_TABLE)
+      .select("email, otp_hash, first_name, expires_at, attempts_left, last_sent_at, resend_count, verified")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      otpStore.delete(normalizedEmail);
+      return null;
+    }
+    const record = toOtpRecord(data);
+    otpStore.set(normalizedEmail, record);
+    return record;
+  } catch (error: any) {
+    console.error("[OTP-STORE] Read failed:", error?.message || error);
+    return otpStore.get(normalizedEmail) || null;
+  }
+}
+
+async function saveOtpRecord(record: OtpRecord): Promise<void> {
+  const normalizedEmail = record.email.toLowerCase();
+  otpStore.set(normalizedEmail, record);
+  if (!supabaseAdmin) return;
+  const { error } = await supabaseAdmin.from(OTP_TABLE).upsert({
+    email: normalizedEmail,
+    otp_hash: record.otpHash,
+    first_name: record.firstName || "",
+    expires_at: new Date(record.expiresAt).toISOString(),
+    attempts_left: record.attemptsLeft,
+    last_sent_at: new Date(record.lastSentAt).toISOString(),
+    resend_count: record.resendCount,
+    verified: record.verified,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "email" });
+  if (error) throw error;
+}
+
+async function deleteOtpRecord(email: string): Promise<void> {
+  const normalizedEmail = email.toLowerCase();
+  otpStore.delete(normalizedEmail);
+  if (!supabaseAdmin) return;
+  const { error } = await supabaseAdmin.from(OTP_TABLE).delete().eq("email", normalizedEmail);
+  if (error) throw error;
+}
+
 
 function sendBrevoEmailViaHttps(apiKey: string, payload: Record<string, unknown>): Promise<{ ok: boolean; statusCode: number; body: string }> {
   return new Promise((resolve, reject) => {
@@ -2759,7 +2826,7 @@ const handleSendOtpRoute = async (req: Request, res: Response) => {
     }
 
     const now = Date.now();
-    const existing = otpStore.get(rawEmail);
+    const existing = await getOtpRecord(rawEmail);
 
     if (existing && now - existing.lastSentAt < 60000) {
       const waitSeconds = Math.ceil((60000 - (now - existing.lastSentAt)) / 1000);
@@ -2779,8 +2846,8 @@ const handleSendOtpRoute = async (req: Request, res: Response) => {
       });
     }
 
-    otpStore.set(rawEmail, {
-      otp: generatedOtp,
+    await saveOtpRecord({
+      otpHash: hashOtp(rawEmail, generatedOtp),
       email: rawEmail,
       firstName,
       expiresAt: now + 10 * 60 * 1000,
@@ -2824,7 +2891,7 @@ const handleVerifyOtpRoute = async (req: Request, res: Response) => {
     }
 
     if (now > record.expiresAt) {
-      otpStore.delete(rawEmail);
+      await deleteOtpRecord(rawEmail);
       return res.status(400).json({
         success: false,
         error: "Muda wa OTP umekwisha (dakika 10 zimepita). Tafadhali omba tena.",
@@ -2832,15 +2899,16 @@ const handleVerifyOtpRoute = async (req: Request, res: Response) => {
     }
 
     if (record.attemptsLeft <= 0) {
-      otpStore.delete(rawEmail);
+      await deleteOtpRecord(rawEmail);
       return res.status(400).json({
         success: false,
         error: "Umejaribu vibaya mara nyingi mno. Tafadhali omba OTP mpya.",
       });
     }
 
-    if (record.otp !== cleanOtp) {
+    if (record.otpHash !== hashOtp(rawEmail, cleanOtp)) {
       record.attemptsLeft -= 1;
+      await saveOtpRecord(record);
       return res.status(400).json({
         success: false,
         remaining_attempts: record.attemptsLeft,
@@ -2849,6 +2917,7 @@ const handleVerifyOtpRoute = async (req: Request, res: Response) => {
     }
 
     record.verified = true;
+    await saveOtpRecord(record);
     return res.status(200).json({
       success: true,
       message: "Code ya OTP imethibitishwa kwa mafanikio!",
@@ -2870,7 +2939,7 @@ const handleResendOtpRoute = async (req: Request, res: Response) => {
     }
 
     const now = Date.now();
-    const existing = otpStore.get(rawEmail);
+    const existing = await getOtpRecord(rawEmail);
 
     if (existing) {
       if (now - existing.lastSentAt < 60000) {
@@ -2899,8 +2968,8 @@ const handleResendOtpRoute = async (req: Request, res: Response) => {
       });
     }
 
-    otpStore.set(rawEmail, {
-      otp: generatedOtp,
+    await saveOtpRecord({
+      otpHash: hashOtp(rawEmail, generatedOtp),
       email: rawEmail,
       firstName,
       expiresAt: now + 10 * 60 * 1000,
@@ -2950,7 +3019,7 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: "Neno la siri (password) lazima liwe na angalau herufi 6." });
     }
 
-    const otpRecord = otpStore.get(cleanEmail);
+    const otpRecord = await getOtpRecord(cleanEmail);
     if (!otpRecord?.verified) {
       return res.status(403).json({
         success: false,
@@ -3097,7 +3166,7 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
       }
     }
 
-    otpStore.delete(cleanEmail);
+    await deleteOtpRecord(cleanEmail);
 
     return res.status(200).json({
       success: true,
