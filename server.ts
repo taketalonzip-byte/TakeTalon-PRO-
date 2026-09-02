@@ -2882,7 +2882,7 @@ const handleVerifyOtpRoute = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: "Tafadhali weka email na OTP kamili." });
     }
 
-    const record = otpStore.get(rawEmail);
+    const record = await getOtpRecord(rawEmail);
     const now = Date.now();
 
     if (!record) {
@@ -2926,7 +2926,7 @@ const handleVerifyOtpRoute = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("[handleVerifyOtpRoute] Error:", err);
-    return res.status(500).json({ success: false, error: err?.message || "Hitilafu ya kuhakiki OTP." });
+    return res.status(500).json({ success: false, error: "Server imeshindwa kuhakiki OTP kwa sasa. Tafadhali jaribu tena." });
   }
 };
 
