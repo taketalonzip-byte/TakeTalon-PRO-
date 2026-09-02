@@ -30,11 +30,19 @@ import {
 } from "lucide-react";
 
 const REGISTER_DRAFT_KEY = "taketalon.register.draft.v1";
-const AUTH_REQUEST_TIMEOUT_MS = 45_000;
+const AUTH_REQUEST_TIMEOUT_MS = 90_000;
+
+function isAuthRequestAbort(error: unknown): boolean {
+  const candidate = error as { name?: string; message?: string } | null;
+  return candidate?.name === "AbortError" || /signal is aborted|aborted without reason/i.test(candidate?.message || "");
+}
 
 async function fetchAuthRequest(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), AUTH_REQUEST_TIMEOUT_MS);
+  const timeoutId = window.setTimeout(
+    () => controller.abort(new DOMException("TakeTalon auth request timed out", "TimeoutError")),
+    AUTH_REQUEST_TIMEOUT_MS,
+  );
   try {
     return await fetch(input, { ...init, signal: controller.signal });
   } finally {
@@ -720,9 +728,9 @@ export default function AuthPage({
       onNotification?.(message, "success");
     } catch (err: any) {
       console.error("[SEND-OTP-ERROR]", err);
-      const message = err?.name === "AbortError"
+      const message = isAuthRequestAbort(err)
         ? "Server imechelewa kujibu. Tafadhali subiri kidogo kisha ujaribu tena."
-        : err?.message || "Imeshindikana kuwasiliana na server kutuma OTP.";
+        : "Imeshindikana kuwasiliana na server kutuma OTP.";
       setError(message);
       onNotification?.(message, "error");
     } finally {
@@ -781,9 +789,9 @@ export default function AuthPage({
       onNotification?.(message, "success");
     } catch (err: any) {
       console.error("[STEP2-ERROR]", err);
-      setError(err?.name === "AbortError"
+      setError(isAuthRequestAbort(err)
         ? "Uhakiki umechelewa kwa sababu ya connection. Tafadhali jaribu tena."
-        : err?.message || "Imeshindikana kuhakiki OTP.");
+        : "Imeshindikana kuhakiki OTP.");
     } finally {
       setLoading(false);
     }
@@ -831,7 +839,9 @@ export default function AuthPage({
       onNotification?.(message, "success");
     } catch (err: any) {
       console.error("[RESEND-OTP-ERROR]", err);
-      setError(err?.message || "Imeshindikana kutuma OTP.");
+      setError(isAuthRequestAbort(err)
+        ? "Server imechelewa kujibu. Tafadhali jaribu tena."
+        : "Imeshindikana kutuma OTP.");
     } finally {
       setLoading(false);
     }
@@ -927,7 +937,9 @@ export default function AuthPage({
       }, 1000);
     } catch (err: any) {
       console.error("[FINALIZE-ERROR]", err);
-      setError(err?.message || "Imeshindikana kukamilisha usajili.");
+      setError(isAuthRequestAbort(err)
+        ? "Uundaji wa akaunti umechelewa kwa sababu ya connection. Tafadhali jaribu tena."
+        : "Imeshindikana kukamilisha usajili.");
     } finally {
       setLoading(false);
     }
