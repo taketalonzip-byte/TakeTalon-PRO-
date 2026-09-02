@@ -150,6 +150,36 @@ const AVIATOR_BUSTED_MS = 4_000;
 let aviatorRoundNonce = 0;
 let aviatorLoopStarted = false;
 
+const AUTH_OP_TIMEOUT_MS = 6000;
+
+async function withOpTimeout<T>(
+  promise: PromiseLike<T>,
+  timeoutMs: number = AUTH_OP_TIMEOUT_MS,
+  opName = "DB operation"
+): Promise<T> {
+  let timer: any;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${opName} timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+  try {
+    return await Promise.race([Promise.resolve(promise), timeoutPromise]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function isNetworkNoise(err: any): boolean {
+  const msg = (err?.message || String(err || "")).toLowerCase();
+  return (
+    msg.includes("timeout") ||
+    msg.includes("disconnect") ||
+    msg.includes("fetch failed") ||
+    msg.includes("upstream connect error") ||
+    msg.includes("econnreset") ||
+    msg.includes("etimedout")
+  );
+}
+
 interface ServerAviatorRound {
   id: number;
   round_id: string;
@@ -185,21 +215,27 @@ async function writeAviatorRoundState(patch: Partial<ServerAviatorRound>) {
 
   if (!supabaseAdmin) return;
   try {
-    const { error } = await supabaseAdmin
-      .from("aviator_round_state")
-      .upsert(inMemoryAviatorRound);
+    const { error } = await withOpTimeout(
+      supabaseAdmin.from("aviator_round_state").upsert(inMemoryAviatorRound),
+      2500,
+      "Aviator DB sync"
+    );
     if (error) {
       const now = Date.now();
-      if (now - lastSupabaseWriteErrorLog > 30_000) {
+      if (now - lastSupabaseWriteErrorLog > 60_000) {
         lastSupabaseWriteErrorLog = now;
-        console.warn("[Aviator] Supabase round state sync notice:", error.message || error);
+        if (!isNetworkNoise(error)) {
+          console.warn("[Aviator] Supabase round state sync notice:", error.message || error);
+        }
       }
     }
   } catch (e: any) {
     const now = Date.now();
-    if (now - lastSupabaseWriteErrorLog > 30_000) {
+    if (now - lastSupabaseWriteErrorLog > 60_000) {
       lastSupabaseWriteErrorLog = now;
-      console.warn("[Aviator] Supabase round state sync unavailable, using in-memory state:", e?.message || e);
+      if (!isNetworkNoise(e)) {
+        console.warn("[Aviator] Supabase round state sync notice:", e?.message || e);
+      }
     }
   }
 }
@@ -2630,7 +2666,7 @@ interface OtpRecord {
 }
 const otpStore = new Map<string, OtpRecord>();
 const OTP_TABLE = "otp_verifications";
-const OTP_DB_TIMEOUT_MS = 15000;
+const OTP_DB_TIMEOUT_MS = 3000;
 
 class OtpStoreTimeoutError extends Error {
   code = "OTP_STORE_TIMEOUT";
@@ -2675,7 +2711,10 @@ async function getOtpRecord(email: string): Promise<OtpRecord | null> {
       .eq("email", normalizedEmail)
       .eq("purpose", "registration")
       .maybeSingle(), "read");
-    if (error) throw error;
+    if (error) {
+      console.warn("[OTP-STORE] DB read notice (falling back to memory):", error.message || error);
+      return cachedRecord || null;
+    }
     if (!data) {
       otpStore.delete(normalizedEmail);
       return null;
@@ -2684,10 +2723,10 @@ async function getOtpRecord(email: string): Promise<OtpRecord | null> {
     otpStore.set(normalizedEmail, record);
     return record;
   } catch (error: any) {
-    console.error("[OTP-STORE] Read failed:", error?.message || error);
+    console.warn("[OTP-STORE] DB read notice/timeout (falling back to memory):", error?.message || error);
     const fallback = otpStore.get(normalizedEmail);
     if (fallback && fallback.expiresAt > Date.now()) return fallback;
-    throw error;
+    return null;
   }
 }
 
@@ -2695,31 +2734,43 @@ async function saveOtpRecord(record: OtpRecord): Promise<void> {
   const normalizedEmail = record.email.toLowerCase();
   otpStore.set(normalizedEmail, record);
   if (!supabaseAdmin) return;
-  const { error } = await withOtpDbTimeout(supabaseAdmin.from(OTP_TABLE).upsert({
-    email: normalizedEmail,
-    purpose: "registration",
-    otp_hash: record.otpHash,
-    first_name: record.firstName || "",
-    expires_at: new Date(record.expiresAt).toISOString(),
-    attempts: Math.max(0, 5 - record.attemptsLeft),
-    max_attempts: 5,
-    attempts_left: record.attemptsLeft,
-    last_sent_at: new Date(record.lastSentAt).toISOString(),
-    resend_count: record.resendCount,
-    max_resends: 5,
-    verified: record.verified,
-    verified_at: record.verified ? new Date().toISOString() : null,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: "email,purpose" }), "write");
-  if (error) throw error;
+  try {
+    const { error } = await withOtpDbTimeout(supabaseAdmin.from(OTP_TABLE).upsert({
+      email: normalizedEmail,
+      purpose: "registration",
+      otp_hash: record.otpHash,
+      first_name: record.firstName || "",
+      expires_at: new Date(record.expiresAt).toISOString(),
+      attempts: Math.max(0, 5 - record.attemptsLeft),
+      max_attempts: 5,
+      attempts_left: record.attemptsLeft,
+      last_sent_at: new Date(record.lastSentAt).toISOString(),
+      resend_count: record.resendCount,
+      max_resends: 5,
+      verified: record.verified,
+      verified_at: record.verified ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "email,purpose" }), "write");
+    if (error) {
+      console.warn("[OTP-STORE] DB write notice (cached in-memory):", error.message || error);
+    }
+  } catch (err: any) {
+    console.warn("[OTP-STORE] DB write notice/timeout (cached in-memory):", err?.message || err);
+  }
 }
 
 async function deleteOtpRecord(email: string): Promise<void> {
   const normalizedEmail = email.toLowerCase();
   otpStore.delete(normalizedEmail);
   if (!supabaseAdmin) return;
-  const { error } = await supabaseAdmin.from(OTP_TABLE).delete().eq("email", normalizedEmail).eq("purpose", "registration");
-  if (error) throw error;
+  try {
+    const { error } = await supabaseAdmin.from(OTP_TABLE).delete().eq("email", normalizedEmail).eq("purpose", "registration");
+    if (error) {
+      console.warn("[OTP-STORE] DB delete notice:", error.message || error);
+    }
+  } catch (err: any) {
+    console.warn("[OTP-STORE] DB delete notice/timeout:", err?.message || err);
+  }
 }
 
 
@@ -3097,40 +3148,68 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
 
     {
       try {
-        const { data: authCreated, error: authErr } = await supabaseAdmin.auth.admin.createUser({
-          email: cleanEmail,
-          password: cleanPassword,
-          email_confirm: true,
-          user_metadata: {
-            first_name: cleanFirstName,
-            last_name: cleanLastName,
-            username: finalUsername,
-            phone: cleanPhone,
-            gender: cleanGender || null,
-            birthday: birthday || null,
-          },
-        });
+        const { data: authCreated, error: authErr } = await withOpTimeout(
+          supabaseAdmin.auth.admin.createUser({
+            email: cleanEmail,
+            password: cleanPassword,
+            email_confirm: true,
+            user_metadata: {
+              first_name: cleanFirstName,
+              last_name: cleanLastName,
+              username: finalUsername,
+              phone: cleanPhone,
+              gender: cleanGender || null,
+              birthday: birthday || null,
+            },
+          }),
+          14000,
+          "Auth createUser"
+        );
 
         if (authErr) {
           if (
             authErr.message?.toLowerCase().includes("already registered") ||
             authErr.message?.toLowerCase().includes("already exists")
           ) {
-            const { data: userList } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 50 });
-            const existingAuthUser = userList?.users?.find((u: any) => u.email?.toLowerCase() === cleanEmail);
-            if (existingAuthUser) {
-              authUserId = existingAuthUser.id;
-              await supabaseAdmin.auth.admin.updateUserById(existingAuthUser.id, {
-                password: cleanPassword,
-                email_confirm: true,
-                user_metadata: {
-                  first_name: cleanFirstName,
-                  last_name: cleanLastName,
-                  username: finalUsername,
-                  phone: cleanPhone,
-                  gender: cleanGender || null,
-                  birthday: birthday || null,
-                },
+            // Check existing profile first to avoid scanning all users
+            const { data: existingProf } = await withOpTimeout(
+              supabaseAdmin.from("profiles").select("auth_user_id").eq("email", cleanEmail).maybeSingle(),
+              5000,
+              "Profile lookup"
+            ).catch(() => ({ data: null }));
+
+            if (existingProf?.auth_user_id) {
+              authUserId = existingProf.auth_user_id;
+            } else {
+              const { data: userList } = await withOpTimeout(
+                supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 50 }),
+                5000,
+                "Auth listUsers"
+              ).catch(() => ({ data: null }));
+              const existingAuthUser = userList?.users?.find((u: any) => u.email?.toLowerCase() === cleanEmail);
+              if (existingAuthUser) {
+                authUserId = existingAuthUser.id;
+              }
+            }
+
+            if (authUserId) {
+              await withOpTimeout(
+                supabaseAdmin.auth.admin.updateUserById(authUserId, {
+                  password: cleanPassword,
+                  email_confirm: true,
+                  user_metadata: {
+                    first_name: cleanFirstName,
+                    last_name: cleanLastName,
+                    username: finalUsername,
+                    phone: cleanPhone,
+                    gender: cleanGender || null,
+                    birthday: birthday || null,
+                  },
+                }),
+                6000,
+                "Auth updateUser"
+              ).catch((updateErr: any) => {
+                console.warn("[create-account] Update existing user notice:", updateErr?.message || updateErr);
               });
             }
           } else {
@@ -3148,21 +3227,40 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
           });
         }
       } catch (authException: any) {
-        console.error("[create-account] Auth admin exception:", authException?.message || authException);
-        return res.status(502).json({
-          success: false,
-          error: "Supabase Auth haikupatikana kwa sasa. Tafadhali jaribu tena.",
-        });
+        console.warn("[create-account] Auth admin createUser fallback check:", authException?.message || authException);
+        try {
+          const { data: existingProf } = await withOpTimeout(
+            supabaseAdmin.from("profiles").select("auth_user_id").eq("email", cleanEmail).maybeSingle(),
+            4000,
+            "Recovery profile check"
+          ).catch(() => ({ data: null }));
+          if (existingProf?.auth_user_id) {
+            authUserId = existingProf.auth_user_id;
+          }
+        } catch {
+          // ignore
+        }
+
+        if (!authUserId) {
+          return res.status(502).json({
+            success: false,
+            error: "Supabase Auth imechelewa kujibu kwa sasa. Tafadhali jaribu tena baada ya sekunde chache.",
+          });
+        }
       }
 
       try {
         // Supabase trigger may have already created a stub profile and its username is immutable.
         // Reuse that username so the completion upsert does not violate the immutability trigger.
-        const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
-          .from("profiles")
-          .select("id, username, auth_user_id")
-          .eq("email", cleanEmail)
-          .maybeSingle();
+        const { data: existingProfile, error: existingProfileError } = await withOpTimeout(
+          supabaseAdmin
+            .from("profiles")
+            .select("id, username, auth_user_id")
+            .eq("email", cleanEmail)
+            .maybeSingle(),
+          5000,
+          "Profile existing check"
+        );
         if (existingProfileError) throw existingProfileError;
         if (existingProfile?.username) {
           finalUsername = existingProfile.username;
@@ -3190,11 +3288,15 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
           profilePayload.auth_user_id = authUserId;
         }
 
-        const { data: upsertedProfile, error: pErr } = await supabaseAdmin
-          .from("profiles")
-          .upsert(profilePayload, { onConflict: "email" })
-          .select("*")
-          .maybeSingle();
+        const { data: upsertedProfile, error: pErr } = await withOpTimeout(
+          supabaseAdmin
+            .from("profiles")
+            .upsert(profilePayload, { onConflict: "email" })
+            .select("*")
+            .maybeSingle(),
+          6000,
+          "Profile upsert"
+        );
 
         if (pErr || !upsertedProfile?.id) {
           if (createdAuthUser && authUserId) {
@@ -3216,9 +3318,13 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
         }
         profileRecord = upsertedProfile;
 
-        const { error: walletErr } = await supabaseAdmin
-          .from("wallets")
-          .upsert({ profile_id: profileRecord.id, balance: 0, reserved_balance: 0 }, { onConflict: "profile_id" });
+        const { error: walletErr } = await withOpTimeout(
+          supabaseAdmin
+            .from("wallets")
+            .upsert({ profile_id: profileRecord.id, balance: 0, reserved_balance: 0 }, { onConflict: "profile_id" }),
+          4000,
+          "Wallet upsert"
+        ).catch(() => ({ error: null }));
         if (walletErr) {
           console.warn("[create-account] Wallet initialization notice:", walletErr.message);
         }

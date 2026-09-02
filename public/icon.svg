@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Background circle/squircle -->
+  <rect width="512" height="512" rx="112" fill="#090e1a"/>
+  
+  <!-- Outer glowing accent ring -->
+  <circle cx="256" cy="256" r="210" stroke="url(#cyanAccentRing)" stroke-width="4" stroke-opacity="0.25" stroke-dasharray="8 8"/>
+  <circle cx="256" cy="256" r="230" stroke="url(#cyanAccentRing)" stroke-width="2" stroke-opacity="0.15"/>
+
+  <defs>
+    <!-- Metallic silver linear gradient for the premium logo body -->
+    <linearGradient id="silverMetallic" x1="256" y1="120" x2="256" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="25%" stop-color="#f1f5f9" />
+      <stop offset="65%" stop-color="#cbd5e1" />
+      <stop offset="100%" stop-color="#64748b" />
+    </linearGradient>
+
+    <!-- Deep dark 3D bevel shadow gradient -->
+    <linearGradient id="blackBevel" x1="256" y1="120" x2="256" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#000000" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+
+    <!-- Glowing cyan/blue accent gradient -->
+    <linearGradient id="cyanAccentRing" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+  </defs>
+
+  <!-- ========================================== -->
+  <!-- 3D BEVEL SHADOW LAYER (Extrusion effect)    -->
+  <!-- ========================================== -->
+  <g transform="translate(0, 10) scale(2.4) translate(-100, -90)">
+    <!-- Left T - Black 3D Bevel Base -->
+    <polygon
+      points="18,60 97,60 97,72 88,72 88,140 70,118 70,72 55,72"
+      fill="url(#blackBevel)"
+      stroke="#020617"
+      stroke-width="3"
+      stroke-linejoin="miter"
+    />
+    <!-- Right T - Black 3D Bevel Base -->
+    <polygon
+      points="182,60 103,60 103,72 112,72 112,140 130,118 130,72 145,72"
+      fill="url(#blackBevel)"
+      stroke="#020617"
+      stroke-width="3"
+      stroke-linejoin="miter"
+    />
+  </g>
+
+  <!-- ========================================== -->
+  <!-- MAIN FOREGROUND METALLIC LOGO LAYER        -->
+  <!-- ========================================== -->
+  <g transform="scale(2.4) translate(-100, -90)">
+    <!-- Left T - Foreground -->
+    <polygon
+      points="18,60 97,60 97,72 88,72 88,140 70,118 70,72 55,72"
+      fill="url(#silverMetallic)"
+      stroke="#000000"
+      stroke-width="2.5"
+      stroke-linejoin="miter"
+    />
+    
+    <!-- Highlight line on left-most wing of Left T -->
+    <line
+      x1="18"
+      y1="60"
+      x2="55"
+      y2="72"
+      stroke="#ffffff"
+      stroke-width="1.5"
+      stroke-linecap="round"
+    />
+
+    <!-- Right T - Foreground -->
+    <polygon
+      points="182,60 103,60 103,72 112,72 112,140 130,118 130,72 145,72"
+      fill="url(#silverMetallic)"
+      stroke="#000000"
+      stroke-width="2.5"
+      stroke-linejoin="miter"
+    />
+
+    <!-- Highlight line on right-most wing of Right T -->
+    <line
+      x1="182"
+      y1="60"
+      x2="145"
+      y2="72"
+      stroke="#ffffff"
+      stroke-width="1.5"
+      stroke-linecap="round"
+    />
+  </g>
+
+  <!-- Decorative central glowing diamond accent core -->
+  <polygon
+    points="256,134 266,144 256,154 246,144"
+    fill="#38bdf8"
+  />
+</svg>

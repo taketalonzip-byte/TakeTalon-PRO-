@@ -321,6 +321,19 @@ export async function fetchEspnScoreboard(code: string, dateRange?: string): Pro
 }
 
 let lastCompUpsertErrorLog = 0;
+const DB_SYNC_TIMEOUT_MS = 3000;
+
+async function withDbTimeout<T>(promise: PromiseLike<T>, timeoutMs: number = DB_SYNC_TIMEOUT_MS): Promise<T> {
+  let timer: any;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Database sync timeout")), timeoutMs);
+  });
+  try {
+    return await Promise.race([Promise.resolve(promise), timeoutPromise]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * Upsert one competition's ESPN scoreboard into Supabase under provider='espn'.
@@ -353,29 +366,40 @@ export async function syncEspnCompetition(
   }
 
   try {
-    // 1. Upsert competition (provider='espn')
-    const { data: compRow, error: compErr } = await supabaseAdmin
-      .from("football_competitions")
-      .upsert(
-        {
-          external_id: competition.externalId,
-          provider: "espn",
-          code,
-          name: competition.name,
-          emblem_url: competition.emblemUrl,
-          is_active: true,
-          last_synced_at: new Date().toISOString(),
-        },
-        { onConflict: "provider,external_id" }
-      )
-      .select("id")
-      .maybeSingle();
+    // 1. Upsert competition (provider='espn') with timeout protection
+    const { data: compRow, error: compErr } = await withDbTimeout(
+      supabaseAdmin
+        .from("football_competitions")
+        .upsert(
+          {
+            external_id: competition.externalId,
+            provider: "espn",
+            code,
+            name: competition.name,
+            emblem_url: competition.emblemUrl,
+            is_active: true,
+            last_synced_at: new Date().toISOString(),
+          },
+          { onConflict: "provider,external_id" }
+        )
+        .select("id")
+        .maybeSingle(),
+      DB_SYNC_TIMEOUT_MS
+    );
 
     if (compErr || !compRow) {
       const now = Date.now();
-      if (now - lastCompUpsertErrorLog > 30_000) {
+      if (now - lastCompUpsertErrorLog > 60_000) {
         lastCompUpsertErrorLog = now;
-        console.warn(`[espnService] competition DB sync notice for ${code}:`, compErr?.message || "Unavailable");
+        const msg = compErr?.message || "Unavailable";
+        if (
+          !msg.toLowerCase().includes("timeout") &&
+          !msg.toLowerCase().includes("disconnect") &&
+          !msg.toLowerCase().includes("fetch failed") &&
+          !msg.toLowerCase().includes("upstream connect error")
+        ) {
+          console.warn(`[espnService] competition DB sync notice for ${code}:`, msg);
+        }
       }
       return { competitionId: null, liveClocks, scoreboard };
     }
@@ -390,24 +414,31 @@ export async function syncEspnCompetition(
     }
 
     for (const team of allTeams.values()) {
-      const { data: teamRow, error: teamErr } = await supabaseAdmin
-        .from("football_teams")
-        .upsert(
-          {
-            external_id: team.externalId,
-            provider: "espn",
-            name: team.name,
-            short_name: team.shortName,
-            tla: team.tla,
-            crest_url: team.crestUrl,
-            last_synced_at: new Date().toISOString(),
-          },
-          { onConflict: "provider,external_id" }
-        )
-        .select("id")
-        .maybeSingle();
+      try {
+        const { data: teamRow, error: teamErr } = await withDbTimeout(
+          supabaseAdmin
+            .from("football_teams")
+            .upsert(
+              {
+                external_id: team.externalId,
+                provider: "espn",
+                name: team.name,
+                short_name: team.shortName,
+                tla: team.tla,
+                crest_url: team.crestUrl,
+                last_synced_at: new Date().toISOString(),
+              },
+              { onConflict: "provider,external_id" }
+            )
+            .select("id")
+            .maybeSingle(),
+          2000
+        );
 
-      if (!teamErr && teamRow) teamMap.set(team.externalId, teamRow.id as string);
+        if (!teamErr && teamRow) teamMap.set(team.externalId, teamRow.id as string);
+      } catch {
+        // Non-blocking per team
+      }
     }
 
     // 3. Upsert fixtures (provider='espn')
@@ -417,33 +448,48 @@ export async function syncEspnCompetition(
       const awayId = teamMap.get(f.away.externalId);
       if (!homeId || !awayId) continue;
 
-      await supabaseAdmin.from("football_fixtures").upsert(
-        {
-          external_id: f.externalId,
-          provider: "espn",
-          competition_id: competitionId,
-          home_team_id: homeId,
-          away_team_id: awayId,
-          utc_kickoff: f.utcKickoff,
-          status: f.status,
-          home_score: f.homeScore,
-          away_score: f.awayScore,
-          winner: f.winner,
-          current_minute: f.minute,
-          live_source: f.isLive ? "espn" : null,
-          last_live_update_at: f.isLive ? nowIso : null,
-          last_synced_at: nowIso,
-        },
-        { onConflict: "provider,external_id" }
-      );
+      try {
+        await withDbTimeout(
+          supabaseAdmin.from("football_fixtures").upsert(
+            {
+              external_id: f.externalId,
+              provider: "espn",
+              competition_id: competitionId,
+              home_team_id: homeId,
+              away_team_id: awayId,
+              utc_kickoff: f.utcKickoff,
+              status: f.status,
+              home_score: f.homeScore,
+              away_score: f.awayScore,
+              winner: f.winner,
+              current_minute: f.minute,
+              live_source: f.isLive ? "espn" : null,
+              last_live_update_at: f.isLive ? nowIso : null,
+              last_synced_at: nowIso,
+            },
+            { onConflict: "provider,external_id" }
+          ),
+          2000
+        );
+      } catch {
+        // Non-blocking per fixture
+      }
     }
 
     return { competitionId, liveClocks, scoreboard };
   } catch (e: any) {
     const now = Date.now();
-    if (now - lastCompUpsertErrorLog > 30_000) {
+    if (now - lastCompUpsertErrorLog > 60_000) {
       lastCompUpsertErrorLog = now;
-      console.warn(`[espnService] DB sync fallback for ${code}:`, e?.message || e);
+      const msg = e?.message || String(e);
+      if (
+        !msg.toLowerCase().includes("timeout") &&
+        !msg.toLowerCase().includes("disconnect") &&
+        !msg.toLowerCase().includes("fetch failed") &&
+        !msg.toLowerCase().includes("upstream connect error")
+      ) {
+        console.warn(`[espnService] DB sync notice for ${code}:`, msg);
+      }
     }
     return { competitionId: null, liveClocks, scoreboard };
   }
