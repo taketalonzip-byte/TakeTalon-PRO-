@@ -3094,7 +3094,7 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
                   last_name: cleanLastName,
                   username: finalUsername,
                   phone: cleanPhone,
-                  gender: gender || null,
+                  gender: cleanGender || null,
                   birthday: birthday || null,
                 },
               });
@@ -3122,6 +3122,17 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
       }
 
       try {
+        // Supabase trigger may have already created a stub profile and its username is immutable.
+        // Reuse that username so the completion upsert does not violate the immutability trigger.
+        const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
+          .from("profiles")
+          .select("id, username, auth_user_id")
+          .eq("email", cleanEmail)
+          .maybeSingle();
+        if (existingProfileError) throw existingProfileError;
+        if (existingProfile?.username) {
+          finalUsername = existingProfile.username;
+        }
         const profilePayload: any = {
           username: finalUsername,
           first_name: cleanFirstName,
@@ -3157,7 +3168,9 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
           }
           console.error("[create-account] Profile persistence failed:", pErr?.message || "No profile returned");
           const dbMessage = (pErr?.message || "").toLowerCase();
-          const profileError = dbMessage.includes("gender") || dbMessage.includes("check constraint")
+          const profileError = dbMessage.includes("username") && dbMessage.includes("immut")
+            ? "Profile hii tayari ina username iliyowekwa. Tafadhali jaribu tena; mfumo utaendelea kutumia username hiyo."
+            : dbMessage.includes("gender") || dbMessage.includes("check constraint")
             ? "Jinsia au tarehe ya kuzaliwa haikubaliki. Chagua jinsia na hakikisha una miaka 18 au zaidi."
             : dbMessage.includes("duplicate") || dbMessage.includes("unique")
               ? "Email, username au namba ya simu tayari inatumika kwenye akaunti nyingine."
