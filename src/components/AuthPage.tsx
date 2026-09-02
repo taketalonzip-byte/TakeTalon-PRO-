@@ -7,6 +7,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import {
+  getFreshRegisterDraft,
+  REGISTER_DRAFT_KEY,
+  removeRegisterDraft,
+} from "../lib/registerDraftStorage";
+import {
   X,
   Mail,
   Lock,
@@ -29,7 +34,7 @@ import {
   UserCheck,
 } from "lucide-react";
 
-const REGISTER_DRAFT_KEY = "taketalon.register.draft.v1";
+const OTP_VALIDITY_MS = 10 * 60 * 1000;
 const AUTH_REQUEST_TIMEOUT_MS = 90_000;
 
 function isAuthRequestAbort(error: unknown): boolean {
@@ -306,43 +311,50 @@ export default function AuthPage({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Restore register draft after refresh/reconnect. Never restore password, retype-password, or OTP.
+  const restoreRegisterDraft = () => {
+    const draft = getFreshRegisterDraft<Partial<RegisterDraft>>();
+    if (!draft) {
+      resetForm();
+      return false;
+    }
+
+    const now = Date.now();
+    const sentAt = typeof draft.otpSentAt === "number" ? draft.otpSentAt : null;
+    const verifiedAt = typeof draft.otpVerifiedAt === "number" ? draft.otpVerifiedAt : null;
+    const verifiedOtpIsStillValid = Boolean(verifiedAt && now - verifiedAt < OTP_VALIDITY_MS);
+    const savedStep = draft.regStep === 2 || draft.regStep === 3 ? draft.regStep : 1;
+    const restoredStep = savedStep === 3 && !verifiedOtpIsStillValid ? 2 : savedStep;
+
+    setRegStep(restoredStep);
+    setFirstName(draft.firstName || "");
+    setLastName(draft.lastName || "");
+    setPhone(draft.phone || "");
+    setEmail(draft.email || "");
+    setGender(draft.gender || "");
+    setBirthday(draft.birthday || "");
+    setAcceptTerms(Boolean(draft.acceptTerms));
+    setOtpSentAt(sentAt);
+    setOtpVerifiedAt(verifiedOtpIsStillValid ? verifiedAt : null);
+    setOtpExpirySeconds(sentAt ? Math.max(0, Math.floor((sentAt + OTP_VALIDITY_MS - now) / 1000)) : 600);
+    setCooldownSeconds(sentAt ? Math.max(0, Math.floor((sentAt + 60_000 - now) / 1000)) : 60);
+
+    if (savedStep === 3 && !verifiedOtpIsStillValid) {
+      setError("OTP yako imeisha. Tafadhali tuma OTP mpya na uthibitishe tena ili kuendelea.");
+    }
+
+    return true;
+  };
+
+  // Restore only non-sensitive registration information after refresh/reconnect.
   useEffect(() => {
     if (initialMode !== "register") {
       setMode("login");
       resetForm();
       return;
     }
+
     setMode("register");
-    try {
-      const raw = window.localStorage.getItem(REGISTER_DRAFT_KEY);
-      if (!raw) {
-        resetForm();
-        return;
-      }
-      const draft = JSON.parse(raw) as Partial<RegisterDraft>;
-      if (!draft.updatedAt || Date.now() - draft.updatedAt > 24 * 60 * 60 * 1000) {
-        window.localStorage.removeItem(REGISTER_DRAFT_KEY);
-        resetForm();
-        return;
-      }
-      setRegStep(draft.regStep === 2 || draft.regStep === 3 ? draft.regStep : 1);
-      setFirstName(draft.firstName || "");
-      setLastName(draft.lastName || "");
-      setPhone(draft.phone || "");
-      setEmail(draft.email || "");
-      setGender(draft.gender || "");
-      setBirthday(draft.birthday || "");
-      setAcceptTerms(Boolean(draft.acceptTerms));
-      setOtpSentAt(draft.otpSentAt || null);
-      setOtpVerifiedAt(draft.otpVerifiedAt || null);
-      const sentAt = draft.otpSentAt || Date.now();
-      setOtpExpirySeconds(Math.max(0, 600 - Math.floor((Date.now() - sentAt) / 1000)));
-      setCooldownSeconds(Math.max(0, 60 - Math.floor((Date.now() - sentAt) / 1000)));
-    } catch {
-      window.localStorage.removeItem(REGISTER_DRAFT_KEY);
-      resetForm();
-    }
+    restoreRegisterDraft();
   }, [initialMode]);
 
   // Persist only non-sensitive registration fields and current step.
@@ -437,7 +449,7 @@ export default function AuthPage({
     setError("");
     setSuccessMsg("");
     setMode(newMode);
-    if (newMode === "register") setRegStep(1);
+    if (newMode === "register") restoreRegisterDraft();
   };
 
   const validateEmail = (val: string) => {
@@ -932,9 +944,7 @@ export default function AuthPage({
       );
 
       // REDIRECT TO HOME PAGE DIRECTLY
-      try {
-        window.localStorage.removeItem(REGISTER_DRAFT_KEY);
-      } catch {}
+      removeRegisterDraft();
       setTimeout(() => {
         onClose();
         resetForm();

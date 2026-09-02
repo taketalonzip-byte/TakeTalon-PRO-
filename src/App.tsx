@@ -94,6 +94,7 @@ import HelpQuestionIcon from "./components/HelpQuestionIcon";
 import { motion, AnimatePresence } from "motion/react";
 import { locales } from "./locales";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
+import { clearExpiredRegisterDraft } from "./lib/registerDraftStorage";
 import { renderThemeIcon } from "./components/ThemeModeIcons";
 
 const formatVirtualName = (name: string) => {
@@ -413,14 +414,9 @@ export default function App() {
     lastName?: string;
   } | null>(null);
 
-  // Clear all localStorage on application startup as requested
+  // Keep Supabase's persisted auth session intact; only remove an expired registration draft.
   useEffect(() => {
-    try {
-      localStorage.clear();
-      console.log("[STORAGE] Cleared all localStorage.");
-    } catch (e) {
-      /* ignore iframe security policy errors */
-    }
+    clearExpiredRegisterDraft();
   }, []);
 
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -747,16 +743,6 @@ export default function App() {
           "user"
         ).toLowerCase()
       : null;
-
-  // Purge all localStorage items as requested by user ("futa localstorage zote")
-  useEffect(() => {
-    try {
-      localStorage.clear();
-      console.log("[STORAGE] Purged all localStorage items completely.");
-    } catch (e) {
-      console.warn("[STORAGE] localStorage.clear warning:", e);
-    }
-  }, []);
 
   // Database-First Profile & Wallet Loading on Mount / Refresh / User Change
   useEffect(() => {
