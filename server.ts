@@ -3128,7 +3128,7 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
           is_verified: true,
           is_pro: false,
           otp_verified: true,
-          terms_accepted: terms_accepted === true,
+          terms_accepted_at: terms_accepted === true ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
         };
 
