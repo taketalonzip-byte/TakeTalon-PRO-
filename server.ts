@@ -2656,6 +2656,7 @@ async function getOtpRecord(email: string): Promise<OtpRecord | null> {
       .from(OTP_TABLE)
       .select("email, otp_hash, first_name, expires_at, attempts_left, last_sent_at, resend_count, verified")
       .eq("email", normalizedEmail)
+      .eq("purpose", "registration")
       .maybeSingle();
     if (error) throw error;
     if (!data) {
@@ -2677,6 +2678,7 @@ async function saveOtpRecord(record: OtpRecord): Promise<void> {
   if (!supabaseAdmin) return;
   const { error } = await supabaseAdmin.from(OTP_TABLE).upsert({
     email: normalizedEmail,
+    purpose: "registration",
     otp_hash: record.otpHash,
     first_name: record.firstName || "",
     expires_at: new Date(record.expiresAt).toISOString(),
@@ -2685,7 +2687,7 @@ async function saveOtpRecord(record: OtpRecord): Promise<void> {
     resend_count: record.resendCount,
     verified: record.verified,
     updated_at: new Date().toISOString(),
-  }, { onConflict: "email" });
+  }, { onConflict: "email,purpose" });
   if (error) throw error;
 }
 
@@ -2693,7 +2695,7 @@ async function deleteOtpRecord(email: string): Promise<void> {
   const normalizedEmail = email.toLowerCase();
   otpStore.delete(normalizedEmail);
   if (!supabaseAdmin) return;
-  const { error } = await supabaseAdmin.from(OTP_TABLE).delete().eq("email", normalizedEmail);
+  const { error } = await supabaseAdmin.from(OTP_TABLE).delete().eq("email", normalizedEmail).eq("purpose", "registration");
   if (error) throw error;
 }
 
