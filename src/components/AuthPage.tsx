@@ -886,7 +886,7 @@ export default function AuthPage({
           last_name: lastName.trim(),
           username: "",
           phone: phone.trim(),
-          gender,
+          gender: gender.trim().toUpperCase(),
           birthday,
           terms_accepted: acceptTerms,
         }),
@@ -900,7 +900,9 @@ export default function AuthPage({
       }
 
       if (!res.ok || data?.success === false) {
-        setError(data?.error || "Imeshindikana kuunda akaunti.");
+        const message = data?.error || "Imeshindikana kuunda akaunti.";
+        setError(message);
+        onNotification?.(message, "error");
         return;
       }
 
@@ -939,9 +941,11 @@ export default function AuthPage({
       }, 1000);
     } catch (err: any) {
       console.error("[FINALIZE-ERROR]", err);
-      setError(isAuthRequestAbort(err)
+      const message = isAuthRequestAbort(err)
         ? "Uundaji wa akaunti umechelewa kwa sababu ya connection. Tafadhali jaribu tena."
-        : "Imeshindikana kukamilisha usajili.");
+        : "Imeshindikana kukamilisha usajili.";
+      setError(message);
+      onNotification?.(message, "error");
     } finally {
       setLoading(false);
     }
