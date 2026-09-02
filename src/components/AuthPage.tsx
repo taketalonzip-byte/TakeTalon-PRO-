@@ -30,6 +30,17 @@ import {
 } from "lucide-react";
 
 const REGISTER_DRAFT_KEY = "taketalon.register.draft.v1";
+const AUTH_REQUEST_TIMEOUT_MS = 45_000;
+
+async function fetchAuthRequest(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), AUTH_REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
 
 type RegisterDraft = {
   regStep: 1 | 2 | 3;
@@ -673,7 +684,7 @@ export default function AuthPage({
     setSuccessMsg("");
 
     try {
-      const res = await fetch("/send-otp", {
+      const res = await fetchAuthRequest("/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -709,7 +720,9 @@ export default function AuthPage({
       onNotification?.(message, "success");
     } catch (err: any) {
       console.error("[SEND-OTP-ERROR]", err);
-      const message = err?.message || "Imeshindikana kuwasiliana na server kutuma OTP.";
+      const message = err?.name === "AbortError"
+        ? "Server imechelewa kujibu. Tafadhali subiri kidogo kisha ujaribu tena."
+        : err?.message || "Imeshindikana kuwasiliana na server kutuma OTP.";
       setError(message);
       onNotification?.(message, "error");
     } finally {
@@ -735,7 +748,7 @@ export default function AuthPage({
     setLoading(true);
 
     try {
-      const res = await fetch("/verify-otp", {
+      const res = await fetchAuthRequest("/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -768,7 +781,9 @@ export default function AuthPage({
       onNotification?.(message, "success");
     } catch (err: any) {
       console.error("[STEP2-ERROR]", err);
-      setError(err?.message || "Imeshindikana kuhakiki OTP.");
+      setError(err?.name === "AbortError"
+        ? "Uhakiki umechelewa kwa sababu ya connection. Tafadhali jaribu tena."
+        : err?.message || "Imeshindikana kuhakiki OTP.");
     } finally {
       setLoading(false);
     }
@@ -787,7 +802,7 @@ export default function AuthPage({
     setLoading(true);
 
     try {
-      const res = await fetch("/resend-otp", {
+      const res = await fetchAuthRequest("/resend-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
@@ -849,7 +864,7 @@ export default function AuthPage({
     setLoading(true);
 
     try {
-      const res = await fetch("/create-account", {
+      const res = await fetchAuthRequest("/create-account", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
