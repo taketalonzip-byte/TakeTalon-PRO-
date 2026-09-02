@@ -2630,11 +2630,20 @@ interface OtpRecord {
 }
 const otpStore = new Map<string, OtpRecord>();
 const OTP_TABLE = "otp_verifications";
-const OTP_DB_TIMEOUT_MS = 8000;
-function withOtpDbTimeout<T>(promise: PromiseLike<T>): Promise<T> {
+const OTP_DB_TIMEOUT_MS = 15000;
+
+class OtpStoreTimeoutError extends Error {
+  code = "OTP_STORE_TIMEOUT";
+  constructor(public readonly operation: string) {
+    super(`OTP ${operation} timed out after ${OTP_DB_TIMEOUT_MS}ms`);
+    this.name = "OtpStoreTimeoutError";
+  }
+}
+
+function withOtpDbTimeout<T>(promise: PromiseLike<T>, operation: string): Promise<T> {
   return Promise.race([
     Promise.resolve(promise),
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("OTP database operation timed out")), OTP_DB_TIMEOUT_MS)),
+    new Promise<T>((_, reject) => setTimeout(() => reject(new OtpStoreTimeoutError(operation)), OTP_DB_TIMEOUT_MS)),
   ]);
 }
 function hashOtp(email: string, otp: string): string {
@@ -2665,7 +2674,7 @@ async function getOtpRecord(email: string): Promise<OtpRecord | null> {
       .select("email, otp_hash, first_name, expires_at, attempts_left, last_sent_at, resend_count, verified, verified_at")
       .eq("email", normalizedEmail)
       .eq("purpose", "registration")
-      .maybeSingle());
+      .maybeSingle(), "read");
     if (error) throw error;
     if (!data) {
       otpStore.delete(normalizedEmail);
@@ -2676,7 +2685,9 @@ async function getOtpRecord(email: string): Promise<OtpRecord | null> {
     return record;
   } catch (error: any) {
     console.error("[OTP-STORE] Read failed:", error?.message || error);
-    return otpStore.get(normalizedEmail) || null;
+    const fallback = otpStore.get(normalizedEmail);
+    if (fallback && fallback.expiresAt > Date.now()) return fallback;
+    throw error;
   }
 }
 
@@ -2699,7 +2710,7 @@ async function saveOtpRecord(record: OtpRecord): Promise<void> {
     verified: record.verified,
     verified_at: record.verified ? new Date().toISOString() : null,
     updated_at: new Date().toISOString(),
-  }, { onConflict: "email,purpose" }));
+  }, { onConflict: "email,purpose" }), "write");
   if (error) throw error;
 }
 
@@ -2886,6 +2897,8 @@ app.post("/send-otp", handleSendOtpRoute);
 app.post("/api/auth/send-otp", handleSendOtpRoute);
 
 const handleVerifyOtpRoute = async (req: Request, res: Response) => {
+  const requestId = crypto.randomUUID().slice(0, 12);
+  let stage = "validate_request";
   try {
     const rawEmail = (req.body?.email || req.query?.email || "").toString().trim().toLowerCase();
     const cleanOtp = (req.body?.otp || req.query?.otp || "").toString().trim();
@@ -2894,6 +2907,7 @@ const handleVerifyOtpRoute = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: "Tafadhali weka email na OTP kamili." });
     }
 
+    stage = "read_record";
     const record = await getOtpRecord(rawEmail);
     const now = Date.now();
 
@@ -2904,7 +2918,9 @@ const handleVerifyOtpRoute = async (req: Request, res: Response) => {
       });
     }
 
+    stage = "check_expiry_and_attempts";
     if (now > record.expiresAt) {
+      stage = "delete_expired_record";
       await deleteOtpRecord(rawEmail);
       return res.status(400).json({
         success: false,
@@ -2913,6 +2929,7 @@ const handleVerifyOtpRoute = async (req: Request, res: Response) => {
     }
 
     if (record.attemptsLeft <= 0) {
+      stage = "delete_exhausted_record";
       await deleteOtpRecord(rawEmail);
       return res.status(400).json({
         success: false,
@@ -2920,8 +2937,10 @@ const handleVerifyOtpRoute = async (req: Request, res: Response) => {
       });
     }
 
+    stage = "compare_hash";
     if (record.otpHash !== hashOtp(rawEmail, cleanOtp)) {
       record.attemptsLeft -= 1;
+      stage = "persist_failed_attempt";
       await saveOtpRecord(record);
       return res.status(400).json({
         success: false,
@@ -2931,14 +2950,29 @@ const handleVerifyOtpRoute = async (req: Request, res: Response) => {
     }
 
     record.verified = true;
+    stage = "persist_verified";
     await saveOtpRecord(record);
+    console.info(`[OTP-VERIFY] success request_id=${requestId} stage=${stage}`);
     return res.status(200).json({
       success: true,
       message: "Code ya OTP imethibitishwa kwa mafanikio!",
     });
   } catch (err: any) {
-    console.error("[handleVerifyOtpRoute] Error:", err);
-    return res.status(500).json({ success: false, error: "Server imeshindwa kuhakiki OTP kwa sasa. Tafadhali jaribu tena." });
+    const isStoreTimeout = err instanceof OtpStoreTimeoutError || err?.code === "OTP_STORE_TIMEOUT";
+    console.error(`[OTP-VERIFY] failed request_id=${requestId} stage=${stage} code=${err?.code || "UNKNOWN"}:`, err?.message || err);
+    if (isStoreTimeout) {
+      return res.status(503).json({
+        success: false,
+        retryable: true,
+        request_id: requestId,
+        error: "Server imechelewa kuhifadhi uthibitisho wa OTP. Tafadhali subiri sekunde chache kisha ujaribu tena bila kuomba OTP mpya.",
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      request_id: requestId,
+      error: "Server imeshindwa kuhakiki OTP kwa sasa. Tafadhali jaribu tena.",
+    });
   }
 };
 
