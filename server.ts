@@ -2630,7 +2630,13 @@ interface OtpRecord {
 }
 const otpStore = new Map<string, OtpRecord>();
 const OTP_TABLE = "otp_verifications";
-
+const OTP_DB_TIMEOUT_MS = 8000;
+function withOtpDbTimeout<T>(promise: PromiseLike<T>): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("OTP database operation timed out")), OTP_DB_TIMEOUT_MS)),
+  ]);
+}
 function hashOtp(email: string, otp: string): string {
   return crypto.createHash("sha256").update(`${email}:${otp}`).digest("hex");
 }
@@ -2650,14 +2656,16 @@ function toOtpRecord(row: any): OtpRecord {
 
 async function getOtpRecord(email: string): Promise<OtpRecord | null> {
   const normalizedEmail = email.toLowerCase();
-  if (!supabaseAdmin) return otpStore.get(normalizedEmail) || null;
+  const cachedRecord = otpStore.get(normalizedEmail);
+  if (cachedRecord && cachedRecord.expiresAt > Date.now()) return cachedRecord;
+  if (!supabaseAdmin) return cachedRecord || null;
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await withOtpDbTimeout(supabaseAdmin
       .from(OTP_TABLE)
       .select("email, otp_hash, first_name, expires_at, attempts_left, last_sent_at, resend_count, verified, verified_at")
       .eq("email", normalizedEmail)
       .eq("purpose", "registration")
-      .maybeSingle();
+      .maybeSingle());
     if (error) throw error;
     if (!data) {
       otpStore.delete(normalizedEmail);
@@ -2676,7 +2684,7 @@ async function saveOtpRecord(record: OtpRecord): Promise<void> {
   const normalizedEmail = record.email.toLowerCase();
   otpStore.set(normalizedEmail, record);
   if (!supabaseAdmin) return;
-  const { error } = await supabaseAdmin.from(OTP_TABLE).upsert({
+  const { error } = await withOtpDbTimeout(supabaseAdmin.from(OTP_TABLE).upsert({
     email: normalizedEmail,
     purpose: "registration",
     otp_hash: record.otpHash,
@@ -2691,7 +2699,7 @@ async function saveOtpRecord(record: OtpRecord): Promise<void> {
     verified: record.verified,
     verified_at: record.verified ? new Date().toISOString() : null,
     updated_at: new Date().toISOString(),
-  }, { onConflict: "email,purpose" });
+  }, { onConflict: "email,purpose" }));
   if (error) throw error;
 }
 
