@@ -36,6 +36,22 @@ import {
 
 const OTP_VALIDITY_MS = 10 * 60 * 1000;
 const AUTH_REQUEST_TIMEOUT_MS = 90_000;
+const SUPABASE_LOGIN_TIMEOUT_MS = 10_000;
+
+async function withSupabaseLoginTimeout<T>(promise: PromiseLike<T>): Promise<T> {
+  let timeoutId: number | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(
+      () => reject(new DOMException("Supabase login timed out", "TimeoutError")),
+      SUPABASE_LOGIN_TIMEOUT_MS,
+    );
+  });
+  try {
+    return await Promise.race([Promise.resolve(promise), timeoutPromise]);
+  } finally {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+  }
+}
 
 function isAuthRequestAbort(error: unknown): boolean {
   const candidate = error as { name?: string; message?: string } | null;
@@ -484,7 +500,7 @@ export default function AuthPage({
       if (!emailToLogin.includes("@")) {
         // Search profile via server lookup first (bypasses RLS restrictions)
         try {
-          const lRes = await fetch(
+          const lRes = await fetchAuthRequest(
             `/api/auth/profile-lookup?id=${encodeURIComponent(emailToLogin)}`,
           );
           if (lRes.ok) {
@@ -529,10 +545,12 @@ export default function AuthPage({
       let user: any = null;
 
       try {
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: emailToLogin,
-          password: loginPassword,
-        });
+        const { data: authData, error: authError } = await withSupabaseLoginTimeout(
+          supabase.auth.signInWithPassword({
+            email: emailToLogin,
+            password: loginPassword,
+          }),
+        );
 
         if (!authError && authData?.user) {
           authSuccessful = true;
@@ -545,7 +563,7 @@ export default function AuthPage({
       // If client auth did not succeed, try server authoritative login
       if (!authSuccessful) {
         try {
-          const sLoginRes = await fetch("/api/auth/login", {
+          const sLoginRes = await fetchAuthRequest("/api/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -595,7 +613,7 @@ export default function AuthPage({
         // Fallback to server lookup if client profile fetch returned null
         if (!existingProfile) {
           try {
-            const sRes = await fetch(
+            const sRes = await fetchAuthRequest(
               `/api/auth/profile-lookup?auth_user_id=${encodeURIComponent(user.id)}`,
             );
             if (sRes.ok) {

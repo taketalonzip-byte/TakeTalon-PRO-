@@ -3392,7 +3392,11 @@ app.post("/api/auth/login", async (req, res) => {
       }
     }
 
-    const { data: profile, error: pErr } = await query.maybeSingle();
+    const { data: profile, error: pErr } = await withOpTimeout(
+      query.maybeSingle(),
+      AUTH_OP_TIMEOUT_MS,
+      "Supabase profile lookup",
+    );
 
     if (!profile) {
       return res.status(401).json({
@@ -3408,10 +3412,14 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(503).json({ ok: false, error: "Uthibitishaji wa login haujasanidiwa." });
     }
 
-    const { data: authData, error: authError } = await supabaseAuthClient.auth.signInWithPassword({
-      email: profile.email,
-      password: cleanPassword,
-    });
+    const { data: authData, error: authError } = await withOpTimeout(
+      supabaseAuthClient.auth.signInWithPassword({
+        email: profile.email,
+        password: cleanPassword,
+      }),
+      AUTH_OP_TIMEOUT_MS,
+      "Supabase Auth login",
+    );
 
     if (authError || !authData?.user || authData.user.id !== profile.auth_user_id) {
       return res.status(401).json({
@@ -3429,18 +3437,26 @@ app.post("/api/auth/login", async (req, res) => {
       profile.is_verified = true;
     }
 
-    let { data: walletData } = await supabaseAdmin
-      .from("wallets")
-      .select("*")
-      .eq("profile_id", profile.id)
-      .maybeSingle();
+    let { data: walletData } = await withOpTimeout(
+      supabaseAdmin
+        .from("wallets")
+        .select("*")
+        .eq("profile_id", profile.id)
+        .maybeSingle(),
+      AUTH_OP_TIMEOUT_MS,
+      "Supabase wallet lookup",
+    );
 
     if (!walletData) {
-      const { data: newWallet } = await supabaseAdmin
-        .from("wallets")
-        .upsert({ profile_id: profile.id, balance: 0, reserved_balance: 0 }, { onConflict: "profile_id" })
-        .select("*")
-        .maybeSingle();
+      const { data: newWallet } = await withOpTimeout(
+        supabaseAdmin
+          .from("wallets")
+          .upsert({ profile_id: profile.id, balance: 0, reserved_balance: 0 }, { onConflict: "profile_id" })
+          .select("*")
+          .maybeSingle(),
+        AUTH_OP_TIMEOUT_MS,
+        "Supabase wallet initialization",
+      );
       walletData = newWallet;
     }
 
@@ -3460,6 +3476,12 @@ app.post("/api/auth/login", async (req, res) => {
     });
   } catch (err: any) {
     console.error("[api/auth/login] Error:", err);
+    if (isNetworkNoise(err)) {
+      return res.status(503).json({
+        ok: false,
+        error: "Huduma ya Supabase haijajibu kwa wakati. Tafadhali jaribu tena baada ya muda mfupi.",
+      });
+    }
     return res.status(500).json({ ok: false, error: err?.message || "Hitilafu wakati wa kuingia." });
   }
 });
