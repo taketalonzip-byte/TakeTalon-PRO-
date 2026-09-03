@@ -180,6 +180,27 @@ function isNetworkNoise(err: any): boolean {
   );
 }
 
+function isSupabaseConnectionError(err: any): boolean {
+  if (!err) return false;
+  const msg = (err?.message || String(err || "")).toLowerCase();
+  return (
+    msg.includes("timeout") ||
+    msg.includes("timed out") ||
+    msg.includes("fetch failed") ||
+    msg.includes("failed to fetch") ||
+    msg.includes("upstream") ||
+    msg.includes("504") ||
+    msg.includes("502") ||
+    msg.includes("503") ||
+    msg.includes("econnrefused") ||
+    msg.includes("econnreset") ||
+    msg.includes("enotfound") ||
+    msg.includes("network error") ||
+    msg.includes("networkrequestfailed") ||
+    msg.includes("disconnect")
+  );
+}
+
 interface ServerAviatorRound {
   id: number;
   round_id: string;
@@ -704,7 +725,7 @@ app.get("/api/sms-gateway", async (req: Request, res: Response) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Health Check
+// Health Check & Supabase Status
 // ─────────────────────────────────────────────────────────────────────────────
 app.get("/api/health", (req, res) => {
   res.json({
@@ -713,6 +734,63 @@ app.get("/api/health", (req, res) => {
     dbConnected: isDbConfigured,
     timestamp: new Date().toISOString(),
   });
+});
+
+app.get("/api/supabase/status", async (req, res) => {
+  if (!supabaseAdmin) {
+    return res.json({
+      ok: false,
+      configured: false,
+      status: "NOT_CONFIGURED",
+      message: "Supabase credentials hazijawekwa kwenye server.",
+    });
+  }
+
+  const startTime = Date.now();
+  try {
+    const { data, error } = await withOpTimeout(
+      supabaseAdmin.from("profiles").select("id").limit(1),
+      3500,
+      "Supabase live ping"
+    );
+
+    const latencyMs = Date.now() - startTime;
+    if (error) {
+      const isConn = isSupabaseConnectionError(error);
+      return res.json({
+        ok: false,
+        configured: true,
+        isConnectionError: isConn,
+        status: isConn ? "TIMEOUT_OR_UNREACHABLE" : "DB_ERROR",
+        latencyMs,
+        error: error.message,
+        message: isConn
+          ? "Seva ya Supabase haikujibu kwa wakati (Connection Timeout). Huenda mradi wako wa Supabase umesitishwa/paused kwenye Supabase dashboard."
+          : `Hitilafu ya Supabase: ${error.message}`,
+      });
+    }
+
+    return res.json({
+      ok: true,
+      configured: true,
+      status: "ONLINE",
+      latencyMs,
+      message: "Seva ya Supabase ipo mtandaoni na inafanya kazi vizuri.",
+    });
+  } catch (err: any) {
+    const latencyMs = Date.now() - startTime;
+    const isConn = isSupabaseConnectionError(err);
+    return res.json({
+      ok: false,
+      configured: true,
+      isConnectionError: true,
+      status: "TIMEOUT_OR_UNREACHABLE",
+      latencyMs,
+      error: err?.message || String(err),
+      message:
+        "Seva ya Supabase haikujibu kwa wakati (Connection Timeout). Huenda mradi wako wa Supabase umesitishwa/paused kwenye Supabase dashboard.",
+    });
+  }
 });
 
 // Unified Team Sports API Endpoints
@@ -2607,45 +2685,93 @@ app.post("/api/supabase/request-unlock", async (req, res) => {
   }
 });
 
-async function ensureAgentRoleFor68769887() {
-  if (!supabaseAdmin) return;
-  try {
-    const { data, error } = await supabaseAdmin
-      .from("profiles")
-      .update({ role: "ADMIN", is_verified: true })
-      .or("phone.ilike.%68769887%,phone.eq.68769887,phone.eq.+25768769887,phone.eq.25768769887")
-      .select("id, username, phone, role");
+let hasSyncedAgentRole68769887 = false;
+let isSyncingAgentRole68769887 = false;
 
-    if (error) {
-      console.warn("[SERVER] ensureAgentRoleFor68769887 error:", error.message);
-    } else if (data && data.length > 0) {
-      console.log("[SERVER] Successfully set ADMIN role for account 68769887 in DB:", data);
+async function ensureAgentRoleFor68769887() {
+  if (!supabaseAdmin || hasSyncedAgentRole68769887 || isSyncingAgentRole68769887) return;
+  isSyncingAgentRole68769887 = true;
+  try {
+    // 1. Fast read first to see if any accounts exist and if they already have ADMIN role
+    const { data: matchedProfiles } = await withOpTimeout(
+      supabaseAdmin
+        .from("profiles")
+        .select("id, username, phone, role, is_verified")
+        .or("phone.ilike.%68769887%,phone.eq.68769887,phone.eq.+25768769887,phone.eq.25768769887")
+        .limit(5),
+      3500,
+      "lookup agent 68769887"
+    ).catch(() => ({ data: null }));
+
+    if (matchedProfiles && matchedProfiles.length > 0) {
+      const needsUpdate = matchedProfiles.filter((p: any) => p.role !== "ADMIN" || !p.is_verified);
+      if (needsUpdate.length === 0) {
+        hasSyncedAgentRole68769887 = true;
+        return;
+      }
+      // 2. Update specifically by ID rather than full-table scan with OR/ILIKE
+      for (const p of needsUpdate) {
+        await withOpTimeout(
+          supabaseAdmin.from("profiles").update({ role: "ADMIN", is_verified: true }).eq("id", p.id),
+          3500,
+          "update agent 68769887 by id"
+        ).catch(() => {});
+      }
+      hasSyncedAgentRole68769887 = true;
+      console.log("[SERVER] Successfully set ADMIN role for account 68769887 in DB");
     }
   } catch (err: any) {
-    console.warn("[SERVER] ensureAgentRoleFor68769887 exception:", err?.message || err);
+    console.log("[SERVER] Background sync notice (68769887):", err?.message || "timeout");
+  } finally {
+    isSyncingAgentRole68769887 = false;
   }
 }
 
-async function ensureAdminRoleForAmissi640() {
-  if (!supabaseAdmin) return;
-  try {
-    const { data, error } = await supabaseAdmin
-      .from("profiles")
-      .update({ role: "ADMIN", is_verified: true })
-      .or("username.ilike.%amissi640%,email.ilike.%amissi640%")
-      .select("id, username, email, role");
+let hasSyncedAdminRoleAmissi640 = false;
+let isSyncingAdminRoleAmissi640 = false;
 
-    if (error) {
-      console.warn("[SERVER] ensureAdminRoleForAmissi640 error:", error.message);
-    } else if (data && data.length > 0) {
-      console.log("[SERVER] Successfully set ADMIN role for amissi640 in DB:", data);
+async function ensureAdminRoleForAmissi640() {
+  if (!supabaseAdmin || hasSyncedAdminRoleAmissi640 || isSyncingAdminRoleAmissi640) return;
+  isSyncingAdminRoleAmissi640 = true;
+  try {
+    // 1. Fast read first to see if account exists and if already ADMIN
+    const { data: matchedProfiles } = await withOpTimeout(
+      supabaseAdmin
+        .from("profiles")
+        .select("id, username, email, role, is_verified")
+        .or("username.ilike.%amissi640%,email.ilike.%amissi640%")
+        .limit(5),
+      3500,
+      "lookup admin amissi640"
+    ).catch(() => ({ data: null }));
+
+    if (matchedProfiles && matchedProfiles.length > 0) {
+      const needsUpdate = matchedProfiles.filter((p: any) => p.role !== "ADMIN" || !p.is_verified);
+      if (needsUpdate.length === 0) {
+        hasSyncedAdminRoleAmissi640 = true;
+        return;
+      }
+      // 2. Update specifically by ID
+      for (const p of needsUpdate) {
+        await withOpTimeout(
+          supabaseAdmin.from("profiles").update({ role: "ADMIN", is_verified: true }).eq("id", p.id),
+          3500,
+          "update admin amissi640 by id"
+        ).catch(() => {});
+      }
+      hasSyncedAdminRoleAmissi640 = true;
+      console.log("[SERVER] Successfully set ADMIN role for amissi640 in DB");
     }
   } catch (err: any) {
-    console.warn("[SERVER] ensureAdminRoleForAmissi640 exception:", err?.message || err);
+    console.log("[SERVER] Background sync notice (amissi640):", err?.message || "timeout");
+  } finally {
+    isSyncingAdminRoleAmissi640 = false;
   }
 }
 
 app.get("/api/agent/sync-role", async (req, res) => {
+  hasSyncedAgentRole68769887 = false;
+  hasSyncedAdminRoleAmissi640 = false;
   await ensureAgentRoleFor68769887();
   await ensureAdminRoleForAmissi640();
   res.json({ status: "ok", message: "Synced AGENT/ADMIN roles" });
@@ -3375,63 +3501,194 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     if (!supabaseAdmin) {
-      return res.status(500).json({ ok: false, error: "Database haijaunganishwa." });
+      return res.status(503).json({
+        ok: false,
+        isConnectionError: true,
+        error: "Seva ya Supabase haijaunganishwa vizuri kwenye mfumo.",
+      });
     }
 
+    const isEmail = cleanId.includes("@");
+    const cleanEmail = isEmail ? cleanId.toLowerCase() : "";
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
 
-    let query = supabaseAdmin.from("profiles").select("*");
-    if (isUuid) {
-      query = query.or(`id.eq.${cleanId},auth_user_id.eq.${cleanId}`);
+    let profile: any = null;
+    let profileLookupErr: any = null;
+
+    // STEP 1: Verify profile in Supabase profiles table
+    if (isEmail) {
+      const { data: profByEmail, error: pErr } = await withOpTimeout(
+        supabaseAdmin.from("profiles").select("*").eq("email", cleanEmail).maybeSingle(),
+        5000,
+        "Profile lookup by email"
+      ).catch((e: any) => ({ data: null, error: e }));
+      profile = profByEmail;
+      profileLookupErr = pErr;
+    } else if (isUuid) {
+      const { data: profByUuid, error: pErr } = await withOpTimeout(
+        supabaseAdmin.from("profiles").select("*").or(`id.eq.${cleanId},auth_user_id.eq.${cleanId}`).maybeSingle(),
+        5000,
+        "Profile lookup by uuid"
+      ).catch((e: any) => ({ data: null, error: e }));
+      profile = profByUuid;
+      profileLookupErr = pErr;
     } else {
       const sanitizedPhone = cleanId.replace(/[^0-9]/g, "");
+      let q = supabaseAdmin.from("profiles").select("*");
       if (sanitizedPhone.length >= 6) {
-        query = query.or(`email.ilike.${cleanId},username.ilike.${cleanId},phone.ilike.%${sanitizedPhone}%`);
+        q = q.or(`username.ilike.${cleanId},phone.ilike.%${sanitizedPhone}%`);
       } else {
-        query = query.or(`email.ilike.${cleanId},username.ilike.${cleanId}`);
+        q = q.or(`username.ilike.${cleanId}`);
       }
+      const { data: profByUsername, error: pErr } = await withOpTimeout(
+        q.maybeSingle(),
+        5000,
+        "Profile lookup by username/phone"
+      ).catch((e: any) => ({ data: null, error: e }));
+      profile = profByUsername;
+      profileLookupErr = pErr;
     }
 
-    const { data: profile, error: pErr } = await withOpTimeout(
-      query.maybeSingle(),
-      AUTH_OP_TIMEOUT_MS,
-      "Supabase profile lookup",
-    );
-
-    if (!profile) {
-      return res.status(401).json({
+    // Check if database query failed due to connection timeout or network outage
+    if (profileLookupErr && isSupabaseConnectionError(profileLookupErr)) {
+      return res.status(504).json({
         ok: false,
-        error: "Maelezo ya kuingia si sahihi au akaunti haijapatikana.",
+        isConnectionError: true,
+        error: "Hitilafu ya muunganisho wa seva ya Supabase (Database timeout). Seva haikujibu kwa wakati. Hili si kosa la nywila; tafadhali hakikisha mradi wa Supabase upo mtandaoni (Active) na haujapumzishwa (Paused).",
       });
     }
 
-    // Never authorize from a public profile row alone. The password must be
-    // verified by Supabase Auth before any profile or wallet data is returned.
-    if (!supabaseAuthClient || !profile.auth_user_id || !profile.email) {
-      console.error("[api/auth/login] Supabase Auth verification is not configured for this account.");
-      return res.status(503).json({ ok: false, error: "Uthibitishaji wa login haujasanidiwa." });
+    // If identifier was username/phone and not found in profiles:
+    if (!profile && !isEmail) {
+      return res.status(404).json({
+        ok: false,
+        isAccountNotFound: true,
+        error: `Akaunti yenye jina la mtumiaji au namba "${cleanId}" haijapatikana. Tafadhali hakiki au tumia barua pepe.`,
+      });
     }
 
+    // Determine email to authenticate with Supabase Auth
+    const authEmail = (profile?.email || (isEmail ? cleanEmail : "")).toLowerCase();
+
+    if (!authEmail) {
+      return res.status(404).json({
+        ok: false,
+        isAccountNotFound: true,
+        error: "Akaunti yenye taarifa hizi haijapatikana. Tafadhali hakiki jina au barua pepe.",
+      });
+    }
+
+    const authClientToUse = supabaseAuthClient || supabaseAdmin;
+    if (!authClientToUse) {
+      return res.status(503).json({
+        ok: false,
+        isConnectionError: true,
+        error: "Uthibitishaji wa login haujasanidiwa kwenye server.",
+      });
+    }
+
+    // STEP 2: Authenticate Password with Supabase Auth
     const { data: authData, error: authError } = await withOpTimeout(
-      supabaseAuthClient.auth.signInWithPassword({
-        email: profile.email,
+      authClientToUse.auth.signInWithPassword({
+        email: authEmail,
         password: cleanPassword,
       }),
-      AUTH_OP_TIMEOUT_MS,
-      "Supabase Auth login",
-    );
+      6500,
+      "Supabase Auth signInWithPassword"
+    ).catch((e: any) => ({ data: null, error: e }));
 
-    if (authError || !authData?.user || authData.user.id !== profile.auth_user_id) {
+    if (authError || !authData?.user) {
+      if (isSupabaseConnectionError(authError)) {
+        return res.status(504).json({
+          ok: false,
+          isConnectionError: true,
+          error: "Hitilafu ya muunganisho wa seva ya Supabase Auth (Timeout). Seva haikujibu kwa wakati kuthibitisha nywila. Tafadhali hakikisha mradi wa Supabase upo mtandaoni (Active).",
+        });
+      }
+
+      const authMsg = (authError?.message || "").toLowerCase();
+      if (authMsg.includes("invalid login credentials") || authMsg.includes("invalid grant")) {
+        if (profile) {
+          return res.status(401).json({
+            ok: false,
+            isPasswordError: true,
+            error: "Akaunti imepatikana, lakini neno la siri (password) uliloweka si sahihi. Tafadhali hakiki nywila yako au weka upya.",
+          });
+        }
+        return res.status(401).json({
+          ok: false,
+          isAccountNotFound: true,
+          error: "Akaunti yenye barua pepe hii haijapatikana au neno la siri si sahihi. Tafadhali hakiki herufi za barua pepe au sajili akaunti.",
+        });
+      }
+
+      if (authMsg.includes("email not confirmed")) {
+        return res.status(403).json({
+          ok: false,
+          error: "Barua pepe yako haijathibitishwa kupitia OTP.",
+        });
+      }
+
       return res.status(401).json({
         ok: false,
-        error: "Maelezo ya kuingia si sahihi au akaunti haijapatikana.",
+        error: authError?.message || "Maelezo ya kuingia si sahihi au akaunti haijapatikana.",
       });
+    }
+
+    const authenticatedUser = authData.user;
+
+    // If profile didn't exist or lacked auth_user_id, link it now
+    if (!profile) {
+      const { data: freshProf } = await withOpTimeout(
+        supabaseAdmin.from("profiles").select("*").eq("auth_user_id", authenticatedUser.id).maybeSingle(),
+        5000,
+        "Profile lookup by auth_user_id"
+      ).catch(() => ({ data: null }));
+
+      if (freshProf) {
+        profile = freshProf;
+      } else {
+        // Create or upsert profile row for this authenticated user
+        const newUsername = authenticatedUser.user_metadata?.username || authEmail.split("@")[0];
+        const { data: createdProf } = await withOpTimeout(
+          supabaseAdmin
+            .from("profiles")
+            .upsert(
+              {
+                auth_user_id: authenticatedUser.id,
+                email: authEmail,
+                username: newUsername,
+                role:
+                  authEmail.includes("68769887") || newUsername.toLowerCase().includes("amissi640")
+                    ? "ADMIN"
+                    : "USER",
+                is_verified: true,
+                otp_verified: true,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "email" }
+            )
+            .select("*")
+            .maybeSingle(),
+          6000,
+          "Profile auto-creation"
+        ).catch(() => ({ data: null }));
+        profile = createdProf;
+      }
+    } else if (!profile.auth_user_id || profile.auth_user_id !== authenticatedUser.id) {
+      await withOpTimeout(
+        supabaseAdmin.from("profiles").update({ auth_user_id: authenticatedUser.id }).eq("id", profile.id),
+        4000,
+        "Update profile auth_user_id"
+      ).catch(() => {});
+      profile.auth_user_id = authenticatedUser.id;
     }
 
     if (
-      (profile.phone && (profile.phone.includes("68769887") || profile.phone === "68769887")) ||
-      (profile.username && profile.username.toLowerCase().includes("amissi640")) ||
-      (profile.email && profile.email.toLowerCase().includes("amissi640"))
+      profile &&
+      ((profile.phone && (profile.phone.includes("68769887") || profile.phone === "68769887")) ||
+        (profile.username && profile.username.toLowerCase().includes("amissi640")) ||
+        (profile.email && profile.email.toLowerCase().includes("amissi640")))
     ) {
       profile.role = "ADMIN";
       profile.is_verified = true;
@@ -3441,22 +3698,22 @@ app.post("/api/auth/login", async (req, res) => {
       supabaseAdmin
         .from("wallets")
         .select("*")
-        .eq("profile_id", profile.id)
+        .eq("profile_id", profile?.id || authenticatedUser.id)
         .maybeSingle(),
-      AUTH_OP_TIMEOUT_MS,
-      "Supabase wallet lookup",
-    );
+      4000,
+      "Wallet select"
+    ).catch(() => ({ data: null }));
 
-    if (!walletData) {
+    if (!walletData && profile?.id) {
       const { data: newWallet } = await withOpTimeout(
         supabaseAdmin
           .from("wallets")
           .upsert({ profile_id: profile.id, balance: 0, reserved_balance: 0 }, { onConflict: "profile_id" })
           .select("*")
           .maybeSingle(),
-        AUTH_OP_TIMEOUT_MS,
-        "Supabase wallet initialization",
-      );
+        4000,
+        "Wallet auto-creation"
+      ).catch(() => ({ data: null }));
       walletData = newWallet;
     }
 
@@ -3466,7 +3723,13 @@ app.post("/api/auth/login", async (req, res) => {
 
     return res.status(200).json({
       ok: true,
-      profile,
+      profile: profile || {
+        id: authenticatedUser.id,
+        auth_user_id: authenticatedUser.id,
+        email: authEmail,
+        username: authenticatedUser.user_metadata?.username || authEmail.split("@")[0],
+        role: "USER",
+      },
       wallet: {
         ...walletData,
         balance,
@@ -3475,22 +3738,25 @@ app.post("/api/auth/login", async (req, res) => {
       },
     });
   } catch (err: any) {
-    console.error("[api/auth/login] Error:", err);
-    if (isNetworkNoise(err)) {
-      return res.status(503).json({
-        ok: false,
-        error: "Huduma ya Supabase haijajibu kwa wakati. Tafadhali jaribu tena baada ya muda mfupi.",
-      });
-    }
+    console.warn("[api/auth/login] Login notice:", err?.message || err);
     return res.status(500).json({ ok: false, error: err?.message || "Hitilafu wakati wa kuingia." });
   }
 });
 
 app.get("/api/auth/profile-lookup", async (req, res) => {
-  if (!supabaseAdmin) return res.json({ ok: false, profile: null, wallet: null });
+  if (!supabaseAdmin) {
+    return res.status(503).json({
+      ok: false,
+      isConnectionError: true,
+      profile: null,
+      wallet: null,
+      error: "Seva ya Supabase haijaunganishwa.",
+    });
+  }
+
   try {
     const queryId = ((req.query.id as string) || (req.query.auth_user_id as string) || "").trim();
-    if (!queryId) return res.json({ ok: false, profile: null, wallet: null });
+    if (!queryId) return res.json({ ok: false, profile: null, wallet: null, isNotFound: true });
 
     let query = supabaseAdmin.from("profiles").select("*");
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(queryId);
@@ -3506,17 +3772,31 @@ app.get("/api/auth/profile-lookup", async (req, res) => {
     }
 
     let profileData: any = null;
+    let queryErr: any = null;
+
     try {
-      const { data, error: profileErr } = await query.maybeSingle();
+      const { data, error: profileErr } = await withOpTimeout(
+        query.maybeSingle(),
+        4500,
+        "Profile lookup"
+      );
       if (profileErr) {
-        if (!profileErr.message?.includes("permission denied")) {
-          console.warn("[profile-lookup] DB query warning:", profileErr.message);
-        }
+        queryErr = profileErr;
       } else {
         profileData = data;
       }
-    } catch (e) {
-      // ignore
+    } catch (e: any) {
+      queryErr = e;
+    }
+
+    if (queryErr && isSupabaseConnectionError(queryErr)) {
+      return res.status(504).json({
+        ok: false,
+        profile: null,
+        wallet: null,
+        isConnectionError: true,
+        error: "Hitilafu ya muunganisho wa seva ya Supabase (Database timeout). Seva haikujibu kwa wakati. Tafadhali hakikisha mradi wa Supabase upo hewani (Active) na haujapumzishwa (Paused).",
+      });
     }
 
     if (profileData) {
@@ -3537,18 +3817,22 @@ app.get("/api/auth/profile-lookup", async (req, res) => {
         ensureAdminRoleForAmissi640().catch(() => {});
       }
 
-      let { data: walletData } = await supabaseAdmin
-        .from("wallets")
-        .select("*")
-        .eq("profile_id", profileData.id)
-        .maybeSingle();
+      let { data: walletData } = await withOpTimeout(
+        supabaseAdmin.from("wallets").select("*").eq("profile_id", profileData.id).maybeSingle(),
+        3500,
+        "Wallet lookup"
+      ).catch(() => ({ data: null }));
 
       if (!walletData) {
-        const { data: newWallet } = await supabaseAdmin
-          .from("wallets")
-          .upsert({ profile_id: profileData.id, balance: 0, reserved_balance: 0 }, { onConflict: "profile_id" })
-          .select("*")
-          .maybeSingle();
+        const { data: newWallet } = await withOpTimeout(
+          supabaseAdmin
+            .from("wallets")
+            .upsert({ profile_id: profileData.id, balance: 0, reserved_balance: 0 }, { onConflict: "profile_id" })
+            .select("*")
+            .maybeSingle(),
+          3500,
+          "Wallet upsert"
+        ).catch(() => ({ data: null }));
         walletData = newWallet;
       }
 
@@ -3568,10 +3852,19 @@ app.get("/api/auth/profile-lookup", async (req, res) => {
       });
     }
 
-    res.json({ ok: false, profile: null, wallet: null });
+    res.json({ ok: false, isNotFound: true, profile: null, wallet: null, error: "Akaunti haijapatikana." });
   } catch (err: any) {
     console.error("[profile-lookup] exception:", err);
-    res.json({ ok: false, profile: null, wallet: null, error: err?.message || String(err) });
+    const isConn = isSupabaseConnectionError(err);
+    res.status(isConn ? 504 : 500).json({
+      ok: false,
+      isConnectionError: isConn,
+      profile: null,
+      wallet: null,
+      error: isConn
+        ? "Hitilafu ya muunganisho wa seva ya Supabase (Database timeout). Tafadhali hakikisha mradi upo Active."
+        : err?.message || String(err),
+    });
   }
 });
 
@@ -3728,9 +4021,6 @@ app.post("/api/deposit/report", async (req, res) => {
 // Vite Middleware & Server Boot
 // ─────────────────────────────────────────────────────────────────────────────
 async function startServer() {
-  ensureAgentRoleFor68769887().catch(() => {});
-  ensureAdminRoleForAmissi640().catch(() => {});
-
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -3749,6 +4039,13 @@ async function startServer() {
     console.log(`[TakeTalon Server] Running on http://0.0.0.0:${PORT}`);
     console.log(`[SMS Forwarder Webhook] Active at http://0.0.0.0:${PORT}/api/sms-forwarder`);
     startAviatorRoundLoop();
+    setTimeout(() => {
+      ensureAgentRoleFor68769887()
+        .catch(() => {})
+        .finally(() => {
+          ensureAdminRoleForAmissi640().catch(() => {});
+        });
+    }, 1500);
   });
 }
 

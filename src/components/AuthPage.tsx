@@ -36,22 +36,6 @@ import {
 
 const OTP_VALIDITY_MS = 10 * 60 * 1000;
 const AUTH_REQUEST_TIMEOUT_MS = 90_000;
-const SUPABASE_LOGIN_TIMEOUT_MS = 10_000;
-
-async function withSupabaseLoginTimeout<T>(promise: PromiseLike<T>): Promise<T> {
-  let timeoutId: number | undefined;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = window.setTimeout(
-      () => reject(new DOMException("Supabase login timed out", "TimeoutError")),
-      SUPABASE_LOGIN_TIMEOUT_MS,
-    );
-  });
-  try {
-    return await Promise.race([Promise.resolve(promise), timeoutPromise]);
-  } finally {
-    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
-  }
-}
 
 function isAuthRequestAbort(error: unknown): boolean {
   const candidate = error as { name?: string; message?: string } | null;
@@ -313,6 +297,37 @@ export default function AuthPage({
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  // Supabase server connection diagnostics
+  const [supabaseStatus, setSupabaseStatus] = useState<{
+    checking: boolean;
+    status: "ONLINE" | "TIMEOUT_OR_UNREACHABLE" | "NOT_CHECKED" | "DB_ERROR";
+    message?: string;
+    latencyMs?: number;
+  }>({
+    checking: false,
+    status: "NOT_CHECKED",
+  });
+
+  const checkSupabaseServer = async () => {
+    setSupabaseStatus((prev) => ({ ...prev, checking: true }));
+    try {
+      const res = await fetch("/api/supabase/status");
+      const data = await res.json();
+      setSupabaseStatus({
+        checking: false,
+        status: data?.status || (data?.ok ? "ONLINE" : "TIMEOUT_OR_UNREACHABLE"),
+        message: data?.message,
+        latencyMs: data?.latencyMs,
+      });
+    } catch {
+      setSupabaseStatus({
+        checking: false,
+        status: "TIMEOUT_OR_UNREACHABLE",
+        message: "Hitilafu ya mtandao kufikia seva ya programu.",
+      });
+    }
+  };
+
   const activeLang = lang === "sw" || lang === "fr" ? lang : "en";
   const t = dictionary[activeLang];
 
@@ -481,7 +496,8 @@ export default function AuthPage({
     setError("");
     setSuccessMsg("");
 
-    if (!loginId.trim() || !loginPassword) {
+    const cleanInput = loginId.trim();
+    if (!cleanInput || !loginPassword) {
       setError(t.valEmptyLogin);
       return;
     }
@@ -491,151 +507,141 @@ export default function AuthPage({
     try {
       if (!isSupabaseConfigured) {
         setError("Mfumo wa Supabase haujasanidiwa vizuri.");
+        setLoading(false);
         return;
       }
 
-      let emailToLogin = loginId.trim();
-
-      // If user provided phone or username instead of email
-      if (!emailToLogin.includes("@")) {
-        // Search profile via server lookup first (bypasses RLS restrictions)
-        try {
-          const lRes = await fetchAuthRequest(
-            `/api/auth/profile-lookup?id=${encodeURIComponent(emailToLogin)}`,
-          );
-          if (lRes.ok) {
-            const lData = await lRes.json();
-            if (lData?.profile?.email) {
-              emailToLogin = lData.profile.email;
-            } else if (lData?.email) {
-              emailToLogin = lData.email;
-            }
-          }
-        } catch (lErr) {
-          console.warn("[LOOKUP-SERVER-WARN]", lErr);
-        }
-
-        // Fallback to client search if email still not resolved
-        if (!emailToLogin.includes("@")) {
-          const { data: prof } = await supabase
-            .from("profiles")
-            .select("email")
-            .or(`username.ilike.${emailToLogin},phone.eq.${emailToLogin}`)
-            .maybeSingle();
-
-          if (prof?.email) {
-            emailToLogin = prof.email;
-          }
-        }
-
-        // If email could not be resolved from username/phone
-        if (!emailToLogin.includes("@")) {
-          setError(
-            lang === "sw"
-              ? "Akaunti yenye jina la mtumiaji au namba ya simu hii haijapatikana. Tafadhali hakiki au tumia Barua Pepe (Email)."
-              : "No account found with this username or phone number. Please verify or use your email address.",
-          );
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Login via Supabase Auth
-      let authSuccessful = false;
-      let user: any = null;
+      // ─────────────────────────────────────────────────────────────────────────
+      // HATUA YA 1 (FORMULA STEP 1):
+      // Tembelea Supabase profile na uangalie kama akaunti/email ipo
+      // ─────────────────────────────────────────────────────────────────────────
+      let resolvedEmail = cleanInput.includes("@") ? cleanInput.toLowerCase() : "";
+      let foundProfile: any = null;
+      let connectionProblem = false;
+      let connectionProblemMsg = "";
 
       try {
-        const { data: authData, error: authError } = await withSupabaseLoginTimeout(
-          supabase.auth.signInWithPassword({
-            email: emailToLogin,
-            password: loginPassword,
-          }),
+        const lookupController = new AbortController();
+        const lookupTimeout = setTimeout(() => lookupController.abort(), 5000);
+
+        const lRes = await fetch(
+          `/api/auth/profile-lookup?id=${encodeURIComponent(cleanInput)}`,
+          { signal: lookupController.signal }
+        ).catch((fetchErr: any) => {
+          if (fetchErr?.name === "AbortError" || String(fetchErr).includes("abort")) {
+            return { ok: false, status: 504, json: async () => ({ isConnectionError: true }) } as any;
+          }
+          return null;
+        });
+        clearTimeout(lookupTimeout);
+
+        if (lRes) {
+          const lData = await lRes.json().catch(() => null);
+          if (lRes.status === 504 || lData?.isConnectionError) {
+            connectionProblem = true;
+            connectionProblemMsg =
+              lData?.error ||
+              "Hitilafu ya muunganisho wa seva ya Supabase (Database Timeout). Seva ya Supabase haikujibu kwa wakati.";
+          } else if (lData?.profile) {
+            foundProfile = lData.profile;
+            if (foundProfile.email) {
+              resolvedEmail = foundProfile.email.toLowerCase();
+            }
+          }
+        }
+      } catch (lErr) {
+        console.warn("[LOOKUP-SERVER-NOTICE]", lErr);
+      }
+
+      // Ikiwa kuna hitilafu ya muunganisho wa Supabase kwenye hatua ya kwanza, toa taarifa mara moja!
+      if (connectionProblem) {
+        setSupabaseStatus({
+          checking: false,
+          status: "TIMEOUT_OR_UNREACHABLE",
+          message: "Seva ya Supabase haijajibu (Connection Timeout)",
+        });
+        setError(
+          lang === "sw"
+            ? `${connectionProblemMsg} Tafadhali hakiki kama mradi wako wa Supabase upo mtandaoni (Active) kwenye dashibodi ya Supabase na haujapumzishwa (Paused).`
+            : "Supabase connection timed out. Please verify that your Supabase project is active and not paused in your Supabase dashboard."
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Ikiwa mtumiaji ameingiza username au simu (si email) na haijapatikana:
+      if (!cleanInput.includes("@") && !foundProfile) {
+        setError(
+          lang === "sw"
+            ? `Akaunti yenye jina la mtumiaji au namba "${cleanInput}" haijapatikana kwenye mfumo. Tafadhali hakiki maelezo yako au tumia barua pepe (Email).`
+            : `No account found with username or phone "${cleanInput}". Please verify or use your email address.`
+        );
+        setLoading(false);
+        return;
+      }
+
+      const emailToLogin = resolvedEmail || cleanInput.toLowerCase();
+
+      // ─────────────────────────────────────────────────────────────────────────
+      // HATUA YA 2 (FORMULA STEP 2):
+      // Chunguza kama nywila (password) ni sahihi kupitia Supabase Auth
+      // ─────────────────────────────────────────────────────────────────────────
+      let authSuccessful = false;
+      let user: any = null;
+      let clientAuthErr: any = null;
+
+      try {
+        const clientAuthPromise = supabase.auth.signInWithPassword({
+          email: emailToLogin,
+          password: loginPassword,
+        });
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Supabase Auth request timed out")), 6500)
         );
 
-        if (!authError && authData?.user) {
+        const { data: authData, error: aError } = (await Promise.race([
+          clientAuthPromise,
+          timeoutPromise,
+        ])) as any;
+
+        if (aError) {
+          clientAuthErr = aError;
+        } else if (authData?.user) {
           authSuccessful = true;
           user = authData.user;
         }
-      } catch (authErr) {
-        // Fallback to server login
+      } catch (authErr: any) {
+        clientAuthErr = authErr;
       }
 
-      // If client auth did not succeed, try server authoritative login
-      if (!authSuccessful) {
-        try {
-          const sLoginRes = await fetchAuthRequest("/api/auth/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              loginId: loginId.trim(),
-              password: loginPassword,
-            }),
-          });
-
-          if (sLoginRes.ok) {
-            const sLoginData = await sLoginRes.json();
-            if (sLoginData?.ok && sLoginData?.profile) {
-              const prof = sLoginData.profile;
-              onAuthSuccess({
-                username: prof.username || prof.first_name || "User",
-                email: prof.email || "",
-                phone: prof.phone || "",
-                role: prof.role || "USER",
-              });
-              setSuccessMsg(t.successLogin);
-              setTimeout(() => {
-                onClose();
-                resetForm();
-              }, 700);
-              return;
-            }
-          }
-        } catch (sLoginErr) {
-          console.warn("[SERVER-LOGIN-FALLBACK-NOTICE]", sLoginErr);
-        }
-      }
-
-      if (user) {
-        let existingProfile: any = null;
-
-        // Try client fetch first
-        try {
-          const { data: clientProf } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("auth_user_id", user.id)
-            .maybeSingle();
-          existingProfile = clientProf;
-        } catch (cErr) {
-          console.warn("[CLIENT-PROFILE-FETCH-WARN]", cErr);
-        }
-
-        // Fallback to server lookup if client profile fetch returned null
+      // Ikiwa client auth imefanikiwa:
+      if (authSuccessful && user) {
+        let existingProfile = foundProfile;
         if (!existingProfile) {
           try {
-            const sRes = await fetchAuthRequest(
-              `/api/auth/profile-lookup?auth_user_id=${encodeURIComponent(user.id)}`,
-            );
-            if (sRes.ok) {
-              const sData = await sRes.json();
-              if (sData?.profile) {
-                existingProfile = sData.profile;
-              }
-            }
-          } catch (sErr) {
-            console.warn("[SERVER-PROFILE-FETCH-WARN]", sErr);
+            const { data: clientProf } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("auth_user_id", user.id)
+              .maybeSingle();
+            existingProfile = clientProf;
+          } catch (cErr) {
+            console.warn("[CLIENT-PROFILE-FETCH-WARN]", cErr);
           }
         }
 
         if (existingProfile && existingProfile.otp_verified === false) {
-          await supabase.auth.signOut();
+          await supabase.auth.signOut().catch(() => {});
           setError(
-            "Akaunti hii haijakamilisha usajili wa OTP na Vigezo. Tafadhali kamilisha usajili kwanza.",
+            lang === "sw"
+              ? "Akaunti hii haijakamilisha usajili wa OTP na Vigezo. Tafadhali kamilisha usajili kwanza."
+              : "This account has not completed OTP verification. Please complete registration first."
           );
           setLoading(false);
           return;
         }
 
+        setSupabaseStatus({ checking: false, status: "ONLINE", message: "Seva ipo mtandaoni" });
         onAuthSuccess({
           username:
             existingProfile?.username ||
@@ -655,30 +661,144 @@ export default function AuthPage({
         return;
       }
 
-      // If reached here without user and without server success, raise invalid credentials
-      throw new Error("Invalid login credentials");
-    } catch (err: any) {
-      console.error("[LOGIN-ERROR]", err);
-      let friendlyError = err?.message || "Imeshindikana kuingia kwenye akaunti.";
-      const errMsg = String(err?.message || "").toLowerCase();
+      // Ikiwa client auth haikufanikiwa, piga seva (/api/auth/login) yenye root credentials
+      let serverErrorMsg = "";
+      let serverIsConnectionErr = false;
+      let serverIsPasswordErr = false;
+      let serverIsNotFound = false;
 
-      if (errMsg.includes("invalid login credentials")) {
-        friendlyError =
-          lang === "sw"
-            ? "Maelezo ya kuingia si sahihi au akaunti haijapatikana."
-            : "Invalid login credentials or account not found.";
-      } else if (errMsg.includes("failed to fetch")) {
-        friendlyError =
-          lang === "sw"
-            ? "Imeshindikana kuunganisha na server ya Auth. Tafadhali jaribu tena."
-            : "Auth network error. Please try again.";
-      } else if (errMsg.includes("email not confirmed")) {
-        friendlyError =
-          lang === "sw"
-            ? "Barua pepe yako haijathibitishwa kupitia OTP."
-            : "Your email address has not been verified yet.";
+      try {
+        const sLoginRes = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            loginId: cleanInput,
+            password: loginPassword,
+          }),
+        });
+
+        const sLoginData = await sLoginRes.json().catch(() => null);
+
+        if (sLoginRes.ok && sLoginData?.ok && sLoginData?.profile) {
+          const prof = sLoginData.profile;
+          setSupabaseStatus({ checking: false, status: "ONLINE", message: "Seva ipo mtandaoni" });
+          onAuthSuccess({
+            username: prof.username || prof.first_name || "User",
+            email: prof.email || "",
+            phone: prof.phone || "",
+            role: prof.role || "USER",
+          });
+          setSuccessMsg(t.successLogin);
+          setTimeout(() => {
+            onClose();
+            resetForm();
+          }, 700);
+          return;
+        }
+
+        if (sLoginRes.status === 504 || sLoginData?.isConnectionError) {
+          serverIsConnectionErr = true;
+          serverErrorMsg = sLoginData?.error;
+        } else if (sLoginData?.isPasswordError) {
+          serverIsPasswordErr = true;
+          serverErrorMsg = sLoginData?.error;
+        } else if (sLoginData?.isAccountNotFound) {
+          serverIsNotFound = true;
+          serverErrorMsg = sLoginData?.error;
+        } else if (sLoginData?.error) {
+          serverErrorMsg = sLoginData.error;
+        }
+      } catch (sLoginErr) {
+        console.warn("[SERVER-LOGIN-FALLBACK-NOTICE]", sLoginErr);
       }
-      setError(friendlyError);
+
+      // ─────────────────────────────────────────────────────────────────────────
+      // TATHMINI YA JIBU (DIAGNOSTICS):
+      // ─────────────────────────────────────────────────────────────────────────
+      const clientMsg = String(clientAuthErr?.message || "").toLowerCase();
+      const isClientConnErr =
+        clientMsg.includes("timeout") ||
+        clientMsg.includes("timed out") ||
+        clientMsg.includes("failed to fetch") ||
+        clientMsg.includes("network");
+
+      // Hitilafu ya Muunganisho wa Supabase Server
+      if (serverIsConnectionErr || (isClientConnErr && !serverErrorMsg)) {
+        setSupabaseStatus({
+          checking: false,
+          status: "TIMEOUT_OR_UNREACHABLE",
+          message: "Seva ya Supabase haijajibu (Connection Timeout)",
+        });
+        setError(
+          lang === "sw"
+            ? (serverErrorMsg || "Hitilafu ya muunganisho wa seva ya Supabase (Connection Timeout): Seva haikujibu kwa wakati. Hili si kosa la nywila; tafadhali hakikisha mradi wako wa Supabase upo mtandaoni (Active) kwenye dashibodi ya Supabase na haujapumzishwa (Paused).")
+            : "Supabase connection timed out. Please verify that your Supabase project is active and not paused in your Supabase dashboard."
+        );
+        return;
+      }
+
+      // Kosa maalum la Nywila
+      if (serverIsPasswordErr) {
+        setError(
+          serverErrorMsg ||
+            (lang === "sw"
+              ? "Akaunti imepatikana, lakini neno la siri (password) uliloweka si sahihi. Tafadhali hakiki nywila yako au weka upya."
+              : "Account found, but the password entered is incorrect. Please check your password.")
+        );
+        return;
+      }
+
+      // Kosa la Akaunti Kutopatikana
+      if (serverIsNotFound) {
+        setError(
+          serverErrorMsg ||
+            (lang === "sw"
+              ? "Akaunti yenye barua pepe hii haijapatikana. Tafadhali hakiki herufi au sajili akaunti mpya."
+              : "No account found with this email address. Please verify or register.")
+        );
+        return;
+      }
+
+      // Kosa la Supabase Auth credentials
+      if (clientMsg.includes("invalid login credentials") || clientMsg.includes("invalid grant")) {
+        if (foundProfile) {
+          setError(
+            lang === "sw"
+              ? "Akaunti imepatikana, lakini neno la siri (password) uliloweka si sahihi. Tafadhali hakiki nywila yako au weka upya."
+              : "Account found, but the password entered is incorrect. Please check your password."
+          );
+        } else {
+          setError(
+            lang === "sw"
+              ? "Akaunti haijapatikana au neno la siri si sahihi. Tafadhali hakiki taarifa zako."
+              : "Account not found or password incorrect. Please check your credentials."
+          );
+        }
+        return;
+      }
+
+      if (clientMsg.includes("email not confirmed")) {
+        setError(
+          lang === "sw"
+            ? "Barua pepe yako haijathibitishwa kupitia OTP. Tafadhali kamilisha uthibitishaji kabla ya kuingia."
+            : "Your email address has not been verified yet."
+        );
+        return;
+      }
+
+      setError(
+        serverErrorMsg ||
+          (lang === "sw"
+            ? "Imeshindikana kuingia kwenye akaunti. Tafadhali hakiki taarifa zako na jaribu tena."
+            : "Login failed. Please check your credentials and try again.")
+      );
+    } catch (err: any) {
+      console.warn("[LOGIN-NOTICE]", err?.message || err);
+      setError(
+        lang === "sw"
+          ? "Hitilafu imetokea wakati wa kuingia. Tafadhali jaribu tena."
+          : "An error occurred during login. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -1099,10 +1219,31 @@ export default function AuthPage({
                 <motion.div
                   initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="p-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-semibold rounded-lg flex items-center gap-2"
+                  className={`p-3 rounded-lg flex items-start gap-2.5 text-xs font-semibold ${
+                    error.toLowerCase().includes("muunganisho") ||
+                    error.toLowerCase().includes("timeout") ||
+                    error.toLowerCase().includes("seva ya supabase")
+                      ? "bg-amber-500/15 border border-amber-500/30 text-amber-300"
+                      : "bg-rose-500/10 border border-rose-500/20 text-rose-400"
+                  }`}
                 >
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{error}</span>
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-2">
+                    <p className="leading-relaxed">{error}</p>
+                    {(error.toLowerCase().includes("muunganisho") ||
+                      error.toLowerCase().includes("timeout") ||
+                      error.toLowerCase().includes("supabase")) && (
+                      <button
+                        type="button"
+                        onClick={checkSupabaseServer}
+                        disabled={supabaseStatus.checking}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded bg-amber-500/25 hover:bg-amber-500/35 text-amber-200 transition-colors cursor-pointer border border-amber-500/30"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${supabaseStatus.checking ? "animate-spin" : ""}`} />
+                        <span>{supabaseStatus.checking ? "Inapima seva..." : "Pima Muunganisho wa Seva Sasa"}</span>
+                      </button>
+                    )}
+                  </div>
                 </motion.div>
               )}
               {successMsg && (
@@ -1114,6 +1255,37 @@ export default function AuthPage({
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>{successMsg}</span>
                 </motion.div>
+              )}
+
+              {/* Supabase Status Diagnostic Card */}
+              {supabaseStatus.status !== "NOT_CHECKED" && (
+                <div
+                  className={`p-2.5 rounded-lg text-xs flex items-center justify-between border ${
+                    supabaseStatus.status === "ONLINE"
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                      : "bg-amber-500/10 border-amber-500/30 text-amber-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        supabaseStatus.status === "ONLINE"
+                          ? "bg-emerald-400 animate-pulse"
+                          : "bg-amber-400"
+                      }`}
+                    />
+                    <span className="font-medium">
+                      {supabaseStatus.status === "ONLINE"
+                        ? "Seva ya Supabase ipo mtandaoni (Online)"
+                        : "Seva ya Supabase haijajibu (Timeout/Paused)"}
+                    </span>
+                  </div>
+                  {supabaseStatus.latencyMs !== undefined && (
+                    <span className="font-mono text-[10px] opacity-80">
+                      {supabaseStatus.latencyMs}ms
+                    </span>
+                  )}
+                </div>
               )}
 
               {/* Login Form */}
