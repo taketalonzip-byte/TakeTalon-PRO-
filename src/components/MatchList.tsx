@@ -2840,6 +2840,8 @@ export default function MatchList({
                       <button
                         id={`weka-bashiri-${match.id}`}
                         disabled={!canBetNow}
+                        title={isLive ? "Bet Now haipatikani wakati match iko live" : undefined}
+                        aria-label={isLive ? "Bet Now haipatikani wakati match iko live" : "Bet Now"}
                         onClick={() => {
                           if (!canBetNow) return;
                           const currentSelectedType = selectedBets?.[match.id] || "home";
@@ -2852,20 +2854,20 @@ export default function MatchList({
                         }}
                         className={`py-1 rounded-xl text-center transition-all border flex flex-col items-center justify-center h-[34px] ${
                           isLive
-                            ? "bg-transparent border-slate-500/40 text-slate-500 opacity-60 cursor-not-allowed shadow-none"
+                            ? "bg-gradient-to-r from-slate-600 to-slate-700 border-slate-500/40 text-slate-300 opacity-80 cursor-not-allowed shadow-none"
                             : "bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white cursor-pointer active:scale-95 border-sky-600/30 shadow-[0_2px_8px_rgba(37,99,235,0.15)]"
                         }`}
                       >
                         <span
                           className={`block text-[7px] font-bold uppercase tracking-wider leading-none ${
-                            isLive ? "text-slate-500" : "text-sky-100"
+                            isLive ? "text-slate-300/80" : "text-sky-100"
                           }`}
                         >
                           BET
                         </span>
                         <span
                           className={`text-[9px] font-display font-black mt-0.5 block uppercase tracking-tight leading-none ${
-                            isLive ? "text-slate-500" : "text-white"
+                            isLive ? "text-slate-200" : "text-white"
                           }`}
                         >
                           NOW
