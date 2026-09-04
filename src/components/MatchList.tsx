@@ -2858,21 +2858,32 @@ export default function MatchList({
                             : "bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white cursor-pointer active:scale-95 border-sky-600/30 shadow-[0_2px_8px_rgba(37,99,235,0.15)]"
                         }`}
                       >
-                        <span
-                          className={`flex items-center gap-0.5 text-[7px] font-bold uppercase tracking-wider leading-none ${
-                            isLive ? "text-sky-100" : "text-sky-100"
-                          }`}
-                        >
-                          {isLive && <Lock className="w-2 h-2" aria-hidden="true" />}
-                          BET
-                        </span>
-                        <span
-                          className={`text-[9px] font-display font-black mt-0.5 block uppercase tracking-tight leading-none ${
-                            isLive ? "text-white" : "text-white"
-                          }`}
-                        >
-                          NOW
-                        </span>
+                        {isLive ? (
+                          <span
+                            className="relative flex h-full items-center justify-center"
+                            aria-label="Betting imefungwa wakati match iko live"
+                          >
+                            <Shield
+                              className="h-5 w-5 fill-sky-300/20 text-sky-100"
+                              strokeWidth={2.2}
+                              aria-hidden="true"
+                            />
+                            <Lock
+                              className="absolute h-2.5 w-2.5 text-white"
+                              strokeWidth={2.4}
+                              aria-hidden="true"
+                            />
+                          </span>
+                        ) : (
+                          <>
+                            <span className="flex items-center gap-0.5 text-[7px] font-bold uppercase tracking-wider leading-none text-sky-100">
+                              BET
+                            </span>
+                            <span className="mt-0.5 block text-[9px] font-display font-black uppercase tracking-tight leading-none text-white">
+                              NOW
+                            </span>
+                          </>
+                        )}
                       </button>
 
                       {/* Like Button */}
