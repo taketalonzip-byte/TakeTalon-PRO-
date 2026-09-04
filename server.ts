@@ -1813,7 +1813,7 @@ async function getMatchesForCode(
 
         const { data: rows, error } = await query;
         if (!error && rows && rows.length > 0) {
-          const matches = rows.map((r: any) => {
+          let matches = rows.map((r: any) => {
             const isLive = FOOTBALL_LIVE_STATUSES.has(r.status);
             const displayClock = isLive ? (liveClocks[r.external_id] ?? null) : null;
             const dbOdds =
@@ -1863,6 +1863,28 @@ async function getMatchesForCode(
               odds_updated_at: r.odds_updated_at ?? null,
             };
           });
+
+          // `current_minute` is intentionally numeric, so it cannot represent
+          // ESPN stoppage-time values such as `45+2'`. Refresh live ESPN data
+          // before returning an existing snapshot and merge the authentic clock
+          // into this response. The UI already preserves/displays displayClock.
+          if (comp.provider === "espn" && ESPN_LEAGUE_SLUGS[code] && matches.some((m: any) => FOOTBALL_LIVE_STATUSES.has(m.status))) {
+            try {
+              const liveResult = await syncEspnCompetition(supabaseAdmin, code);
+              liveClocks = liveResult.liveClocks;
+              if (Object.keys(liveClocks).length > 0) {
+                matches = matches.map((m: any) => {
+                  const displayClock = liveClocks[m.id];
+                  return displayClock
+                    ? { ...m, displayClock, minute: parseDisplayClockMinute(displayClock) }
+                    : m;
+                });
+                espnSyncOk = true;
+              }
+            } catch (e: any) {
+              console.warn(`[football] Live clock refresh notice for ${code}:`, e?.message || e);
+            }
+          }
 
           const source = comp.provider === "espn" ? (espnSyncOk ? "espn" : "cache") : "cache";
           refreshFootballCompetitionInBackground(code);
