@@ -2709,6 +2709,8 @@ export default function MatchList({
                   const isDrawSelected = selectedBets?.[match.id] === "draw";
                   const isAwaySelected = selectedBets?.[match.id] === "away";
                   const oddsAvailable = match.oddsAvailable === true;
+                  // Post-card odds stay fixed while a match is live, so Bet Now must be ghosted.
+                  const canBetNow = oddsAvailable && !isLive;
 
                   if (match.category === "Aviator") {
                     return (
@@ -2837,9 +2839,9 @@ export default function MatchList({
                       {/* BET NOW Button */}
                       <button
                         id={`weka-bashiri-${match.id}`}
-                        disabled={!oddsAvailable}
+                        disabled={!canBetNow}
                         onClick={() => {
-                          if (!oddsAvailable) return;
+                          if (!canBetNow) return;
                           const currentSelectedType = selectedBets?.[match.id] || "home";
                           const currentSelectedOdd = match.odds[currentSelectedType];
                           if (onBetNowClick) {
@@ -2848,12 +2850,24 @@ export default function MatchList({
                             onPlaceBetClick?.(match, currentSelectedType, currentSelectedOdd);
                           }
                         }}
-                        className="py-1 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white text-center transition-all cursor-pointer active:scale-95 border border-sky-600/30 flex flex-col items-center justify-center h-[34px] shadow-[0_2px_8px_rgba(37,99,235,0.15)]"
+                        className={`py-1 rounded-xl text-center transition-all border flex flex-col items-center justify-center h-[34px] ${
+                          isLive
+                            ? "bg-transparent border-slate-500/40 text-slate-500 opacity-60 cursor-not-allowed shadow-none"
+                            : "bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white cursor-pointer active:scale-95 border-sky-600/30 shadow-[0_2px_8px_rgba(37,99,235,0.15)]"
+                        }`}
                       >
-                        <span className="block text-[7px] font-bold uppercase tracking-wider text-sky-100 leading-none">
+                        <span
+                          className={`block text-[7px] font-bold uppercase tracking-wider leading-none ${
+                            isLive ? "text-slate-500" : "text-sky-100"
+                          }`}
+                        >
                           BET
                         </span>
-                        <span className="text-[9px] font-display font-black mt-0.5 block text-white uppercase tracking-tight leading-none">
+                        <span
+                          className={`text-[9px] font-display font-black mt-0.5 block uppercase tracking-tight leading-none ${
+                            isLive ? "text-slate-500" : "text-white"
+                          }`}
+                        >
                           NOW
                         </span>
                       </button>
