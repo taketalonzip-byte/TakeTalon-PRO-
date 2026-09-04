@@ -1760,6 +1760,21 @@ async function resolveCompetitionForRead(
   return fdComp || espnComp || null;
 }
 
+const footballSyncInFlight = new Map<string, Promise<void>>();
+
+function refreshFootballCompetitionInBackground(code: string): void {
+  if (!ESPN_LEAGUE_SLUGS[code] || footballSyncInFlight.has(code)) return;
+
+  const refresh = syncEspnCompetition(supabaseAdmin, code)
+    .then(() => undefined)
+    .catch((e: any) => {
+      console.warn(`[football] Background ESPN refresh notice for ${code}:`, e?.message || e);
+    })
+    .finally(() => footballSyncInFlight.delete(code));
+
+  footballSyncInFlight.set(code, refresh);
+}
+
 async function getMatchesForCode(
   code: string,
   opts: { dateFrom?: string; dateTo?: string; status?: string } = {},
@@ -1769,21 +1784,9 @@ async function getMatchesForCode(
   let espnSyncOk = false;
   let compDbId: string | undefined;
 
-  if (ESPN_LEAGUE_SLUGS[code]) {
-    try {
-      const result = await syncEspnCompetition(supabaseAdmin, code);
-      liveClocks = result.liveClocks;
-      if (result.scoreboard && result.scoreboard.fixtures && result.scoreboard.fixtures.length > 0) {
-        directMatches = espnScoreboardToFootballMatches(code, result.scoreboard);
-        espnSyncOk = true;
-      }
-      if (result.competitionId) {
-        compDbId = result.competitionId;
-      }
-    } catch (e: any) {
-      console.warn(`[football] ESPN sync notice for ${code}:`, e?.message || e);
-    }
-  }
+  // Read the already-synced Supabase snapshot first. Waiting for an ESPN fetch
+  // and its fixture upserts here made every cold league open unnecessarily slow.
+  // A background refresh below keeps the snapshot current without blocking UI.
 
   // If Supabase is connected, attempt to fetch stored fixtures
   if (supabaseAdmin) {
@@ -1862,11 +1865,27 @@ async function getMatchesForCode(
           });
 
           const source = comp.provider === "espn" ? (espnSyncOk ? "espn" : "cache") : "cache";
+          refreshFootballCompetitionInBackground(code);
           return { matches, source, competitionDbId: String(comp.id) };
         }
       }
     } catch {
       // If DB query throws, proceed to direct matches fallback below
+    }
+  }
+
+  // Only block on ESPN when there is no usable Supabase snapshot to show.
+  if (ESPN_LEAGUE_SLUGS[code]) {
+    try {
+      const result = await syncEspnCompetition(supabaseAdmin, code);
+      liveClocks = result.liveClocks;
+      if (result.scoreboard?.fixtures?.length) {
+        directMatches = espnScoreboardToFootballMatches(code, result.scoreboard);
+        espnSyncOk = true;
+      }
+      if (result.competitionId) compDbId = result.competitionId;
+    } catch (e: any) {
+      console.warn(`[football] ESPN sync notice for ${code}:`, e?.message || e);
     }
   }
 
