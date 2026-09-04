@@ -2854,20 +2854,21 @@ export default function MatchList({
                         }}
                         className={`py-1 rounded-xl text-center transition-all border flex flex-col items-center justify-center h-[34px] ${
                           isLive
-                            ? "bg-gradient-to-r from-slate-600 to-slate-700 border-slate-500/40 text-slate-300 opacity-80 cursor-not-allowed shadow-none"
+                            ? "bg-gradient-to-r from-sky-600 to-blue-600 border-sky-600/30 text-white cursor-not-allowed shadow-[0_2px_8px_rgba(37,99,235,0.15)]"
                             : "bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white cursor-pointer active:scale-95 border-sky-600/30 shadow-[0_2px_8px_rgba(37,99,235,0.15)]"
                         }`}
                       >
                         <span
-                          className={`block text-[7px] font-bold uppercase tracking-wider leading-none ${
-                            isLive ? "text-slate-300/80" : "text-sky-100"
+                          className={`flex items-center gap-0.5 text-[7px] font-bold uppercase tracking-wider leading-none ${
+                            isLive ? "text-sky-100" : "text-sky-100"
                           }`}
                         >
+                          {isLive && <Lock className="w-2 h-2" aria-hidden="true" />}
                           BET
                         </span>
                         <span
                           className={`text-[9px] font-display font-black mt-0.5 block uppercase tracking-tight leading-none ${
-                            isLive ? "text-slate-200" : "text-white"
+                            isLive ? "text-white" : "text-white"
                           }`}
                         >
                           NOW
