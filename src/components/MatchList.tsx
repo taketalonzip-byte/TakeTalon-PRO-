@@ -2859,21 +2859,27 @@ export default function MatchList({
                         }`}
                       >
                         {isLive ? (
-                          <span
-                            className="relative flex h-full items-center justify-center"
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 14 14"
+                            height="14"
+                            width="14"
+                            role="img"
                             aria-label="Betting imefungwa wakati match iko live"
                           >
-                            <Shield
-                              className="h-5 w-5 fill-sky-300/20 text-sky-100"
-                              strokeWidth={2.2}
-                              aria-hidden="true"
-                            />
-                            <Lock
-                              className="absolute h-2.5 w-2.5 text-white"
-                              strokeWidth={2.4}
-                              aria-hidden="true"
-                            />
-                          </span>
+                            <desc>Padlock Square 1 — betting imefungwa kwa match live</desc>
+                            <g id="padlock-square-1--combination-combo-lock-locked-padlock-secure-security-shield-keyhole">
+                              <path
+                                id="Union"
+                                fill="#000000"
+                                fillRule="evenodd"
+                                d="M7 0.125a3.667 3.667 0 0 0 -3.667 3.667v1.124a3.455 3.455 0 0 0 -1.942 2.713c-0.058 0.512 -0.1 1.04 -0.1 1.58 0 0.539 0.042 1.067 0.1 1.578a3.458 3.458 0 0 0 3.298 3.048 65.069 65.069 0 0 0 4.622 0 3.458 3.458 0 0 0 3.298 -3.048c0.058 -0.511 0.1 -1.04 0.1 -1.579 0 -0.54 -0.042 -1.067 -0.1 -1.579a3.455 3.455 0 0 0 -1.943 -2.713V3.792A3.667 3.667 0 0 0 7 0.125Zm2.166 4.451v-0.784a2.167 2.167 0 1 0 -4.333 0v0.784A65.032 65.032 0 0 1 7 4.542c0.762 0 1.474 0.011 2.166 0.034ZM7 7.876a0.75 0.75 0 0 1 0.75 0.75v0.999a0.75 0.75 0 0 1 -1.5 0v-1a0.75 0.75 0 0 1 0.75 -0.75Z"
+                                clipRule="evenodd"
+                                strokeWidth="1"
+                              />
+                            </g>
+                          </svg>
                         ) : (
                           <>
                             <span className="flex items-center gap-0.5 text-[7px] font-bold uppercase tracking-wider leading-none text-sky-100">
