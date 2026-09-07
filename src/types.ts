@@ -16,6 +16,8 @@ export interface MatchTip {
   league: string;
   gender?: string; // Optional field: "Man" | "Woman"
   time: string;
+  /** Original fixture kickoff used to close a stale Card Bet after match expiry. */
+  kickoffUtc?: string | null;
   status: "LIVE" | "UPCOMING" | "ENDED";
   liveMinutes?: string;
   liveScore?: string;

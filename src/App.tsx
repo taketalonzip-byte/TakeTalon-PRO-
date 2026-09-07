@@ -95,6 +95,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { locales } from "./locales";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import { clearExpiredRegisterDraft } from "./lib/registerDraftStorage";
+import { isMatchTipCardBetExpired } from "./lib/cardBetEligibility";
 import { renderThemeIcon } from "./components/ThemeModeIcons";
 
 const formatVirtualName = (name: string) => {
@@ -1852,6 +1853,10 @@ export default function App() {
     oddType: "home" | "draw" | "away",
     value: number,
   ) => {
+    if (isMatchTipCardBetExpired(match)) {
+      addNotification("Match hii imekwisha; Card Bet haipatikani tena.", "info");
+      return;
+    }
     if (!currentUser || !currentUser.isLoggedIn) {
       setShakeTrigger((prev) => prev + 1);
       return;
@@ -1876,6 +1881,10 @@ export default function App() {
 
   // Click handler for BET NOW which clears cart and opens the single card selection in bet slip
   const handleBetNowClick = (match: MatchTip, oddType: "home" | "draw" | "away", value: number) => {
+    if (isMatchTipCardBetExpired(match)) {
+      addNotification("Match hii imekwisha; Card Bet haipatikani tena.", "info");
+      return;
+    }
     if (!currentUser || !currentUser.isLoggedIn) {
       setShakeTrigger((prev) => prev + 1);
       return;
@@ -1889,6 +1898,13 @@ export default function App() {
   const handleCartBetSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (cartItems.length === 0) return;
+
+    const expiredItem = cartItems.find((item) => isMatchTipCardBetExpired(item.match));
+    if (expiredItem) {
+      setCartItems((items) => items.filter((item) => item.match.id !== expiredItem.match.id));
+      addNotification("Match iliyokwisha imeondolewa kwenye kikapu. Tafadhali hakiki chaguo zako.", "info");
+      return;
+    }
 
     if (userBalance < betStakeAmount) {
       addNotification("Huna salio la kutosha kukamilisha jamvi hili!", "error");

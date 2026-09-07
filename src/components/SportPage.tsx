@@ -21,6 +21,7 @@ import {
 import { MatchTip } from "../types";
 import { FootballMatchSkeleton, CountryListSkeleton } from "./skeletons";
 import { getUnifiedMatchStatus } from "../lib/sportMatchStatus";
+import { isCardBetExpired } from "../lib/cardBetEligibility";
 import { ScrollingScoreBadge } from "./ScrollingScoreBadge";
 import { Flag } from "./Flag";
 
@@ -2577,11 +2578,15 @@ const BballOddsButton: React.FC<{
   value: number;
   active: boolean;
   theme: string;
+  disabled?: boolean;
   onClick: () => void;
-}> = ({ label, value, active, theme, onClick }) => (
+}> = ({ label, value, active, theme, disabled = false, onClick }) => (
   <button
+    disabled={disabled}
     onClick={onClick}
-    className={`px-1.5 py-0.5 rounded-lg transition-all active:scale-95 text-[10px] font-bold flex items-center gap-0.5 ${active ? oddsBtnSel : oddsBtnBase(theme)}`}
+    className={`px-1.5 py-0.5 rounded-lg transition-all text-[10px] font-bold flex items-center gap-0.5 ${
+      disabled ? "cursor-default opacity-60" : "active:scale-95"
+    } ${active ? oddsBtnSel : oddsBtnBase(theme)}`}
   >
     <span className={`text-[8px] font-medium ${active ? "text-blue-200" : "opacity-50"}`}>
       {label}
@@ -2621,6 +2626,7 @@ function toBballMatchTip(game: BballGame): MatchTip {
     category: game.sport || "Basketball",
     league: game.league || "Unknown League",
     time: fmtTime(game.kickoff_utc),
+    kickoffUtc: game.kickoff_utc,
     status: isLive ? "LIVE" : isEnded ? "ENDED" : "UPCOMING",
     confidence: 70,
     homeTeam: {
@@ -2683,6 +2689,8 @@ const BballMatchRow: React.FC<{
     matchId: game.id,
     tickerSeconds,
   });
+  const cardBetExpired = isCardBetExpired(statusInfo, game.kickoff_utc);
+  const canUseCardBet = oddsAvailable && !cardBetExpired;
 
   return (
     <div
@@ -2773,30 +2781,33 @@ const BballMatchRow: React.FC<{
           <BballOddsButton
             label="1"
             value={odds.home}
-            active={selectedOdd === "home"}
+            active={canUseCardBet && selectedOdd === "home"}
             theme={theme}
+            disabled={!canUseCardBet}
             onClick={() => onPlaceBet?.(tip, "home", odds.home)}
           />
           {!isTwoWaySport && odds.draw > 1.0 && (
             <BballOddsButton
               label="X"
               value={odds.draw}
-              active={selectedOdd === "draw"}
+              active={canUseCardBet && selectedOdd === "draw"}
               theme={theme}
+              disabled={!canUseCardBet}
               onClick={() => onPlaceBet?.(tip, "draw", odds.draw)}
             />
           )}
           <BballOddsButton
             label="2"
             value={odds.away}
-            active={selectedOdd === "away"}
+            active={canUseCardBet && selectedOdd === "away"}
             theme={theme}
+            disabled={!canUseCardBet}
             onClick={() => onPlaceBet?.(tip, "away", odds.away)}
           />
         </div>
         )}
 
-        {oddsAvailable && <div className="flex items-center gap-1 shrink-0">
+        {canUseCardBet && <div className="flex items-center gap-1 shrink-0">
           {/* BET NOW */}
           <button
             onClick={() => {
