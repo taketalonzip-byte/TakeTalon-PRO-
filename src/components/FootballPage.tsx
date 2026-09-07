@@ -563,6 +563,26 @@ function useLeagueMatches(apiCode: string | undefined) {
   const [competitionDbId, setCompetitionDbId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
+  const appliedSignature = useRef("");
+
+  const getMatchesSignature = (items: ApiMatch[]): string =>
+    items
+      .map((match: any) =>
+        [
+          match.id,
+          match.status,
+          match.utcDate,
+          match.minute,
+          match.displayClock,
+          match.score?.fullTime?.home,
+          match.score?.fullTime?.away,
+          match.odds?.home,
+          match.odds?.draw,
+          match.odds?.away,
+          match.odds_updated_at,
+        ].join(":"),
+      )
+      .join("|");
 
   const fetch_ = useCallback(async (isBackground = false) => {
     if (!apiCode) {
@@ -593,7 +613,15 @@ function useLeagueMatches(apiCode: string | undefined) {
         return new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime();
       });
 
-      setMatches(all);
+      // Background polling/realtime refresh must be silent. Do not replace the
+      // rendered list when the provider returned the same fixture snapshot;
+      // this prevents card animations and click targets from jumping under the
+      // user's finger every polling cycle.
+      const nextSignature = getMatchesSignature(all);
+      if (nextSignature !== appliedSignature.current) {
+        appliedSignature.current = nextSignature;
+        setMatches(all);
+      }
     } catch {
       /* silent */
     } finally {
@@ -604,10 +632,11 @@ function useLeagueMatches(apiCode: string | undefined) {
 
   useEffect(() => {
     fetch_();
-    // Polling remains as a fallback if Realtime is disconnected.
+    // Polling is only a safety net if Realtime is disconnected. The normal
+    // refresh path is silent and only applies meaningful fixture changes.
     const interval = setInterval(() => {
       fetch_(true);
-    }, 30000);
+    }, 120000);
 
     if (!apiCode || !competitionDbId || !isSupabaseConfigured) {
       return () => clearInterval(interval);
