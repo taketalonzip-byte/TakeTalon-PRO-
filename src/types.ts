@@ -24,6 +24,12 @@ export interface MatchTip {
   homeScore?: number | null;
   awayScore?: number | null;
   liveClock?: string | null;
+  espnEventId?: string | number;
+  espnLeagueCode?: string | null;
+  espnEvents?: {
+    home: { yellowCards: number; redCards: number; scorers: { name: string; minute?: string; assist?: string | null }[] };
+    away: { yellowCards: number; redCards: number; scorers: { name: string; minute?: string; assist?: string | null }[] };
+  } | null;
   score?: {
     home: number;
     away: number;

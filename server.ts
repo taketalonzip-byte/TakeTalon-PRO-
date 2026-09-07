@@ -139,8 +139,8 @@ app.post("/api/supabase/create-post", async (req, res) => {
   if (!supabaseAdmin) return res.status(503).json({ error: "DB offline" });
   const body = req.body || {};
   const match = body.match || {};
-  const profileId = String(body.profile_id || "").trim();
-  if (!profileId) return res.status(400).json({ error: "profile_id is required" });
+  const requestedProfileId = String(body.profile_id || "").trim();
+  if (!requestedProfileId) return res.status(400).json({ error: "profile_id is required" });
   const asNumberOrNull = (value: unknown) => {
     const n = Number(value);
     return Number.isFinite(n) ? n : null;
@@ -155,6 +155,7 @@ app.post("/api/supabase/create-post", async (req, res) => {
     internal_match_id: isUuid(match.internal_match_id) ? match.internal_match_id : null,
     competition_id: isUuid(match.competition_id) ? match.competition_id : null,
     competition_name: asString(match.league, "Unknown League"),
+    match_group: match.competition_code || null,
     competition_logo: match.competition_logo || null,
     match_name: asString(match.prediction_tip, "Ushindi (FT)"),
     venue: match.venue || null,
@@ -176,6 +177,14 @@ app.post("/api/supabase/create-post", async (req, res) => {
     provider_last_updated_at: match.provider_last_updated_at || null,
   };
   try {
+    let profileId = requestedProfileId;
+    const { data: directProfile } = await supabaseAdmin.from("profiles").select("id").eq("id", requestedProfileId).maybeSingle();
+    if (!directProfile) {
+      const { data: authProfile } = await supabaseAdmin.from("profiles").select("id").eq("auth_user_id", requestedProfileId).maybeSingle();
+      if (authProfile?.id) profileId = authProfile.id;
+    }
+    const { data: validProfile } = await supabaseAdmin.from("profiles").select("id").eq("id", profileId).maybeSingle();
+    if (!validProfile) return res.status(400).json({ error: "profile_not_found" });
     const { data: post, error: postError } = await supabaseAdmin
       .from("posts")
       .insert({ author_id: profileId, content: typeof body.content === "string" ? body.content : JSON.stringify(body.content || {}), post_type: body.post_type || "match_prediction" })
@@ -203,6 +212,49 @@ app.post("/api/supabase/create-post", async (req, res) => {
   } catch (error: any) {
     console.error("[supabase/create-post]", error?.message || error);
     return res.status(500).json({ error: "Failed to create persistent post card" });
+  }
+});
+
+// ESPN match incidents: real goals/assists and yellow/red cards.
+app.get("/api/espn/football/:league/:eventId/summary", async (req, res) => {
+  const slug = ESPN_LEAGUE_SLUGS[String(req.params.league || "").toUpperCase()];
+  const eventId = String(req.params.eventId || "").replace(/[^0-9]/g, "");
+  if (!slug || !eventId) return res.status(400).json({ error: "invalid_espn_event" });
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/summary?event=${eventId}`, {
+      headers: { Accept: "application/json", "User-Agent": "TakeTalon/1.0" }, signal: controller.signal,
+    }).finally(() => clearTimeout(timeout));
+    if (!response.ok) return res.status(502).json({ error: "espn_unavailable" });
+    const payload: any = await response.json();
+    const result = (payload?.header?.competitions?.[0]?.competitors || []).reduce((acc: any, c: any) => {
+      const side = c.homeAway === "home" ? "home" : "away";
+      acc[side].teamId = String(c.team?.id || "");
+      acc[side].score = c.score?.value ?? c.score?.displayValue ?? null;
+      return acc;
+    }, { home: { teamId: "", score: null, yellowCards: 0, redCards: 0, scorers: [] }, away: { teamId: "", score: null, yellowCards: 0, redCards: 0, scorers: [] } });
+    for (const play of Array.isArray(payload?.plays) ? payload.plays : []) {
+      const teamId = String(play.team?.id || "");
+      const side = teamId === result.home.teamId ? "home" : teamId === result.away.teamId ? "away" : null;
+      if (!side) continue;
+      const text = String(play.text || play.type?.text || "");
+      const typeText = String(play.type?.text || "").toLowerCase();
+      if (/yellow card|yellow-card/i.test(text) || typeText.includes("yellow")) result[side].yellowCards += 1;
+      if (/red card|red-card|sent off|second yellow/i.test(text) || typeText.includes("red")) result[side].redCards += 1;
+      if (play.scoringPlay === true || (/goal/i.test(typeText) && !/missed|offside/i.test(text))) {
+        const athlete = play.participants?.[0]?.athlete || play.athlete || {};
+        const name = athlete.displayName || athlete.shortName || text.split(" - ")[0];
+        if (name) {
+          const assist = text.match(/assisted by\s+([^.(]+?)(?:\s*\(|\.|$)/i)?.[1]?.trim() || null;
+          result[side].scorers.push({ name, minute: play.clock?.displayValue || null, assist });
+        }
+      }
+    }
+    return res.json({ eventId, home: result.home, away: result.away });
+  } catch (error: any) {
+    console.warn("[espn/summary]", error?.message || error);
+    return res.status(502).json({ error: "espn_unavailable" });
   }
 });
 

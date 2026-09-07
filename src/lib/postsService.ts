@@ -44,6 +44,8 @@ export function dbPostToMatchTip(post: any): MatchTip {
     time: "Hivi sasa (LIVE)",
     status: (snapshot?.match_status_at_posting as any) || "LIVE",
     liveMinutes: "1'",
+    espnEventId: snapshot?.external_match_id || undefined,
+    espnLeagueCode: snapshot?.match_group || null,
     confidence: 98,
     homeTeam: {
       name: homeName,
@@ -118,6 +120,7 @@ export async function createDatabasePost(params: {
     creatorMinBetterBalance?: number;
     externalMatchId?: string;
     provider?: string;
+    competitionCode?: string | null;
     homeTeamLogo?: string | null;
     awayTeamLogo?: string | null;
     competitionLogo?: string | null;
@@ -146,6 +149,7 @@ export async function createDatabasePost(params: {
           odds_away: params.match.oddsAway || 2.5,
           external_match_id: params.match.externalMatchId,
           provider: params.match.provider || "ESPN",
+          competition_code: params.match.competitionCode || null,
           home_team_logo: params.match.homeTeamLogo || null,
           away_team_logo: params.match.awayTeamLogo || null,
           competition_logo: params.match.competitionLogo || null,
@@ -162,6 +166,7 @@ export async function createDatabasePost(params: {
       };
       return dbPostToMatchTip(fullPost);
     }
+    console.error("[createDatabasePost] Supabase rejected post:", res.status, data);
     return null;
   } catch (err) {
     console.error("Error creating database post:", err);

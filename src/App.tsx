@@ -1385,6 +1385,8 @@ export default function App() {
           },
           predictionTip,
           analysisText,
+          espnEventId: matchId,
+          espnLeagueCode: match.competition?.code || null,
           realTimeApi: true,
         };
       });
@@ -2056,12 +2058,20 @@ export default function App() {
             oddsAway: creatorOddAway || creatorMatch.odds?.away || 2.5,
             externalMatchId: creatorMatch.id,
             provider: "ESPN",
+            competitionCode: creatorMatch.espnLeagueCode || null,
             homeTeamLogo: creatorMatch.homeTeam?.logoUrl || null,
             awayTeamLogo: creatorMatch.awayTeam?.logoUrl || null,
             kickoffUtc: creatorMatch.kickoffUtc || null,
             matchStatus: creatorMatch.status || "UPCOMING",
           },
         }).then((dbTip) => {
+          if (!dbTip) {
+            addNotification(
+              lang === "sw" ? "Post Card haikuhifadhiwa Supabase. Tafadhali jaribu tena." : "Post Card could not be saved to Supabase. Please try again.",
+              "error",
+            );
+            return;
+          }
           const userTip: MatchTip = dbTip || {
             ...creatorMatch,
             id: `user-published-${Date.now()}`,

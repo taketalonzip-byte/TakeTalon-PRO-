@@ -403,7 +403,19 @@ function PostCardProfile({
 }
 
 // Helpers for displaying players (scorers & assists) and card indicators
-function getMatchPlayers(teamName: string, isHome: boolean, matchId: string) {
+function getMatchPlayers(teamName: string, isHome: boolean, matchId: string, espnEvents?: any) {
+  const liveTeamEvents = espnEvents?.[isHome ? "home" : "away"];
+  if (liveTeamEvents) {
+    return {
+      scorers: (liveTeamEvents.scorers || [])
+        .map((s: any) => `⚽ ${s.name}${s.minute ? ` (${s.minute})` : ""}`)
+        .join(", "),
+      assists: (liveTeamEvents.scorers || []).map((s: any) => s.assist).filter(Boolean).join(", "),
+    };
+  }
+  return { scorers: "", assists: "" };
+  /* Legacy mock mappings intentionally disabled; incidents must come from ESPN. */
+  /*
   const nameLower = teamName.toLowerCase();
   if (
     nameLower.includes("simba sc") ||
@@ -494,7 +506,12 @@ function getMatchPlayers(teamName: string, isHome: boolean, matchId: string) {
     { scorers: "⚽ P. Mwansa (67')", assists: "J. Phiri" },
     { scorers: "⚽ G. Mugisha (28')", assists: "E. Nsabimana" },
   ];
-  return genericScorers[seed];
+  return genericScorers[seed]; */
+}
+
+function getTeamCards(isHome: boolean, espnEvents?: any) {
+  const team = espnEvents?.[isHome ? "home" : "away"];
+  return { yellowCards: Number(team?.yellowCards || 0), redCards: Number(team?.redCards || 0) };
 }
 
 function getScoreValue(scoreStr: string, isHome: boolean): number {
@@ -583,6 +600,31 @@ export default function MatchList({
   isProfileMode = false,
 }: MatchListProps) {
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const [realEventMap, setRealEventMap] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    const targets = tips
+      .filter((m: any) => m.sport === "Football" && m.espnEventId && m.espnLeagueCode)
+      .map((m: any) => ({ id: String(m.espnEventId), league: String(m.espnLeagueCode) }))
+      .filter((item, index, all) => all.findIndex((x) => x.id === item.id && x.league === item.league) === index);
+    if (!targets.length) return;
+    let cancelled = false;
+    Promise.all(targets.map(async (target) => {
+      try {
+        const response = await fetch(`/api/espn/football/${encodeURIComponent(target.league)}/${encodeURIComponent(target.id)}/summary`);
+        if (!response.ok) return null;
+        return { key: target.id, data: await response.json() };
+      } catch { return null; }
+    })).then((rows) => {
+      if (cancelled) return;
+      setRealEventMap((previous) => {
+        const next = { ...previous };
+        rows.forEach((row) => { if (row) next[row.key] = row.data; });
+        return next;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [tips]);
 
   // User-scoped key for liked match IDs
   const userLikeKey =
@@ -698,6 +740,10 @@ export default function MatchList({
 
   const getMatchLiveScore = (m: any): string => {
     if (!m) return "0 - 0";
+    const liveIncident = realEventMap[String(m.espnEventId)] || m.espnEvents;
+    if (liveIncident?.home?.score != null && liveIncident?.away?.score != null) {
+      return `${liveIncident.home.score} - ${liveIncident.away.score}`;
+    }
     if (m.liveScore && typeof m.liveScore === "string" && m.liveScore.trim().length > 0) {
       return m.liveScore;
     }
@@ -2554,11 +2600,11 @@ export default function MatchList({
                     <div className="flex items-center space-x-1 text-[7px] font-mono font-bold select-none leading-none">
                       <div className="flex items-center space-x-0.5 bg-yellow-500/10 px-0.5 rounded border border-yellow-500/20">
                         <span className="w-1.5 h-2 rounded-[1px] bg-yellow-400 inline-block shadow-sm shadow-yellow-500/30" />
-                        <span className="text-yellow-600 text-[6.5px]">3</span>
+                        <span className="text-yellow-600 text-[6.5px]">{getTeamCards(true, realEventMap[String((match as any).espnEventId)] || (match as any).espnEvents).yellowCards}</span>
                       </div>
                       <div className="flex items-center space-x-0.5 bg-red-500/10 px-0.5 rounded border border-red-500/20">
                         <span className="w-1.5 h-2 rounded-[1px] bg-red-500 inline-block shadow-sm shadow-red-500/30" />
-                        <span className="text-red-500 text-[6.5px]">1</span>
+                        <span className="text-red-500 text-[6.5px]">{getTeamCards(true, realEventMap[String((match as any).espnEventId)] || (match as any).espnEvents).redCards}</span>
                       </div>
                     </div>
                   ) : null}</div>
@@ -2566,7 +2612,7 @@ export default function MatchList({
               </div>
 
               {/* Player scorers and assists */}
-              <div className="postcard-player-line text-[7.5px] font-medium tracking-tight text-right w-full pr-9 text-slate-400 leading-none select-none">{match.sport === "Football" && isLive && getScoreValue(currentLiveScore, true) > 0 ? (<span className="postcard-text-viewport"><span className="postcard-text-loop">{getMatchPlayers(match.homeTeam.name, true, match.id).scorers}<span className="opacity-60 font-normal ml-1">({getMatchPlayers(match.homeTeam.name, true, match.id).assists})</span></span></span>) : null}</div>
+              <div className="postcard-player-line text-[7.5px] font-medium tracking-tight text-right w-full pr-9 text-slate-400 leading-none select-none">{match.sport === "Football" && isLive && getScoreValue(currentLiveScore, true) > 0 ? (<span className="postcard-text-viewport"><span className="postcard-text-loop">{getMatchPlayers(match.homeTeam.name, true, match.id, realEventMap[String((match as any).espnEventId)] || (match as any).espnEvents).scorers}<span className="opacity-60 font-normal ml-1">({getMatchPlayers(match.homeTeam.name, true, match.id, realEventMap[String((match as any).espnEventId)] || (match as any).espnEvents).assists})</span></span></span>) : null}</div>
             </div>
 
             {/* VS Divider or Score Display with high-end glassmorphic vibe */}
@@ -2643,11 +2689,11 @@ export default function MatchList({
                     <div className="flex items-center space-x-1 text-[7px] font-mono font-bold select-none leading-none">
                       <div className="flex items-center space-x-0.5 bg-yellow-500/10 px-0.5 rounded border border-yellow-500/20">
                         <span className="w-1.5 h-2 rounded-[1px] bg-yellow-400 inline-block shadow-sm shadow-yellow-500/30" />
-                        <span className="text-yellow-600 text-[6.5px]">3</span>
+                        <span className="text-yellow-600 text-[6.5px]">{getTeamCards(false, realEventMap[String((match as any).espnEventId)] || (match as any).espnEvents).yellowCards}</span>
                       </div>
                       <div className="flex items-center space-x-0.5 bg-red-500/10 px-0.5 rounded border border-red-500/20">
                         <span className="w-1.5 h-2 rounded-[1px] bg-red-500 inline-block shadow-sm shadow-red-500/30" />
-                        <span className="text-red-500 text-[6.5px]">1</span>
+                        <span className="text-red-500 text-[6.5px]">{getTeamCards(false, realEventMap[String((match as any).espnEventId)] || (match as any).espnEvents).redCards}</span>
                       </div>
                     </div>
                   ) : null}</div>
@@ -2656,7 +2702,7 @@ export default function MatchList({
               </div>
 
               {/* Player scorers and assists */}
-              <div className="postcard-player-line text-[7.5px] font-medium tracking-tight text-left w-full pl-9 text-slate-400 leading-none select-none">{match.sport === "Football" && isLive && getScoreValue(currentLiveScore, false) > 0 ? (<span className="postcard-text-viewport"><span className="postcard-text-loop">{getMatchPlayers(match.awayTeam.name, false, match.id).scorers}<span className="opacity-60 font-normal ml-1">({getMatchPlayers(match.awayTeam.name, false, match.id).assists})</span></span></span>) : null}</div>
+              <div className="postcard-player-line text-[7.5px] font-medium tracking-tight text-left w-full pl-9 text-slate-400 leading-none select-none">{match.sport === "Football" && isLive && getScoreValue(currentLiveScore, false) > 0 ? (<span className="postcard-text-viewport"><span className="postcard-text-loop">{getMatchPlayers(match.awayTeam.name, false, match.id, realEventMap[String((match as any).espnEventId)] || (match as any).espnEvents).scorers}<span className="opacity-60 font-normal ml-1">({getMatchPlayers(match.awayTeam.name, false, match.id, realEventMap[String((match as any).espnEventId)] || (match as any).espnEvents).assists})</span></span></span>) : null}</div>
             </div>
           </div>
 
