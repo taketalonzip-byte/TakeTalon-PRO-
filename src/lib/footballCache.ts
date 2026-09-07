@@ -4,7 +4,7 @@
  * Frontend local-storage caching layer for football data.
  *
  * Flow (stale-while-revalidate):
- *   1. Check localStorage — if present and FRESH, return immediately
+ *   1. Check memory/localStorage — if present and FRESH, return immediately
  *   2. If STALE cache exists, return it immediately AND trigger background refresh
  *   3. If NO cache, fetch synchronously from backend (/api/football/*)
  *   4. On backend failure with stale cache, return stale as fallback
@@ -522,15 +522,53 @@ function _notifySubscribers<T>(cacheKey: string, data: T) {
   });
 }
 
-// ─── Low-level storage helpers (Memory-Only) ──────────────────────────────────
+// ─── Low-level storage helpers (memory + persistent browser snapshot) ─────────
 const FOOTBALL_MEM_CACHE = new Map<string, CacheEntry<any>>();
+const FOOTBALL_STORAGE_KEY = "taketalon_football_cache_v2";
+const FOOTBALL_STORAGE_MAX_AGE_MS = 48 * 60 * 60_000;
+
+type PersistedFootballCache = Record<string, CacheEntry<any>>;
+
+function readPersistedCache(): PersistedFootballCache {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(FOOTBALL_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as PersistedFootballCache;
+    const now = Date.now();
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([, entry]) => entry && now - entry.ts <= FOOTBALL_STORAGE_MAX_AGE_MS),
+    );
+  } catch {
+    return {};
+  }
+}
+
+function persistCache(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const entries = Object.fromEntries(FOOTBALL_MEM_CACHE.entries());
+    window.localStorage.setItem(FOOTBALL_STORAGE_KEY, JSON.stringify(entries));
+  } catch {
+    // Storage may be unavailable or full; memory cache remains usable.
+  }
+}
 
 function cacheGet<T>(key: string): CacheEntry<T> | null {
-  return (FOOTBALL_MEM_CACHE.get(CACHE_PREFIX + key) as CacheEntry<T>) || null;
+  const memoryEntry = FOOTBALL_MEM_CACHE.get(CACHE_PREFIX + key) as CacheEntry<T> | undefined;
+  if (memoryEntry) return memoryEntry;
+
+  const persistedEntry = readPersistedCache()[CACHE_PREFIX + key] as CacheEntry<T> | undefined;
+  if (persistedEntry) {
+    FOOTBALL_MEM_CACHE.set(CACHE_PREFIX + key, persistedEntry);
+    return persistedEntry;
+  }
+  return null;
 }
 
 function cacheSet<T>(key: string, data: T): void {
   FOOTBALL_MEM_CACHE.set(CACHE_PREFIX + key, { data, ts: Date.now() });
+  persistCache();
 }
 
 function isFresh(entry: CacheEntry<unknown>, ttlMs: number): boolean {
@@ -553,7 +591,7 @@ function clearOldEntries(): void {
  *  - Fresh cache  → return immediately, no fetch
  *  - Stale cache  → return immediately, fetch in background, notify subscribers
  *  - No cache     → fetch synchronously, store result
- *  - Fetch error  → return stale cache or offline fallback from localStorage
+ *   4. Fetch error → return stale cache or the persisted browser snapshot
  */
 async function cachedFetch<T>(
   cacheKey: string,
@@ -678,7 +716,9 @@ interface StandingsResponse {
 function safeFetch(urlPath: string): Promise<Response> {
   const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
   const fullUrl = urlPath.startsWith("http") ? urlPath : `${origin}${urlPath}`;
-  return fetch(fullUrl);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8_000);
+  return fetch(fullUrl, { signal: controller.signal }).finally(() => clearTimeout(timeout));
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -750,17 +790,27 @@ export async function getCompetitionStandings(code: string): Promise<StandingsRe
  * Call after a manual sync to ensure next fetch is fresh.
  */
 export function invalidateCompetitions(codes: string[]): void {
+  let changed = false;
   for (const k of FOOTBALL_MEM_CACHE.keys()) {
     if (!k.startsWith(CACHE_PREFIX)) continue;
     if (codes.some((code) => k.includes(code))) {
       FOOTBALL_MEM_CACHE.delete(k);
+      changed = true;
     }
   }
+  if (changed) persistCache();
 }
 
 /** Clear all football cache entries. */
 export function clearFootballCache(): void {
   FOOTBALL_MEM_CACHE.clear();
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.removeItem(FOOTBALL_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 /** Get cache stats for debugging. */

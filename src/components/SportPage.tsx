@@ -8,7 +8,7 @@
  * Design language follows TakeTalon theme.
  */
 
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   ChevronLeft,
   ChevronDown,
@@ -2369,18 +2369,43 @@ const SPORT_API_SLUGS: Record<string, string> = {
 const SPORT_LS_TTL = 5 * 60_000; // 5 min — refresh if stale
 const sportLsKey = (slug: string) => `taketalon_sport_live_v1_${slug}`;
 
+function readSportSnapshot(slug: string): BballGame[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(sportLsKey(slug));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as { ts?: number; games?: BballGame[] };
+    if (!Array.isArray(parsed.games) || Date.now() - Number(parsed.ts || 0) > 48 * 60 * 60_000) return [];
+    return parsed.games;
+  } catch {
+    return [];
+  }
+}
+
+function writeSportSnapshot(slug: string, games: BballGame[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(sportLsKey(slug), JSON.stringify({ ts: Date.now(), games }));
+  } catch {
+    // A full/private storage area must not prevent live data from rendering.
+  }
+}
+
 /** Generic hook — fetches live games for any sport from /api/sports/:slug/games. */
 function useSportLiveData(sport: string) {
   const slug = SPORT_API_SLUGS[sport] ?? sport.toLowerCase().replace(/\s+/g, "-");
 
-  const [allGames, setAllGames] = useState<BballGame[]>([]);
+  const [allGames, setAllGames] = useState<BballGame[]>(() => readSportSnapshot(slug));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState<string>("");
-  const [loaded, setLoaded] = useState(false);
+  const [source, setSource] = useState<string>(() => (readSportSnapshot(slug).length ? "cache" : ""));
+  const [loaded, setLoaded] = useState(() => readSportSnapshot(slug).length > 0);
+  const hasInitialSnapshot = useRef(allGames.length > 0);
 
   const fetchGames = useCallback(async () => {
-    setLoading(true);
+    // Cached games are useful immediately; only a genuinely empty first load
+    // should display a blocking skeleton.
+    setLoading(!hasInitialSnapshot.current);
     setError(null);
     try {
       const r = await fetch(`/api/sports/${slug}/games`);
@@ -2419,11 +2444,17 @@ function useSportLiveData(sport: string) {
           },
         };
       });
-      setAllGames(games);
+      if (games.length > 0 || !hasInitialSnapshot.current) {
+        setAllGames(games);
+        writeSportSnapshot(slug, games);
+      }
+      hasInitialSnapshot.current = hasInitialSnapshot.current || games.length > 0;
       setSource(data.source ?? "");
     } catch {
-      setAllGames([]);
-      setSource("coming_soon");
+      if (!hasInitialSnapshot.current) {
+        setAllGames([]);
+        setSource("coming_soon");
+      }
     } finally {
       setLoading(false);
       setLoaded(true);

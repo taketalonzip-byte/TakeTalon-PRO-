@@ -1865,28 +1865,14 @@ async function getMatchesForCode(
           });
 
           // `current_minute` is intentionally numeric, so it cannot represent
-          // ESPN stoppage-time values such as `45+2'`. Refresh live ESPN data
-          // before returning an existing snapshot and merge the authentic clock
-          // into this response. The UI already preserves/displays displayClock.
+          // ESPN stoppage-time values such as `45+2'`. Refresh the live clock in
+          // the background instead of awaiting ESPN here: the stored Supabase
+          // snapshot must be returned immediately, especially on a weak network.
           if (comp.provider === "espn" && ESPN_LEAGUE_SLUGS[code] && matches.some((m: any) => FOOTBALL_LIVE_STATUSES.has(m.status))) {
-            try {
-              const liveResult = await syncEspnCompetition(supabaseAdmin, code);
-              liveClocks = liveResult.liveClocks;
-              if (Object.keys(liveClocks).length > 0) {
-                matches = matches.map((m: any) => {
-                  const displayClock = liveClocks[m.id];
-                  return displayClock
-                    ? { ...m, displayClock, minute: parseDisplayClockMinute(displayClock) }
-                    : m;
-                });
-                espnSyncOk = true;
-              }
-            } catch (e: any) {
-              console.warn(`[football] Live clock refresh notice for ${code}:`, e?.message || e);
-            }
+            refreshFootballCompetitionInBackground(code);
           }
 
-          const source = comp.provider === "espn" ? (espnSyncOk ? "espn" : "cache") : "cache";
+          const source = "cache";
           refreshFootballCompetitionInBackground(code);
           return { matches, source, competitionDbId: String(comp.id) };
         }
