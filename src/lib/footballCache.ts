@@ -795,6 +795,29 @@ export async function getCompetitionFixtures(
 }
 
 /**
+ * Synchronously inspect memory / persistent cache for competition fixtures.
+ * Returns the cached response immediately if present, allowing instant render without skeleton flash.
+ */
+export function getCachedCompetitionFixtures(
+  code: string,
+  status?: "SCHEDULED" | "FINISHED",
+): MatchesResponse | null {
+  if (!code) return null;
+  const key = `comp:${code}:${status || "all"}`;
+  const entry = cacheGet<MatchesResponse>(key);
+  if (entry?.data && Array.isArray(entry.data.matches) && entry.data.matches.length > 0) {
+    return entry.data;
+  }
+  if (status) {
+    const fallbackEntry = cacheGet<MatchesResponse>(`comp:${code}:all`);
+    if (fallbackEntry?.data && Array.isArray(fallbackEntry.data.matches) && fallbackEntry.data.matches.length > 0) {
+      return fallbackEntry.data;
+    }
+  }
+  return null;
+}
+
+/**
  * Fetch standings for a single competition.
  * Returns stale data immediately while revalidating in background.
  */

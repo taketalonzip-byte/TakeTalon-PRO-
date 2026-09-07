@@ -3134,7 +3134,7 @@ export default function MatchList({
     );
   }
 
-  if (isFeedLoading) {
+  if (isFeedLoading && tips.length === 0) {
     return <div className="px-3 pt-0.5 space-y-4 pb-24">{renderSkeletonFeed()}</div>;
   }
 

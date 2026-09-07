@@ -2405,7 +2405,7 @@ function useSportLiveData(sport: string) {
   const fetchGames = useCallback(async () => {
     // Cached games are useful immediately; only a genuinely empty first load
     // should display a blocking skeleton.
-    setLoading(!hasInitialSnapshot.current);
+    setLoading(!hasInitialSnapshot.current && allGames.length === 0);
     setError(null);
     try {
       const r = await fetch(`/api/sports/${slug}/games`);
@@ -3035,9 +3035,9 @@ function GamesPanel({
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto no-scrollbar py-2">
-        {loading && <FootballMatchSkeleton theme={theme} />}
+        {loading && games.length === 0 && <FootballMatchSkeleton theme={theme} />}
 
-        {!loading && (error || games.length === 0) && (
+        {!loading && games.length === 0 && (error || games.length === 0) && (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             {sport === "Boxing" ? (
               <>
@@ -3075,8 +3075,8 @@ function GamesPanel({
           </div>
         )}
 
-        {!loading &&
-          !error &&
+        {!error &&
+          games.length > 0 &&
           games.map((game) => (
             <BballMatchRow
               key={game.id}

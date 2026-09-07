@@ -1284,8 +1284,8 @@ export default function App() {
     }
   };
 
-  const fetchRealTimeMatches = async () => {
-    setIsLiveLoading(true);
+  const fetchRealTimeMatches = async (isBackground = false) => {
+    if (!isBackground) setIsLiveLoading(true);
 
     // Map raw matches to MatchTip format
     const mapMatchesToTips = (matchesToMap: any[]) => {
@@ -1549,7 +1549,7 @@ export default function App() {
           if (refreshTimer) return;
           refreshTimer = setTimeout(() => {
             refreshTimer = null;
-            fetchRealTimeMatches();
+            fetchRealTimeMatches(true);
           }, 250);
         },
       )

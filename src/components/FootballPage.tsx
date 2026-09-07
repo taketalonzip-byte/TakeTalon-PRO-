@@ -6,7 +6,7 @@
  * Design: inaiga PostCard / MatchList wa Home kikamilifu.
  */
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   ChevronLeft,
   ChevronDown,
@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { MatchTip, CartItem } from "../types";
 import { FootballMatchSkeleton } from "./skeletons";
-import { getCompetitionFixtures, invalidateCompetitions } from "../lib/footballCache";
+import { getCompetitionFixtures, getCachedCompetitionFixtures, invalidateCompetitions } from "../lib/footballCache";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { ESPN_LEAGUE_LOGOS } from "../lib/leagueLogos";
 import { getUnifiedMatchStatus } from "../lib/sportMatchStatus";
@@ -559,13 +559,29 @@ const MatchRow: React.FC<{
 // ─────────────────────────────────────────────────────────────────────────────
 
 function useLeagueMatches(apiCode: string | undefined) {
-  const [matches, setMatches] = useState<ApiMatch[]>([]);
+  const initialCached = useMemo(() => {
+    if (!apiCode) return [];
+    const cached = getCachedCompetitionFixtures(apiCode);
+    return (cached?.matches as unknown as ApiMatch[]) ?? [];
+  }, [apiCode]);
+
+  const [matches, setMatches] = useState<ApiMatch[]>(initialCached);
   const [competitionDbId, setCompetitionDbId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [fetched, setFetched] = useState(false);
+  const [loading, setLoading] = useState<boolean>(() => initialCached.length === 0);
+  const [fetched, setFetched] = useState<boolean>(() => initialCached.length > 0);
   const appliedSignature = useRef("");
   const requestSequence = useRef(0);
-  const lastNonEmptyMatches = useRef<ApiMatch[]>([]);
+  const lastNonEmptyMatches = useRef<ApiMatch[]>(initialCached);
+
+  // Synchronize cached data if apiCode changes
+  useEffect(() => {
+    if (initialCached.length > 0) {
+      setMatches(initialCached);
+      lastNonEmptyMatches.current = initialCached;
+      setFetched(true);
+      setLoading(false);
+    }
+  }, [apiCode, initialCached]);
 
   const getMatchesSignature = (items: ApiMatch[]): string =>
     items
@@ -591,13 +607,21 @@ function useLeagueMatches(apiCode: string | undefined) {
       setFetched(true);
       return;
     }
-    if (!isBackground) setLoading(true);
+    // SWR / Silent Refresh rule:
+    // If we already have matches displayed on screen (from cache or previous fetch),
+    // NEVER show the loading skeleton. The refresh runs completely silently in background ("kimyakimya").
+    const hasData = lastNonEmptyMatches.current.length > 0;
+    if (!isBackground && !hasData) {
+      setLoading(true);
+    }
     const requestId = ++requestSequence.current;
     try {
       const res = await getCompetitionFixtures(apiCode);
       // A slower request must never overwrite a newer snapshot.
       if (requestId !== requestSequence.current) return;
-      setCompetitionDbId(res?.competitionDbId ?? null);
+      if (res?.competitionDbId) {
+        setCompetitionDbId((prev) => (prev === res.competitionDbId ? prev : res.competitionDbId));
+      }
       const all: ApiMatch[] = (res?.matches as unknown as ApiMatch[]) ?? [];
 
       // Empty is not a valid replacement while this league already has data.
@@ -635,21 +659,27 @@ function useLeagueMatches(apiCode: string | undefined) {
     } catch {
       /* silent */
     } finally {
-      if (!isBackground) setLoading(false);
+      setLoading(false);
       setFetched(true);
     }
   }, [apiCode]);
 
+  // Initial fetch and periodic polling
   useEffect(() => {
-    fetch_();
-    // Polling is only a safety net if Realtime is disconnected. The normal
-    // refresh path is silent and only applies meaningful fixture changes.
+    const hasData = lastNonEmptyMatches.current.length > 0;
+    fetch_(hasData);
+
     const interval = setInterval(() => {
       fetch_(true);
     }, 120000);
 
+    return () => clearInterval(interval);
+  }, [fetch_]);
+
+  // Realtime subscription — does not re-trigger initial fetch
+  useEffect(() => {
     if (!apiCode || !competitionDbId || !isSupabaseConfigured) {
-      return () => clearInterval(interval);
+      return;
     }
 
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -668,14 +698,13 @@ function useLeagueMatches(apiCode: string | undefined) {
           if (refreshTimer) return;
           refreshTimer = setTimeout(() => {
             refreshTimer = null;
-            fetch_(true);
+            fetch_(true); // Always silent background refresh
           }, 250);
         },
       )
       .subscribe();
 
     return () => {
-      clearInterval(interval);
       if (refreshTimer) clearTimeout(refreshTimer);
       supabase.removeChannel(channel);
     };
@@ -749,11 +778,11 @@ const LeagueDetailPage: React.FC<{
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto no-scrollbar pb-6">
-        {/* Loading — skeleton rows matching match layout */}
-        {loading && <FootballMatchSkeleton theme={theme} />}
+        {/* Loading — skeleton rows matching match layout only when no matches exist */}
+        {loading && matches.length === 0 && <FootballMatchSkeleton theme={theme} />}
 
         {/* No API */}
-        {!loading && !hasApi && (
+        {!loading && matches.length === 0 && !hasApi && (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <CalendarDays size={36} className={textSecondary(theme)} />
             <p className={`text-[12px] font-semibold ${textPrimary(theme)}`}>{league.name}</p>
@@ -764,7 +793,7 @@ const LeagueDetailPage: React.FC<{
         )}
 
         {/* Empty */}
-        {!loading && hasApi && fetched && matches.length === 0 && (
+        {!loading && matches.length === 0 && hasApi && fetched && (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Trophy size={36} className={textSecondary(theme)} />
             <p className={`text-[12px] font-semibold ${textPrimary(theme)}`}>{league.name}</p>
@@ -774,8 +803,8 @@ const LeagueDetailPage: React.FC<{
           </div>
         )}
 
-        {/* Matches grouped by date */}
-        {!loading && matches.length > 0 && (
+        {/* Matches grouped by date — remain displayed permanently without unmounting */}
+        {matches.length > 0 && (
           <div className="pt-2">
             {Object.entries(byDate).map(([date, ms]) => (
               <div key={date}>
