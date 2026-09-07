@@ -1761,6 +1761,14 @@ async function resolveCompetitionForRead(
 }
 
 const footballSyncInFlight = new Map<string, Promise<void>>();
+const footballResponseCache = new Map<string, { matches: any[]; source: string; competitionDbId?: string }>();
+
+function rememberFootballResponse(
+  key: string,
+  response: { matches: any[]; source: string; competitionDbId?: string },
+): void {
+  if (response.matches.length > 0) footballResponseCache.set(key, response);
+}
 
 function refreshFootballCompetitionInBackground(code: string): void {
   if (!ESPN_LEAGUE_SLUGS[code] || footballSyncInFlight.has(code)) return;
@@ -1779,6 +1787,7 @@ async function getMatchesForCode(
   code: string,
   opts: { dateFrom?: string; dateTo?: string; status?: string } = {},
 ): Promise<{ matches: any[]; source: string; competitionDbId?: string }> {
+  const responseCacheKey = `${code}:${opts.status || "all"}:${opts.dateFrom || ""}:${opts.dateTo || ""}`;
   let liveClocks: Record<number, string> = {};
   let directMatches: any[] = [];
   let espnSyncOk = false;
@@ -1874,7 +1883,9 @@ async function getMatchesForCode(
 
           const source = "cache";
           refreshFootballCompetitionInBackground(code);
-          return { matches, source, competitionDbId: String(comp.id) };
+          const response = { matches, source, competitionDbId: String(comp.id) };
+          rememberFootballResponse(responseCacheKey, response);
+          return response;
         }
       }
     } catch {
@@ -1903,8 +1914,13 @@ async function getMatchesForCode(
     if (opts.dateFrom) filtered = filtered.filter((m) => m.utcDate >= opts.dateFrom!);
     if (opts.dateTo) filtered = filtered.filter((m) => m.utcDate <= opts.dateTo!);
     if (opts.status) filtered = filtered.filter((m) => m.status.toUpperCase() === opts.status!.toUpperCase());
-    return { matches: filtered, source: "espn", competitionDbId: compDbId };
+    const response = { matches: filtered, source: "espn", competitionDbId: compDbId };
+    rememberFootballResponse(responseCacheKey, response);
+    return response;
   }
+
+  const previousResponse = footballResponseCache.get(responseCacheKey);
+  if (previousResponse) return previousResponse;
 
   return { matches: [], source: "empty" };
 }

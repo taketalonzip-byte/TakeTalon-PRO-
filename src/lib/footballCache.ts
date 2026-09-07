@@ -142,6 +142,7 @@ export function normalizeAndCorrectMatch(m: any): FootballMatch {
  * ONLY returns matches matching the requested competition code to avoid leaking unrelated leagues.
  */
 function getAnyCachedMatches(cacheKey?: string): FootballMatch[] {
+  hydratePersistedCache();
   const matchComp = cacheKey?.match(/(?:comp:|:)([A-Z0-9_]+)(?:$|:)/i);
   const code = matchComp ? matchComp[1].toUpperCase() : null;
 
@@ -554,6 +555,12 @@ function persistCache(): void {
   }
 }
 
+function hydratePersistedCache(): void {
+  for (const [key, entry] of Object.entries(readPersistedCache())) {
+    if (!FOOTBALL_MEM_CACHE.has(key)) FOOTBALL_MEM_CACHE.set(key, entry);
+  }
+}
+
 function cacheGet<T>(key: string): CacheEntry<T> | null {
   const memoryEntry = FOOTBALL_MEM_CACHE.get(CACHE_PREFIX + key) as CacheEntry<T> | undefined;
   if (memoryEntry) return memoryEntry;
@@ -609,6 +616,7 @@ async function cachedFetch<T>(
   // A response containing any LIVE/IN_PLAY/PAUSED match must use the short live TTL,
   // even if this cache entry's category is "fixtures" (which mixes live + scheduled).
   const effectiveTtlMs = entry && hasLiveMatch(entry.data) ? TTL.live : ttlMs;
+  const hasCachedMatches = Array.isArray((entry?.data as any)?.matches) && (entry?.data as any).matches.length > 0;
 
   const isMockOrFallback =
     (entry?.data as any)?.source === "built_in_fallback" ||
@@ -617,18 +625,24 @@ async function cachedFetch<T>(
     ((entry?.data as any)?.matches?.some((m: any) => m.id >= 600000) ?? false);
 
   // ── Case 1: Fresh real cache → return immediately ──────────────────────────
-  if (entry && !isMockOrFallback && isFresh(entry, effectiveTtlMs)) {
+  if (entry && hasCachedMatches && !isMockOrFallback && isFresh(entry, effectiveTtlMs)) {
     return { data: entry.data, fromCache: true, stale: false };
   }
 
   // ── Case 2: Stale cache (or mock cache) → return immediately + background refresh
-  if (entry && !isMockOrFallback) {
+  if (entry && hasCachedMatches && !isMockOrFallback) {
     // Background refresh — don't await
     fetcher()
       .then((fresh) => {
         if ((fresh as any)?.matches) {
           (fresh as any).matches = (fresh as any).matches.map(normalizeAndCorrectMatch);
         }
+        if (
+          Array.isArray((fresh as any)?.matches) &&
+          (fresh as any).matches.length === 0 &&
+          Array.isArray((entry.data as any)?.matches) &&
+          (entry.data as any).matches.length > 0
+        ) return;
         cacheSet(cacheKey, fresh);
         _notifySubscribers(cacheKey, fresh);
       })
@@ -644,8 +658,20 @@ async function cachedFetch<T>(
     const data = await fetcher();
     if (data && Array.isArray((data as any).matches)) {
       (data as any).matches = (data as any).matches.map(normalizeAndCorrectMatch);
-      cacheSet(cacheKey, data);
-      return { data, fromCache: false, stale: false };
+      const fallbackMatches = getAnyCachedMatches(cacheKey);
+      if ((data as any).matches.length === 0 && fallbackMatches.length > 0) {
+        return {
+          data: { ...(data as any), matches: fallbackMatches } as T,
+          fromCache: true,
+          stale: true,
+        };
+      }
+      if ((data as any).matches.length > 0) {
+        cacheSet(cacheKey, data);
+        return { data, fromCache: false, stale: false };
+      }
+      const fallbackData = { ...(data as any), matches: [] } as unknown as T;
+      return { data: fallbackData, fromCache: false, stale: true };
     }
     const fallbackMatches = getAnyCachedMatches(cacheKey);
     const fallbackData = { matches: fallbackMatches, source: "built_in_fallback" } as unknown as T;
