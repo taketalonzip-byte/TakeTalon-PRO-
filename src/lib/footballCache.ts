@@ -820,7 +820,10 @@ export function invalidateCompetitions(codes: string[]): void {
   for (const k of FOOTBALL_MEM_CACHE.keys()) {
     if (!k.startsWith(CACHE_PREFIX)) continue;
     if (codes.some((code) => k.includes(code))) {
-      FOOTBALL_MEM_CACHE.delete(k);
+      const entry = FOOTBALL_MEM_CACHE.get(k);
+      // Mark the snapshot stale, but keep it available for SWR. Deleting it
+      // meant a transient empty provider response could blank an open league.
+      if (entry) entry.ts = 0;
       changed = true;
     }
   }

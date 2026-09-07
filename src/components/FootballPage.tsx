@@ -564,6 +564,8 @@ function useLeagueMatches(apiCode: string | undefined) {
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
   const appliedSignature = useRef("");
+  const requestSequence = useRef(0);
+  const lastNonEmptyMatches = useRef<ApiMatch[]>([]);
 
   const getMatchesSignature = (items: ApiMatch[]): string =>
     items
@@ -590,10 +592,17 @@ function useLeagueMatches(apiCode: string | undefined) {
       return;
     }
     if (!isBackground) setLoading(true);
+    const requestId = ++requestSequence.current;
     try {
       const res = await getCompetitionFixtures(apiCode);
+      // A slower request must never overwrite a newer snapshot.
+      if (requestId !== requestSequence.current) return;
       setCompetitionDbId(res?.competitionDbId ?? null);
       const all: ApiMatch[] = (res?.matches as unknown as ApiMatch[]) ?? [];
+
+      // Empty is not a valid replacement while this league already has data.
+      // Providers can briefly return an empty page during sync/rate limiting.
+      if (all.length === 0 && lastNonEmptyMatches.current.length > 0) return;
       
       // Intelligent sorting:
       // 1. Live matches first (IN_PLAY, PAUSED, LIVE)
@@ -620,6 +629,7 @@ function useLeagueMatches(apiCode: string | undefined) {
       const nextSignature = getMatchesSignature(all);
       if (nextSignature !== appliedSignature.current) {
         appliedSignature.current = nextSignature;
+        if (all.length > 0) lastNonEmptyMatches.current = all;
         setMatches(all);
       }
     } catch {
