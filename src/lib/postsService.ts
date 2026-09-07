@@ -116,6 +116,13 @@ export async function createDatabasePost(params: {
     oddsAway?: number;
     creatorDeposit?: number;
     creatorMinBetterBalance?: number;
+    externalMatchId?: string;
+    provider?: string;
+    homeTeamLogo?: string | null;
+    awayTeamLogo?: string | null;
+    competitionLogo?: string | null;
+    kickoffUtc?: string | null;
+    matchStatus?: string;
   };
 }): Promise<MatchTip | null> {
   try {
@@ -137,6 +144,13 @@ export async function createDatabasePost(params: {
           odds_home: params.match.oddsHome || 1.8,
           odds_draw: params.match.oddsDraw || 3.2,
           odds_away: params.match.oddsAway || 2.5,
+          external_match_id: params.match.externalMatchId,
+          provider: params.match.provider || "ESPN",
+          home_team_logo: params.match.homeTeamLogo || null,
+          away_team_logo: params.match.awayTeamLogo || null,
+          competition_logo: params.match.competitionLogo || null,
+          kickoff_utc: params.match.kickoffUtc || null,
+          match_status: params.match.matchStatus || "UPCOMING",
         },
       }),
     });

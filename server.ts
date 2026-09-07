@@ -113,6 +113,99 @@ function espnMatchToGame(m: EspnGenericMatch, sportName: string, broadcastLabel:
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+// Post Cards are durable records: a Card Bet is published into `posts` only
+// after the creator clicks Buy/Publish, with an immutable match snapshot.
+app.get("/api/supabase/posts", async (req, res) => {
+  if (!supabaseAdmin) return res.status(503).json({ error: "DB offline" });
+  try {
+    let query = supabaseAdmin
+      .from("posts")
+      .select("id, author_id, content, post_type, created_at, updated_at, profiles(first_name,last_name,username,avatar_url,is_pro,is_verified), match_snapshots(*)")
+      .eq("post_type", "match_prediction")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    const authorId = typeof req.query.author_id === "string" ? req.query.author_id : "";
+    if (authorId) query = query.eq("author_id", authorId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return res.json(data || []);
+  } catch (error: any) {
+    console.error("[supabase/posts]", error?.message || error);
+    return res.status(500).json({ error: "Failed to load post cards" });
+  }
+});
+
+app.post("/api/supabase/create-post", async (req, res) => {
+  if (!supabaseAdmin) return res.status(503).json({ error: "DB offline" });
+  const body = req.body || {};
+  const match = body.match || {};
+  const profileId = String(body.profile_id || "").trim();
+  if (!profileId) return res.status(400).json({ error: "profile_id is required" });
+  const asNumberOrNull = (value: unknown) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+  const asString = (value: unknown, fallback = "") => String(value ?? fallback).trim() || fallback;
+  const isUuid = (value: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+  const externalMatchId = asString(match.external_match_id || match.externalMatchId, `local-${Date.now()}`);
+  const snapshot = {
+    sport: asString(match.sport, "football"),
+    provider: asString(match.provider, "ESPN"),
+    external_match_id: externalMatchId,
+    internal_match_id: isUuid(match.internal_match_id) ? match.internal_match_id : null,
+    competition_id: isUuid(match.competition_id) ? match.competition_id : null,
+    competition_name: asString(match.league, "Unknown League"),
+    competition_logo: match.competition_logo || null,
+    match_name: asString(match.prediction_tip, "Ushindi (FT)"),
+    venue: match.venue || null,
+    country: match.country || null,
+    scheduled_start_time_utc: match.kickoff_utc || null,
+    kickoff_timestamp: match.kickoff_utc || null,
+    local_start_time: match.local_start_time || null,
+    match_status_at_posting: asString(match.match_status, "UPCOMING"),
+    home_team_id: null,
+    home_team_name: asString(match.home_team_name, "Home Team"),
+    home_team_short_name: match.home_team_short_name || null,
+    home_team_logo: match.home_team_logo || null,
+    away_team_id: null,
+    away_team_name: asString(match.away_team_name, "Away Team"),
+    away_team_short_name: match.away_team_short_name || null,
+    away_team_logo: match.away_team_logo || null,
+    snapshot_version: 1,
+    api_provider_version: "ESPN snapshot",
+    provider_last_updated_at: match.provider_last_updated_at || null,
+  };
+  try {
+    const { data: post, error: postError } = await supabaseAdmin
+      .from("posts")
+      .insert({ author_id: profileId, content: typeof body.content === "string" ? body.content : JSON.stringify(body.content || {}), post_type: body.post_type || "match_prediction" })
+      .select("id, author_id, content, post_type, created_at, updated_at")
+      .single();
+    if (postError) throw postError;
+    const odds = typeof body.content === "object" ? body.content?.odds : null;
+    const snapshotWithOdds = {
+      ...snapshot,
+      post_id: post.id,
+      odds_home: asNumberOrNull(odds?.home ?? match.odds_home),
+      odds_draw: asNumberOrNull(odds?.draw ?? match.odds_draw),
+      odds_away: asNumberOrNull(odds?.away ?? match.odds_away),
+    };
+    const { data: savedSnapshot, error: snapshotError } = await supabaseAdmin
+      .from("match_snapshots")
+      .insert(snapshotWithOdds)
+      .select("*")
+      .single();
+    if (snapshotError) {
+      await supabaseAdmin.from("posts").delete().eq("id", post.id);
+      throw snapshotError;
+    }
+    return res.status(201).json({ success: true, post, snapshot: savedSnapshot });
+  } catch (error: any) {
+    console.error("[supabase/create-post]", error?.message || error);
+    return res.status(500).json({ error: "Failed to create persistent post card" });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase Backend Admin Client Initialization (Server-Side)
 // ─────────────────────────────────────────────────────────────────────────────

@@ -2054,6 +2054,12 @@ export default function App() {
             oddsHome: creatorOddHome || creatorMatch.odds?.home || 1.8,
             oddsDraw: creatorOddDraw || creatorMatch.odds?.draw || 3.2,
             oddsAway: creatorOddAway || creatorMatch.odds?.away || 2.5,
+            externalMatchId: creatorMatch.id,
+            provider: "ESPN",
+            homeTeamLogo: creatorMatch.homeTeam?.logoUrl || null,
+            awayTeamLogo: creatorMatch.awayTeam?.logoUrl || null,
+            kickoffUtc: creatorMatch.kickoffUtc || null,
+            matchStatus: creatorMatch.status || "UPCOMING",
           },
         }).then((dbTip) => {
           const userTip: MatchTip = dbTip || {
