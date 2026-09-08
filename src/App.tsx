@@ -55,7 +55,11 @@ import { INITIAL_UNLOCKERS_TIPS } from "./unlockersData";
 import { MatchTip, Transaction, CartItem } from "./types";
 import { useUnlocks } from "./hooks/useUnlocks";
 import { PublicProfile } from "./lib/unlockService";
-import { createDatabasePost, fetchAllDatabasePosts } from "./lib/postsService";
+import {
+  createDatabasePost,
+  fetchAllDatabasePosts,
+  fetchUserDatabasePosts,
+} from "./lib/postsService";
 import {
   Sparkles,
   Coins,
@@ -832,10 +836,17 @@ export default function App() {
       return;
     }
 
-    // Load published tips directly from Supabase Database
-    fetchAllDatabasePosts().then((dbPosts) => {
-      if (dbPosts && dbPosts.length > 0) {
-        setUserPublishedTips(dbPosts);
+    let cancelled = false;
+    // Feed posts and the current user's profile posts are different queries.
+    // The profile query must also rerun when the async auth lookup resolves
+    // profileId after the first render.
+    Promise.all([
+      fetchAllDatabasePosts(),
+      profileId ? fetchUserDatabasePosts(profileId) : Promise.resolve([]),
+    ]).then(([dbPosts, ownPosts]) => {
+      if (cancelled) return;
+      setUserPublishedTips(ownPosts);
+      if (dbPosts.length > 0) {
         setMatchTips((prev) => {
           const existing = new Set(prev.map((t) => t.id));
           const toAdd = dbPosts.filter((t) => !existing.has(t.id));
@@ -848,7 +859,10 @@ export default function App() {
         });
       }
     });
-  }, [currentUserKey]);
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserKey, profileId]);
 
   // Sync balance kwa real-time kutoka wallets table (Supabase Realtime)
   useEffect(() => {
@@ -1998,6 +2012,16 @@ export default function App() {
       return;
     }
 
+    if (!creatorMatch || !(profileId || currentUser?.id)) {
+      const message =
+        lang === "sw"
+          ? "Mechi au profile ID haijapatikana. Tafadhali fungua Card Bet tena kisha ujaribu."
+          : "The selected Card Bet or profile ID is missing. Reopen it and try again.";
+      setCreatorError(message);
+      addNotification(message, "error");
+      return;
+    }
+
     setCreatorError(null);
     setCreatorIsLoading(true);
     setCreatorIsPublished(false);
@@ -2015,8 +2039,6 @@ export default function App() {
 
     setTimeout(() => {
       clearInterval(publishTimer);
-      setCreatorIsLoading(false);
-      setCreatorIsPublished(true);
 
       const simulated = cartSimulatedBettersLive.map((b) => ({
         ...b,
@@ -2066,12 +2088,18 @@ export default function App() {
           },
         }).then((dbTip) => {
           if (!dbTip) {
+            setCreatorIsLoading(false);
+            setCreatorIsPublished(false);
             addNotification(
               lang === "sw" ? "Post Card haikuhifadhiwa Supabase. Tafadhali jaribu tena." : "Post Card could not be saved to Supabase. Please try again.",
               "error",
             );
             return;
           }
+          // Only show "published" after the durable post and immutable odds
+          // snapshot have both been written successfully.
+          setCreatorIsLoading(false);
+          setCreatorIsPublished(true);
           const userTip: MatchTip = dbTip || {
             ...creatorMatch,
             id: `user-published-${Date.now()}`,
@@ -2109,6 +2137,16 @@ export default function App() {
           setUserPublishedTips((prev) => [userTip, ...prev]);
           setMatchTips((prev) => [userTip, ...prev]);
           setUnlockersTips((prev) => [userTip, ...prev]);
+        }).catch((error) => {
+          console.error("[handleCreatorPublishInCart] persistent post error:", error);
+          setCreatorIsLoading(false);
+          setCreatorIsPublished(false);
+          addNotification(
+            lang === "sw"
+              ? "Post Card haikuhifadhiwa. Tafadhali jaribu tena."
+              : "Post Card could not be saved. Please try again.",
+            "error",
+          );
         });
       }
 
