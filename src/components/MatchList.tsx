@@ -787,7 +787,7 @@ export default function MatchList({
     return "LIVE";
   };
 
-  const mappedLiveMatches = [
+  const unusedMockLiveMatches = [
     // --- ESPAGNE ---
     {
       id: "live-g-valencia-betis",
@@ -1098,7 +1098,7 @@ export default function MatchList({
   ];
 
   // --- Real-world match cards mapped as standard MatchTips (Top other bet) ---
-  const mappedOtherBets = [
+  const unusedMockOtherBets = [
     // --- UK (UNITED KINGDOM) ---
     {
       id: "other-b-1",
@@ -1465,10 +1465,11 @@ export default function MatchList({
     });
   };
 
+  const mappedLiveMatches: any[] = [];
   const filteredLiveMatches = filterMatches(mappedLiveMatches).filter(
     (m) => m.id !== "live-g-aviator" && m.category !== "Aviator" && m.sport !== "Aviator" && m.id !== "game-tip-1"
   );
-  const filteredOtherBets = filterMatches(mappedOtherBets);
+  const filteredOtherBets: any[] = [];
 
   // DadaKipira VIP Elite card — moved from Top Other Bet into Today's Combo (design unchanged)
   const dadaKipiraVipEliteCard = {
@@ -1547,7 +1548,7 @@ export default function MatchList({
     virtualGamesList.push(comingSoonMatch);
   }
 
-  const tipsWithDada = selectedSport === "All" ? tips : [dadaKipiraVipEliteCard, ...tips];
+  const tipsWithDada = tips;
 
   const matchesTopTab = (item: any) => {
     if (!item) return false;

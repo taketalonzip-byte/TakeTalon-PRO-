@@ -41,8 +41,6 @@ import {
 } from "lucide-react";
 import { processProfilePhotoUpload, type UploadStatusState } from "../lib/photoUploader";
 import SettingsIcon from "./SettingsIcon";
-import { INITIAL_MATCH_TIPS } from "../data";
-import { INITIAL_UNLOCKERS_TIPS } from "../unlockersData";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { MatchTip } from "../types";
 import { getTeamLogoUrl } from "../lib/teamLogos";
@@ -709,11 +707,6 @@ export default function ProfileView({
       "info",
     );
   };
-
-  // Resolve unlocked matches info from system data (both static and unlockers tips)
-  const unlockedMatches = [...INITIAL_MATCH_TIPS, ...INITIAL_UNLOCKERS_TIPS].filter((tip) =>
-    unlockedMatchIds.includes(tip.id),
-  );
 
   // Theme support helpers for optimal accessibility contrast in Light mode
   const isLight = theme === "light";
