@@ -1697,27 +1697,35 @@ export default function ProfileView({
                     }
                   });
 
-                  const authorDisplayName =
-                    currentUser?.fullName || currentUser?.username || "TakeTalon Pro";
                   const authorUsername = currentUser?.username || "taketalon_pro";
 
-                  const publishedList = Array.from(uniqueMap.values()).map((tip: any) => ({
-                    ...tip,
-                    isPostCard: true,
-                    isUserCreated: true,
-                    oddsFixed: true,
-                    oddsAvailable: true,
-                    tipster: tip.tipster || {
-                      profile_id: currentUser?.id || currentUser?.authUserId || authorUsername,
-                      userId: currentUser?.id || currentUser?.authUserId || authorUsername,
-                      name: authorDisplayName,
-                      username: authorUsername,
-                      badge: "POST CREATOR",
-                      avatarUrl: currentUser?.avatarUrl,
-                      winRate: "94%",
-                      isOfficial: false,
-                    },
-                  }));
+                  const publishedList = Array.from(uniqueMap.values()).map((tip: any) => {
+                    const existingTipster = tip.tipster || {};
+                    const tipsterUsername =
+                      existingTipster.username ||
+                      authorUsername ||
+                      existingTipster.name ||
+                      "taketalon_pro";
+
+                    return {
+                      ...tip,
+                      isPostCard: true,
+                      isUserCreated: true,
+                      oddsFixed: true,
+                      oddsAvailable: true,
+                      tipster: {
+                        ...existingTipster,
+                        profile_id: existingTipster.profile_id || currentUser?.id || currentUser?.authUserId || authorUsername,
+                        userId: existingTipster.userId || currentUser?.id || currentUser?.authUserId || authorUsername,
+                        name: tipsterUsername,
+                        username: tipsterUsername,
+                        badge: existingTipster.badge || ((currentUser as any)?.isPro ? "VIP PRO" : "POST CREATOR"),
+                        avatarUrl: currentUser?.avatarUrl || existingTipster.avatarUrl,
+                        winRate: existingTipster.winRate || "94%",
+                        isOfficial: existingTipster.isOfficial || false,
+                      },
+                    };
+                  });
 
                   if (publishedList.length === 0) {
                     return (

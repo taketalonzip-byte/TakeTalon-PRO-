@@ -297,3 +297,99 @@ export function getUnifiedMatchStatus(params: {
     badgeType,
   };
 }
+
+/**
+ * Checks whether a given match or tip has finished/ended.
+ * Detects ESPN finished states ("FT", "Final", "Finished", "Ended", "AET", "Awarded", "Cancelled", "Postponed"),
+ * status descriptions, Swahili/English status strings ("Iliisha", "Full Time"),
+ * and fallback kickoff timestamp duration (> 3 hours ago).
+ */
+export function isMatchEnded(match: any): boolean {
+  if (!match) return false;
+  const s = String(match.status || "").toUpperCase();
+  if (
+    [
+      "ENDED",
+      "FINISHED",
+      "FINAL",
+      "FT",
+      "AWARDED",
+      "CANCELLED",
+      "POSTPONED",
+      "SUSPENDED",
+      "AET",
+    ].includes(s)
+  ) {
+    return true;
+  }
+
+  const timeStr = String(match.time || "").toLowerCase();
+  if (
+    timeStr === "iliisha" ||
+    timeStr === "full time" ||
+    timeStr === "final" ||
+    timeStr === "ft" ||
+    timeStr === "ended" ||
+    timeStr === "finished" ||
+    timeStr.includes("iliisha") ||
+    timeStr.includes("full time")
+  ) {
+    return true;
+  }
+
+  if (match.statusDescription) {
+    const desc = String(match.statusDescription).toLowerCase();
+    if (
+      desc.includes("final") ||
+      desc.includes("ft") ||
+      desc.includes("ended") ||
+      desc.includes("finished") ||
+      desc.includes("aet")
+    ) {
+      return true;
+    }
+  }
+
+  if (match.shortDetail) {
+    const sd = String(match.shortDetail).toLowerCase();
+    if (
+      sd.includes("final") ||
+      sd.includes("ft") ||
+      sd.includes("ended") ||
+      sd.includes("finished")
+    ) {
+      return true;
+    }
+  }
+
+  if (match.final_status) {
+    const fs = String(match.final_status).toUpperCase();
+    if (["ENDED", "FINISHED", "FINAL", "FT", "AWARDED"].includes(fs)) {
+      return true;
+    }
+  }
+
+  if (match.kickoffUtc) {
+    const kickoffMs = Date.parse(match.kickoffUtc);
+    if (Number.isFinite(kickoffMs) && Date.now() >= kickoffMs + 3 * 60 * 60 * 1000) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Checks whether a given match object represents a published Post Card
+ * (created by a user/tipster in the system).
+ */
+export function isMatchPostCard(match: any): boolean {
+  if (!match) return false;
+  return Boolean(
+    match.isPostCard ||
+      match.isUserCreated ||
+      match.oddsFixed ||
+      match.cardBetId ||
+      (match.tipster && match.tipster.userId)
+  );
+}

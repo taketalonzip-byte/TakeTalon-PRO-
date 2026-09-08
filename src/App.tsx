@@ -59,6 +59,7 @@ import {
   fetchAllDatabasePosts,
   fetchUserDatabasePosts,
 } from "./lib/postsService";
+import { isMatchEnded, isMatchPostCard } from "./lib/sportMatchStatus";
 import {
   Sparkles,
   Coins,
@@ -2061,6 +2062,11 @@ export default function App() {
   // Filters calculation logic
   const filteredTips = (activeSubTab === "Unlockers" ? unlockersTips : matchTips)
     .filter((tip) => {
+      // Post card yenye match ambayo tayari imeshakwisha haitaonekana kwenye home feed
+      if (isMatchPostCard(tip) && isMatchEnded(tip)) {
+        return false;
+      }
+
       const isCategoryFilterActive =
         selectedSport !== "All" || selectedLeague !== "All" || selectedSubLeague !== "All";
 

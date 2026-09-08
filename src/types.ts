@@ -50,8 +50,11 @@ export interface MatchTip {
   isPremium: boolean;
   isLocked: boolean;
   isUserCreated?: boolean;
+  isPostCard?: boolean;
+  oddsFixed?: boolean;
   tipster: {
     name: string;
+    username?: string;
     avatarLetter: string;
     badge?: string;
     isOfficial: boolean;

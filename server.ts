@@ -209,7 +209,7 @@ app.post("/api/supabase/create-post", async (req, res) => {
     const { data: post, error: postError } = await supabaseAdmin
       .from("posts")
       .insert({ author_id: profileId, card_bet_id: cardBetId, content: contentText, post_type: body.post_type || "match_prediction" })
-      .select("id, author_id, card_bet_id, content, post_type, created_at, updated_at")
+      .select("id, author_id, card_bet_id, content, post_type, created_at, updated_at, profiles(first_name,last_name,username,avatar_url,is_pro,is_verified)")
       .single();
     if (postError) throw postError;
     const odds = contentObject?.odds || {};

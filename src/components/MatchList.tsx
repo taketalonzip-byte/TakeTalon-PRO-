@@ -35,6 +35,7 @@ import {
 } from "../lib/commentsService";
 import { getTeamLogoUrl } from "../lib/teamLogos";
 import { ScrollingScoreBadge } from "./ScrollingScoreBadge";
+import { isMatchEnded, isMatchPostCard } from "../lib/sportMatchStatus";
 
 // User Circle Single Streamline Icon for Post Card Profile
 export const UserCircleSingleIcon = ({ className }: { className?: string }) => (
@@ -146,10 +147,12 @@ export const PostCardCommentTrigger = ({
 interface PostCardProfileProps {
   tipster?: {
     name: string;
+    username?: string;
     avatarLetter: string;
     badge?: string;
     isOfficial?: boolean;
     avatarUrl?: string;
+    userId?: string;
   };
   theme: "blue" | "dark" | "light";
   onViewProfile?: (tipster: any) => void;
@@ -170,30 +173,40 @@ function PostCardProfile({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Sanitize name to remove words like bot, expert, oracle, ai, elite, hot, lady, pro, virtual
-  const rawName = tipster?.name || currentUser?.username || "TakeTalon Pro";
+  // Check if this postcard was published by the current user
+  const isCurrentUserPost = Boolean(
+    currentUser &&
+      (((tipster as any)?.userId &&
+        ((tipster as any).userId === (currentUser as any).id ||
+          (tipster as any).userId === (currentUser as any).profileId ||
+          (tipster as any).userId === (currentUser as any).authUserId)) ||
+        (currentUser.username &&
+          ((tipster?.username && tipster.username.toLowerCase() === currentUser.username.toLowerCase()) ||
+            (tipster?.name && tipster.name.toLowerCase() === currentUser.username.toLowerCase()))) ||
+        (currentUser.fullName && tipster?.name && tipster.name.toLowerCase() === currentUser.fullName.toLowerCase()) ||
+        (currentUser.email && tipster?.name && tipster.name.toLowerCase() === currentUser.email.toLowerCase()))
+  );
+
+  // Profile name must ALWAYS be the username (e.g. @amissi640) and NOT the user's full name
+  const rawName =
+    (isCurrentUserPost && currentUser?.username ? currentUser.username : null) ||
+    tipster?.username ||
+    tipster?.name ||
+    currentUser?.username ||
+    "TakeTalon Pro";
   const cleanUsername = rawName
     .replace(/^@/, "")
     .replace(/\b(bot|expert|oracle|ai|elite|hot|lady|pro|virtual)\b/gi, "")
     .trim()
     .replace(/\s+/g, " ");
-
-  // Check if this postcard was published by the current user
-  const isCurrentUserPost = Boolean(
-    currentUser &&
-      currentUser.isLoggedIn &&
-      (((tipster as any)?.userId && ((tipster as any).userId === (currentUser as any).id || (tipster as any).userId === (currentUser as any).profileId)) ||
-        (currentUser.username && rawName.toLowerCase() === currentUser.username.toLowerCase()) ||
-        (currentUser.email && rawName.toLowerCase() === currentUser.email.toLowerCase()) ||
-        (currentUser.fullName && rawName.toLowerCase() === currentUser.fullName.toLowerCase()))
-  );
+  const displayUsername = cleanUsername || rawName.replace(/^@/, "").trim() || "TakeTalon";
 
   const avatarSrc =
     isCurrentUserPost && currentUser?.avatarUrl
       ? currentUser.avatarUrl
       : tipster?.avatarUrl || null;
   const initials =
-    tipster?.avatarLetter || (cleanUsername ? cleanUsername.charAt(0).toUpperCase() : "TT");
+    tipster?.avatarLetter || (displayUsername ? displayUsername.charAt(0).toUpperCase() : "TT");
 
   useEffect(() => {
     if (isExpanded) {
@@ -252,29 +265,42 @@ function PostCardProfile({
     } else if (isCurrentUserPost && onNavigateToMyProfile) {
       onNavigateToMyProfile();
     } else if (onViewProfile) {
-      onViewProfile({ name: cleanUsername, username: cleanUsername });
+      onViewProfile({ name: displayUsername, username: displayUsername });
+    }
+  };
+
+  const handleAvatarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isExpanded) {
+      setIsExpanded(true);
+    } else {
+      handleOpenProfile(e);
     }
   };
 
   return (
     <div className="absolute top-2 left-2.5 z-30 flex flex-col items-start gap-1">
-      {/* Profile Button: Shows avatar and author/buyer name, opens profile on click */}
+      {/* Profile Button: Shows avatar circle; expands to reveal name on click and auto-closes after 4s */}
       <motion.button
-        id={`postcard-author-${cleanUsername}`}
-        onClick={handleOpenProfile}
-        title={`Profile ya @${cleanUsername}`}
-        className={`flex items-center flex-row h-6 max-w-[130px] rounded-full border p-0.5 px-1.5 shadow-sm cursor-pointer backdrop-blur-md transition-all active:scale-95 ${containerBg}`}
+        id={`postcard-author-${displayUsername}`}
+        onClick={handleAvatarClick}
+        title={isExpanded ? `Profile ya @${displayUsername}` : `Bonyeza kuona jina la mwandishi`}
+        className={`flex items-center flex-row h-6 rounded-full cursor-pointer backdrop-blur-md transition-all active:scale-95 select-none ${
+          isExpanded
+            ? `border p-0.5 pl-0.5 pr-2 shadow-sm max-w-[145px] ${containerBg}`
+            : "p-0 border border-transparent bg-transparent shadow-none"
+        }`}
         layout
-        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
       >
         {/* Avatar circle */}
         <div
-          className={`w-5 h-5 rounded-full flex items-center justify-center font-mono font-black text-[7.5px] uppercase tracking-wider shadow-inner shrink-0 overflow-hidden ${avatarBg}`}
+          className={`w-5.5 h-5.5 rounded-full flex items-center justify-center font-mono font-black text-[7.5px] uppercase tracking-wider shadow-inner shrink-0 overflow-hidden ${avatarBg}`}
         >
           {avatarSrc ? (
             <img
               src={avatarSrc}
-              alt={cleanUsername}
+              alt={displayUsername}
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
             />
@@ -283,12 +309,30 @@ function PostCardProfile({
           )}
         </div>
 
-        {/* Poster / Buyer username always visible */}
-        <div className="ml-1 overflow-hidden text-left flex items-center shrink min-w-0">
-          <span className="text-[8.5px] font-black tracking-wider truncate leading-none">
-            @{cleanUsername}
-          </span>
-        </div>
+        {/* Poster / Buyer username: slides open on click and auto-closes smoothly after 4 seconds */}
+        <AnimatePresence initial={false}>
+          {isExpanded && (
+            <motion.div
+              initial={{ width: 0, opacity: 0, x: -6 }}
+              animate={{ width: "auto", opacity: 1, x: 0 }}
+              exit={{ width: 0, opacity: 0, x: -4 }}
+              transition={{
+                width: { duration: 0.58, ease: [0.25, 1, 0.5, 1] },
+                opacity: { duration: 0.45, ease: "easeInOut" },
+                x: { duration: 0.52, ease: [0.25, 1, 0.5, 1] },
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenProfile(e);
+              }}
+              className="ml-1.5 overflow-hidden text-left flex items-center shrink min-w-0"
+            >
+              <span className="text-[8.5px] font-black tracking-wider truncate leading-none hover:underline cursor-pointer">
+                @{displayUsername}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.button>
 
       {/* Menu Button and Dropdown (Three Dots) */}
@@ -725,6 +769,7 @@ export default function MatchList({
 
   const isMatchLive = (m: any) => {
     if (!m) return false;
+    if (isMatchEnded(m)) return false;
     const s = String(m.status || "").toUpperCase();
     return s === "LIVE" || s === "IN_PLAY" || s === "PAUSED" || s === "HALFTIME" || !!m.liveMinutes || !!m.liveScore;
   };
@@ -784,6 +829,11 @@ export default function MatchList({
 
   const filterMatches = (list: any[]) => {
     return list.filter((item) => {
+      // Post card yenye mechi iliyokwisha haitaonekana kwenye home feed, itaonekana kwenye profile tu
+      if (!isProfileMode && isMatchPostCard(item) && isMatchEnded(item)) {
+        return false;
+      }
+
       const itemSport = getCleanSport(item.sport);
 
       // Specifically ensure Aviator is excluded if we are in Football
@@ -1207,9 +1257,9 @@ export default function MatchList({
           <div className="flex items-center space-x-1 shrink-0">
             {/* BET NOW */}
             <button
-              disabled={!oddsAvailable}
+              disabled={!oddsAvailable || isMatchEnded(match)}
               onClick={() => {
-                if (!oddsAvailable) return;
+                if (!oddsAvailable || isMatchEnded(match)) return;
                 const currentSelectedType = selectedBets?.[match.id] || "home";
                 const currentSelectedOdd = match.odds[currentSelectedType];
                 if (onBetNowClick) {
@@ -1249,7 +1299,8 @@ export default function MatchList({
         ? false
         : match.isPremium && !isPro && !match.tipster?.isOfficial;
 
-    const isLive = isMatchLive(match);
+    const isEnded = isMatchEnded(match);
+    const isLive = !isEnded && isMatchLive(match);
     const currentLiveScore = getMatchLiveScore(match);
     const currentLiveTimer = getMatchLiveTimerDisplay(match);
     const currentLiveMinute = getMatchLiveMinute(match);
@@ -1265,7 +1316,7 @@ export default function MatchList({
           : "text-slate-200 font-extrabold bg-neutral-900/80 border border-neutral-800";
 
     const getMatchCalendarDisplay = (m: any) => {
-      if (m.status === "ENDED") {
+      if (m.status === "ENDED" || isMatchEnded(m)) {
         return "Full Time";
       }
 
@@ -1824,35 +1875,27 @@ export default function MatchList({
           className={`flex items-center justify-end px-4 py-2.5 pl-20 ${isMatchLocked ? "pr-16" : ""} ${headerClass}`}
         >
           {/* Status badge */}
-          <div className="flex items-center space-x-1.5 mr-2">
-            {isLive ? null : match.status === "COMING_SOON" ? (
-              isOtherBet ? null : (
+          {((!isLive && match.status === "COMING_SOON" && !isOtherBet) ||
+            match.isPostCard ||
+            match.isUserCreated) && (
+            <div className="flex items-center space-x-1.5 mr-2">
+              {!isLive && match.status === "COMING_SOON" && !isOtherBet && (
                 <span className="text-[7.5px] font-black text-amber-550 bg-amber-550/10 border border-amber-500/15 px-2 py-0.5 rounded-full tracking-wider uppercase animate-pulse">
                   COMING SOON
                 </span>
-              )
-            ) : match.status === "ENDED" ? (
-              <span
-                className={`text-[7.5px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${theme === "light" ? "bg-slate-100 text-slate-500 border border-slate-200/50" : "bg-neutral-900 text-slate-400 border border-neutral-800/40"}`}
-              >
-                {t.ended}
-              </span>
-            ) : isOtherBet ? null : (
-              <span className="text-[7.5px] font-bold text-blue-500 bg-blue-500/10 border border-blue-500/15 px-2 py-0.5 rounded-full tracking-wider uppercase">
-                {t.upcoming}
-              </span>
-            )}
+              )}
 
-            {/* Post Card ID Badge */}
-            {(match.isPostCard || match.isUserCreated) && (
-              <span
-                title={`Database ID: ${match.id}`}
-                className="text-[7px] font-mono font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md tracking-wider uppercase select-all"
-              >
-                ID #{String(match.id).slice(0, 8).toUpperCase()}
-              </span>
-            )}
-          </div>
+              {/* Post Card ID Badge */}
+              {(match.isPostCard || match.isUserCreated) && (
+                <span
+                  title={`Database ID: ${match.id}`}
+                  className="text-[7px] font-mono font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md tracking-wider uppercase select-all"
+                >
+                  ID #{String(match.id).slice(0, 8).toUpperCase()}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* League Logo Display */}
           {(() => {
@@ -2106,9 +2149,9 @@ export default function MatchList({
                       match.odds.home > 0
                   );
                   const oddsAvailable = match.oddsAvailable === true || hasValidOdds;
-                  const isPostCard = Boolean(match.isPostCard || match.isUserCreated || (match as any).oddsFixed);
+                  const isPostCard = isMatchPostCard(match);
                   // Post-card odds stay fixed with creator values; can bet anytime unless match ended
-                  const canBetNow = oddsAvailable && (isPostCard ? match.status !== "ENDED" : !isLive);
+                  const canBetNow = oddsAvailable && !isEnded && (isPostCard ? true : !isLive);
 
                   if (match.category === "Aviator") {
                     return (
@@ -2129,8 +2172,8 @@ export default function MatchList({
                       {/* 1 Button */}
                       <button
                         id={`odd-home-${match.id}`}
-                        onClick={() => oddsAvailable && onPlaceBetClick?.(match, "home", match.odds.home)}
-                        className={`py-1 rounded-xl text-center transition-all cursor-pointer group active:scale-95 border flex flex-col items-center justify-center h-[34px] ${
+                        onClick={() => oddsAvailable && !isEnded && onPlaceBetClick?.(match, "home", match.odds.home)}
+                        className={`py-1 rounded-xl text-center transition-all ${isEnded ? "cursor-not-allowed opacity-75" : "cursor-pointer group active:scale-95"} border flex flex-col items-center justify-center h-[34px] ${
                           isHomeSelected
                             ? "bg-emerald-600 text-white border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.35)] scale-[1.03]"
                             : theme === "light"
@@ -2165,8 +2208,8 @@ export default function MatchList({
                       {/* Draw Button */}
                       <button
                         id={`odd-draw-${match.id}`}
-                        onClick={() => oddsAvailable && onPlaceBetClick?.(match, "draw", match.odds.draw)}
-                        className={`py-1 rounded-xl text-center transition-all cursor-pointer group active:scale-95 border flex flex-col items-center justify-center h-[34px] ${
+                        onClick={() => oddsAvailable && !isEnded && onPlaceBetClick?.(match, "draw", match.odds.draw)}
+                        className={`py-1 rounded-xl text-center transition-all ${isEnded ? "cursor-not-allowed opacity-75" : "cursor-pointer group active:scale-95"} border flex flex-col items-center justify-center h-[34px] ${
                           isDrawSelected
                             ? "bg-emerald-600 text-white border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.35)] scale-[1.03]"
                             : theme === "light"
@@ -2201,8 +2244,8 @@ export default function MatchList({
                       {/* 2 Button */}
                       <button
                         id={`odd-away-${match.id}`}
-                        onClick={() => oddsAvailable && onPlaceBetClick?.(match, "away", match.odds.away)}
-                        className={`py-1 rounded-xl text-center transition-all cursor-pointer group active:scale-95 border flex flex-col items-center justify-center h-[34px] ${
+                        onClick={() => oddsAvailable && !isEnded && onPlaceBetClick?.(match, "away", match.odds.away)}
+                        className={`py-1 rounded-xl text-center transition-all ${isEnded ? "cursor-not-allowed opacity-75" : "cursor-pointer group active:scale-95"} border flex flex-col items-center justify-center h-[34px] ${
                           isAwaySelected
                             ? "bg-emerald-600 text-white border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.35)] scale-[1.03]"
                             : theme === "light"
@@ -2237,11 +2280,23 @@ export default function MatchList({
                       {/* BET NOW Button */}
                       <button
                         id={`weka-bashiri-${match.id}`}
-                        disabled={!canBetNow}
-                        title={isLive ? "Bet Now haipatikani wakati match iko live" : undefined}
-                        aria-label={isLive ? "Bet Now haipatikani wakati match iko live" : "Bet Now"}
+                        disabled={!canBetNow || isEnded}
+                        title={
+                          isEnded
+                            ? (lang === "sw" ? "Mechi imeshakwisha - Betting imefungwa" : "Match ended - Betting is locked")
+                            : isLive
+                              ? "Bet Now haipatikani wakati match iko live"
+                              : undefined
+                        }
+                        aria-label={
+                          isEnded
+                            ? (lang === "sw" ? "Mechi imeshakwisha - Betting imefungwa" : "Match ended - Betting is locked")
+                            : isLive
+                              ? "Bet Now haipatikani wakati match iko live"
+                              : "Bet Now"
+                        }
                         onClick={() => {
-                          if (!canBetNow) return;
+                          if (!canBetNow || isEnded) return;
                           const currentSelectedType = selectedBets?.[match.id] || "home";
                           const currentSelectedOdd = match.odds[currentSelectedType];
                           if (onBetNowClick) {
@@ -2251,12 +2306,12 @@ export default function MatchList({
                           }
                         }}
                         className={`py-1 rounded-xl text-center transition-all border flex flex-col items-center justify-center h-[34px] ${
-                          isLive
+                          isEnded || isLive
                             ? "bg-gradient-to-r from-sky-600 to-blue-600 border-sky-600/30 text-white cursor-not-allowed shadow-[0_2px_8px_rgba(37,99,235,0.15)]"
                             : "bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white cursor-pointer active:scale-95 border-sky-600/30 shadow-[0_2px_8px_rgba(37,99,235,0.15)]"
                         }`}
                       >
-                        {isLive ? (
+                        {isEnded || isLive ? (
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
@@ -2264,9 +2319,9 @@ export default function MatchList({
                             height="14"
                             width="14"
                             role="img"
-                            aria-label="Betting imefungwa wakati match iko live"
+                            aria-label={isEnded ? "Mechi imeshakwisha - Betting imefungwa" : "Betting imefungwa wakati match iko live"}
                           >
-                            <desc>Padlock Square 1 — betting imefungwa kwa match live</desc>
+                            <desc>{isEnded ? "Padlock Square 1 — betting imefungwa milele" : "Padlock Square 1 — betting imefungwa kwa match live"}</desc>
                             <g id="padlock-square-1--combination-combo-lock-locked-padlock-secure-security-shield-keyhole">
                               <path
                                 id="Union"

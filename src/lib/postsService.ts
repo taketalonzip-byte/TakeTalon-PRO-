@@ -21,9 +21,13 @@ export function dbPostToMatchTip(post: any): MatchTip {
     }
   }
 
-  const authorName =
-    [profile.first_name, profile.last_name].filter(Boolean).join(" ") ||
+  const authorUsername =
     profile.username ||
+    (post.profiles && post.profiles.username) ||
+    "";
+  const authorName =
+    authorUsername ||
+    [profile.first_name, profile.last_name].filter(Boolean).join(" ") ||
     "Anonymous Tipster";
   const authorAvatar = profile.avatar_url || null;
 
@@ -94,9 +98,13 @@ export function dbPostToMatchTip(post: any): MatchTip {
     isPremium: true,
     isLocked: false,
     isUserCreated: true,
+    isPostCard: true,
+    oddsFixed: true,
+    oddsAvailable: true,
     tipster: {
-      name: authorName,
-      avatarLetter: authorName.charAt(0).toUpperCase(),
+      name: authorUsername || authorName,
+      username: authorUsername || authorName,
+      avatarLetter: (authorUsername || authorName).charAt(0).toUpperCase(),
       avatarUrl: authorAvatar,
       userId: post.author_id || profile.id,
       badge: profile.is_pro ? "VIP PRO" : "TIPSTER",
