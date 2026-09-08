@@ -3005,6 +3005,7 @@ app.get("/api/agent/sync-role", async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 interface OtpRecord {
   otpHash: string;
+  prevOtpHash?: string;
   email: string;
   firstName?: string;
   expiresAt: number;
@@ -3032,12 +3033,25 @@ function withOtpDbTimeout<T>(promise: PromiseLike<T>, operation: string): Promis
   ]);
 }
 function hashOtp(email: string, otp: string): string {
-  return crypto.createHash("sha256").update(`${email}:${otp}`).digest("hex");
+  const cleanEmail = (email || "").trim().toLowerCase();
+  const cleanDigits = (otp || "").toString().replace(/[^0-9]/g, "");
+  return crypto.createHash("sha256").update(`${cleanEmail}:${cleanDigits}`).digest("hex");
+}
+
+function isOtpMatch(record: OtpRecord, email: string, inputOtp: string): boolean {
+  const cleanEmail = (email || "").trim().toLowerCase();
+  const cleanDigits = (inputOtp || "").toString().replace(/[^0-9]/g, "");
+  if (!cleanDigits || cleanDigits.length !== 6) return false;
+  const candidateHash = hashOtp(cleanEmail, cleanDigits);
+  if (record.otpHash === candidateHash) return true;
+  if (record.prevOtpHash && record.prevOtpHash === candidateHash) return true;
+  return false;
 }
 
 function toOtpRecord(row: any): OtpRecord {
   return {
     otpHash: String(row.otp_hash || ""),
+    prevOtpHash: row.prev_otp_hash ? String(row.prev_otp_hash) : undefined,
     email: String(row.email || "").toLowerCase(),
     firstName: row.first_name || "",
     expiresAt: new Date(row.expires_at).getTime(),
@@ -3070,6 +3084,9 @@ async function getOtpRecord(email: string, purpose: string = "registration"): Pr
       return null;
     }
     const record = toOtpRecord(data);
+    if (cachedRecord?.prevOtpHash) {
+      record.prevOtpHash = cachedRecord.prevOtpHash;
+    }
     otpStore.set(storeKey, record);
     return record;
   } catch (error: any) {
@@ -3083,6 +3100,10 @@ async function getOtpRecord(email: string, purpose: string = "registration"): Pr
 async function saveOtpRecord(record: OtpRecord, purpose: string = "registration"): Promise<void> {
   const normalizedEmail = record.email.toLowerCase();
   const storeKey = `${normalizedEmail}:${purpose}`;
+  const existingMemory = otpStore.get(storeKey);
+  if (!record.prevOtpHash && existingMemory?.otpHash && existingMemory.otpHash !== record.otpHash) {
+    record.prevOtpHash = existingMemory.otpHash;
+  }
   otpStore.set(storeKey, record);
   if (!supabaseAdmin) return;
   try {
@@ -3214,10 +3235,10 @@ async function sendOtpEmail(email: string, firstName: string | undefined, otp: s
         <div style="background-color: #172a3a; padding: 24px; border-radius: 8px; border: 1px solid #1e3a5f; text-align: center;">
           <p style="font-size: 16px; margin: 0 0 16px 0; color: #e2e8f0;">Hujambo <strong>${firstName || "Mteja"}</strong>,</p>
           <p style="font-size: 14px; color: #94a3b8; margin: 0 0 20px 0;">Tumia nambari hii ya siri ya tarakimu 6 (OTP) ili kukamilisha usajili wa akaunti yako ya TakeTalon PRO:</p>
-          <div style="background: #0f172a; padding: 16px 24px; border-radius: 8px; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #38bdf8; display: inline-block; margin-bottom: 20px; border: 1px dashed #38bdf8;">
-            ${otp}
-          </div>
+          <div style="background: #0f172a; padding: 14px 28px; border-radius: 8px; font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #38bdf8; display: inline-block; margin-bottom: 12px; border: 1px dashed #38bdf8; user-select: all; -webkit-user-select: all; font-family: monospace;">${otp}</div>
+          <p style="font-size: 14px; color: #60a5fa; margin: 0 0 16px 0; font-weight: 600;">Code: <strong style="letter-spacing: 3px; font-family: monospace;">${otp}</strong></p>
           <p style="font-size: 13px; color: #64748b; margin: 0;">Nambari hii itaisha muda wake baada ya <strong>dakika 10</strong>. Usishiriki nambari hii na mtu yeyote.</p>
+          <p style="font-size: 12px; color: #94a3b8; margin: 10px 0 0 0;"><em>Ikiwa umeomba code zaidi ya mara moja, tumia nambari kutoka kwenye barua pepe ya hivi punde zaidi.</em></p>
         </div>
         <div style="text-align: center; margin-top: 24px; font-size: 12px; color: #64748b;">
           &copy; ${new Date().getFullYear()} TakeTalon PRO. Haki zote zimehifadhiwa.
@@ -3269,10 +3290,10 @@ async function sendPasswordResetOtpEmail(email: string, firstName: string | unde
           <p style="font-size: 16px; margin: 0 0 16px 0; color: #e2e8f0;">Hujambo <strong>${firstName || "Mteja"}</strong>,</p>
           <p style="font-size: 14px; color: #94a3b8; margin: 0 0 14px 0;">Umepokea ujumbe huu kwa sababu uliomba kuweka upya neno lako la siri (Password Reset) kwenye akaunti yako ya TakeTalon PRO.</p>
           <p style="font-size: 14px; color: #94a3b8; margin: 0 0 20px 0;">Tumia nambari hii ya siri ya tarakimu 6 (OTP) ili kuweka nywila mpya:</p>
-          <div style="background: #0f172a; padding: 16px 24px; border-radius: 8px; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #38bdf8; display: inline-block; margin-bottom: 20px; border: 1px dashed #38bdf8;">
-            ${otp}
-          </div>
+          <div style="background: #0f172a; padding: 14px 28px; border-radius: 8px; font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #38bdf8; display: inline-block; margin-bottom: 12px; border: 1px dashed #38bdf8; user-select: all; -webkit-user-select: all; font-family: monospace;">${otp}</div>
+          <p style="font-size: 14px; color: #60a5fa; margin: 0 0 16px 0; font-weight: 600;">Code: <strong style="letter-spacing: 3px; font-family: monospace;">${otp}</strong></p>
           <p style="font-size: 13px; color: #64748b; margin: 0;">Nambari hii itaisha muda wake baada ya <strong>dakika 10</strong>. Usishiriki nambari hii na mtu yeyote.</p>
+          <p style="font-size: 12px; color: #94a3b8; margin: 10px 0 0 0;"><em>Ikiwa umeomba code zaidi ya mara moja, tumia nambari kutoka kwenye barua pepe ya hivi punde zaidi.</em></p>
         </div>
         <div style="text-align: center; margin-top: 24px; font-size: 12px; color: #64748b;">
           &copy; ${new Date().getFullYear()} TakeTalon PRO. Haki zote zimehifadhiwa.
@@ -3396,7 +3417,7 @@ const handleVerifyOtpRoute = async (req: Request, res: Response) => {
     }
 
     stage = "compare_hash";
-    if (record.otpHash !== hashOtp(rawEmail, cleanOtp)) {
+    if (!isOtpMatch(record, rawEmail, cleanOtp)) {
       record.attemptsLeft -= 1;
       stage = "persist_failed_attempt";
       await saveOtpRecord(record);
@@ -3474,8 +3495,10 @@ const handleResendOtpRoute = async (req: Request, res: Response) => {
       });
     }
 
+    const prevOtpHash = existing?.otpHash;
     await saveOtpRecord({
       otpHash: hashOtp(rawEmail, generatedOtp),
+      prevOtpHash,
       email: rawEmail,
       firstName,
       expiresAt: now + 10 * 60 * 1000,
@@ -3639,7 +3662,7 @@ const handleForgotVerifyOtpRoute = async (req: Request, res: Response) => {
       });
     }
 
-    if (record.otpHash !== hashOtp(rawEmail, cleanOtp)) {
+    if (!isOtpMatch(record, rawEmail, cleanOtp)) {
       record.attemptsLeft -= 1;
       await saveOtpRecord(record, "password_reset");
       return res.status(400).json({
@@ -3699,8 +3722,10 @@ const handleForgotResendOtpRoute = async (req: Request, res: Response) => {
       });
     }
 
+    const prevOtpHash = existing?.otpHash;
     await saveOtpRecord({
       otpHash: hashOtp(rawEmail, generatedOtp),
+      prevOtpHash,
       email: rawEmail,
       firstName,
       expiresAt: now + 10 * 60 * 1000,
@@ -3756,7 +3781,7 @@ const handleForgotResetPasswordRoute = async (req: Request, res: Response) => {
       if (!cleanOtp) {
         return res.status(400).json({ success: false, error: "Tafadhali weka code ya OTP." });
       }
-      if (record.otpHash !== hashOtp(rawEmail, cleanOtp)) {
+      if (!isOtpMatch(record, rawEmail, cleanOtp)) {
         record.attemptsLeft -= 1;
         await saveOtpRecord(record, "password_reset");
         return res.status(400).json({

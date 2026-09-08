@@ -2009,11 +2009,19 @@ export default function AuthPage({
                     <input
                       id="auth-reg-otp-code"
                       type="text"
-                      maxLength={6}
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={12}
                       required
                       placeholder="• • • • • •"
                       value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ""))}
+                      onPaste={(e) => {
+                        e.preventDefault();
+                        const pasted = e.clipboardData.getData("text") || "";
+                        const clean = pasted.replace(/[^0-9]/g, "").slice(0, 6);
+                        if (clean) setOtpCode(clean);
+                      }}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
                       className={`w-full py-3 px-3 rounded-lg text-center font-mono font-bold text-xl sm:text-2xl tracking-[0.3em] border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${
                         isLight
                           ? "bg-white border-slate-300 text-slate-900 shadow-xs"
@@ -2392,11 +2400,18 @@ export default function AuthPage({
                           id="auth-forgot-otp-input"
                           type="text"
                           inputMode="numeric"
+                          autoComplete="one-time-code"
                           pattern="[0-9]*"
-                          maxLength={6}
+                          maxLength={12}
                           required
                           placeholder="••••••"
                           value={forgotOtpCode}
+                          onPaste={(e) => {
+                            e.preventDefault();
+                            const pasted = e.clipboardData.getData("text") || "";
+                            const clean = pasted.replace(/[^0-9]/g, "").slice(0, 6);
+                            if (clean) setForgotOtpCode(clean);
+                          }}
                           onChange={(e) =>
                             setForgotOtpCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))
                           }
