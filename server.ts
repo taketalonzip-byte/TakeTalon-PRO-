@@ -3147,32 +3147,34 @@ async function deleteOtpRecord(email: string, purpose: string = "registration"):
 }
 
 
-function sendBrevoEmailViaHttps(apiKey: string, payload: Record<string, unknown>): Promise<{ ok: boolean; statusCode: number; body: string }> {
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify(payload);
-    const request = https.request("https://api.brevo.com/v3/smtp/email", {
+async function sendBrevoEmailViaFetch(
+  apiKey: string,
+  payload: Record<string, unknown>
+): Promise<{ ok: boolean; statusCode: number; body: string }> {
+  const body = JSON.stringify(payload);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(new Error("Brevo request timed out")), 15000);
+
+  try {
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
         accept: "application/json",
         "api-key": apiKey,
         "content-type": "application/json",
-        "content-length": Buffer.byteLength(body),
       },
-      timeout: 20000,
-    }, (response) => {
-      let responseBody = "";
-      response.setEncoding("utf8");
-      response.on("data", (chunk) => { responseBody += chunk; });
-      response.on("end", () => {
-        const statusCode = response.statusCode || 500;
-        resolve({ ok: statusCode >= 200 && statusCode < 300, statusCode, body: responseBody });
-      });
+      body,
+      signal: controller.signal,
     });
-    request.on("timeout", () => request.destroy(new Error("Brevo request timed out")));
-    request.on("error", reject);
-    request.write(body);
-    request.end();
-  });
+    const responseText = await res.text();
+    return {
+      ok: res.ok,
+      statusCode: res.status,
+      body: responseText,
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 const waitForBrevoRetry = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -3186,7 +3188,7 @@ async function sendBrevoEmailWithRetry(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const response = await sendBrevoEmailViaHttps(apiKey, payload);
+      const response = await sendBrevoEmailViaFetch(apiKey, payload);
       lastResponse = response;
 
       // Do not retry permanent client-side configuration/validation errors.
@@ -3199,8 +3201,7 @@ async function sendBrevoEmailWithRetry(
       await waitForBrevoRetry(500);
     } catch (err: any) {
       const message = err?.message || String(err);
-      const isTimeout = message.toLowerCase().includes("timed out");
-      // A timed-out request can have been accepted upstream; retrying could create duplicate emails.
+      const isTimeout = message.toLowerCase().includes("timed out") || err?.name === "AbortError";
       if (isTimeout || attempt === maxAttempts) throw err;
 
       console.warn("[OTP-SERVICE] Brevo network error; retrying once:", message);
@@ -3547,15 +3548,22 @@ const handleForgotSendOtpRoute = async (req: Request, res: Response) => {
       if (prof) {
         firstName = prof.first_name || prof.username || "";
       } else {
-        const { data: userList } = await supabaseAdmin.auth.admin.listUsers();
-        const found = userList?.users?.find((u: any) => u.email?.toLowerCase() === targetEmail);
-        if (!found) {
-          return res.status(404).json({
-            success: false,
-            error: "Akaunti yenye barua pepe hii haijapatikana. Tafadhali hakiki au sajili akaunti mpya.",
-          });
+        try {
+          const listPromise = supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+          const timeoutPromise = new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Auth user list timeout")), 4000));
+          const { data: userList } = await Promise.race([listPromise, timeoutPromise]);
+          const found = userList?.users?.find((u: any) => u.email?.toLowerCase() === targetEmail);
+          if (found) {
+            firstName = (found.user_metadata?.first_name as string) || "";
+          } else {
+            return res.status(404).json({
+              success: false,
+              error: "Akaunti yenye barua pepe hii haijapatikana. Tafadhali hakiki au sajili akaunti mpya.",
+            });
+          }
+        } catch (authErr: any) {
+          console.warn("[handleForgotSendOtpRoute] Auth lookup fallback notice:", authErr?.message || authErr);
         }
-        firstName = (found.user_metadata?.first_name as string) || "";
       }
     } else {
       const sanitizedPhone = rawInput.replace(/[^0-9]/g, "");
