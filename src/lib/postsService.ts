@@ -30,10 +30,17 @@ export function dbPostToMatchTip(post: any): MatchTip {
   const homeName = snapshot?.home_team_name || "Home Team";
   const awayName = snapshot?.away_team_name || "Away Team";
   const predictionTip = snapshot?.match_name || parsedContent.predictionTip || "Ushindi (FT)";
-  const odds = parsedContent.odds || {
-    home: Number(snapshot?.odds_home) || 1.8,
-    draw: Number(snapshot?.odds_draw) || 3.2,
-    away: Number(snapshot?.odds_away) || 2.5,
+  const storedOdds = parsedContent.odds || snapshot || {};
+  const readOdd = (value: unknown, fallback: number) => {
+    const odd = Number(value);
+    return Number.isFinite(odd) && odd > 0 ? odd : fallback;
+  };
+  // Post Card odds are read from the creator's saved content/snapshot, never
+  // from the current Card Bet feed. They are immutable after publication.
+  const odds = {
+    home: readOdd(storedOdds.home ?? storedOdds.odds_home, 1.8),
+    draw: readOdd(storedOdds.draw ?? storedOdds.odds_draw, 3.2),
+    away: readOdd(storedOdds.away ?? storedOdds.odds_away, 2.5),
   };
 
   return {
@@ -68,6 +75,7 @@ export function dbPostToMatchTip(post: any): MatchTip {
       name: authorName,
       avatarLetter: authorName.charAt(0).toUpperCase(),
       avatarUrl: authorAvatar,
+      userId: post.author_id || profile.id,
       badge: profile.is_pro ? "VIP PRO" : "TIPSTER",
       isOfficial: profile.is_verified || false,
     },
@@ -144,9 +152,9 @@ export async function createDatabasePost(params: {
           home_team_name: params.match.homeTeamName || "Home Team",
           away_team_name: params.match.awayTeamName || "Away Team",
           prediction_tip: params.match.predictionTip || "Ushindi (FT)",
-          odds_home: params.match.oddsHome || 1.8,
-          odds_draw: params.match.oddsDraw || 3.2,
-          odds_away: params.match.oddsAway || 2.5,
+          odds_home: params.match.oddsHome ?? 1.8,
+          odds_draw: params.match.oddsDraw ?? 3.2,
+          odds_away: params.match.oddsAway ?? 2.5,
           external_match_id: params.match.externalMatchId,
           provider: params.match.provider || "ESPN",
           competition_code: params.match.competitionCode || null,
