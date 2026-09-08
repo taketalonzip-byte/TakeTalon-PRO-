@@ -338,19 +338,9 @@ export function getCommentCount(targetId: string, fallbackCount?: number): numbe
     return fallbackCount;
   }
 
-  // Base deterministic initial count for default match cards (3 comments + 1 reply for tip-1 = 4)
-  if (targetId === "tip-1" || targetId === "other-b-1" || targetId === "top-1") {
-    commentCountsCache[targetId] = 4;
-    return 4;
-  }
-  
-  // Deterministic realistic count based on ID hash (between 2 and 9 total comments)
-  let hash = 0;
-  for (let i = 0; i < targetId.length; i++) {
-    hash = (hash * 31 + targetId.charCodeAt(i)) % 8 + 2;
-  }
-  commentCountsCache[targetId] = hash;
-  return hash;
+  // No database row means no comments. Never invent engagement for a card.
+  commentCountsCache[targetId] = 0;
+  return 0;
 }
 
 /**
@@ -388,4 +378,3 @@ export function subscribeCommentCounts(
     commentCountListeners.delete(listener);
   };
 }
-

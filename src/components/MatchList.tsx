@@ -2303,7 +2303,7 @@ export default function MatchList({
                       >
                         {(() => {
                           const isLiked = likedMatchIds.includes(match.id);
-                          const baseCount = (match as any).likesCount ?? ((match.id.charCodeAt(0) % 15) + 12);
+                          const baseCount = Number((match as any).likesCount ?? 0);
                           const currentLikes = isLiked ? baseCount + 1 : baseCount;
                           return (
                             <div className="flex items-center gap-1">
