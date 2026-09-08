@@ -54,6 +54,7 @@ export interface MatchTip {
     badge?: string;
     isOfficial: boolean;
     avatarUrl?: string | null;
+    /** Stable profiles.id used to associate a Post Card with its author. */
     userId?: string;
   };
   predictionTip?: string;
