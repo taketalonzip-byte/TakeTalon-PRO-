@@ -166,9 +166,10 @@ app.post("/api/supabase/create-post", async (req, res) => {
   } catch {
     contentObject = {};
   }
+  const normalizedSport = asString(match.sport, "football").toLowerCase().replace(/^v-/, "");
   const snapshot = {
     card_bet_id: cardBetId,
-    sport: asString(match.sport, "football"),
+    sport: normalizedSport,
     provider: asString(match.provider, "ESPN"),
     external_match_id: externalMatchId,
     internal_match_id: isUuid(match.internal_match_id) ? match.internal_match_id : null,
@@ -192,6 +193,7 @@ app.post("/api/supabase/create-post", async (req, res) => {
     away_team_short_name: match.away_team_short_name || null,
     away_team_logo: match.away_team_logo || null,
     snapshot_version: 1,
+    snapshot_created_at: new Date().toISOString(),
     api_provider_version: "ESPN snapshot",
     provider_last_updated_at: match.provider_last_updated_at || null,
   };
