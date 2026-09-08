@@ -93,6 +93,7 @@ interface ProfileViewProps {
   /** Idadi ya watu uliowafungua (active unlocking — DB data) */
   activelyUnlockingCount?: number;
   onShakeTrigger?: () => void;
+  onViewProfile?: (tipster: any) => void;
 }
 
 export default function ProfileView({
@@ -117,8 +118,9 @@ export default function ProfileView({
   lang,
   subscribedTipsters = [],
   activeUnlockersCount = 0,
-  activelyUnlockingCount,
+  activelyUnlockingCount = 0,
   onShakeTrigger,
+  onViewProfile,
 }: ProfileViewProps) {
   // Local edit states
   const [fullName, setFullName] = useState<string>(() => {
@@ -218,17 +220,34 @@ export default function ProfileView({
 
   // Load user posts directly from Supabase DB
   useEffect(() => {
-    if (activeHistoryTab === "posts" && currentUser?.id) {
+    const userKey =
+      currentUser?.id ||
+      currentUser?.authUserId ||
+      currentUser?.username ||
+      currentUser?.email ||
+      "";
+    if (userKey) {
       setIsPostsLoading(true);
-      fetchUserDatabasePosts(currentUser.id)
+      fetchUserDatabasePosts(userKey)
         .then((tips) => {
-          setDbPublishedTips(tips);
+          if (Array.isArray(tips)) {
+            setDbPublishedTips(tips);
+          }
+        })
+        .catch((err) => {
+          console.warn("Could not fetch user DB posts:", err);
         })
         .finally(() => {
           setIsPostsLoading(false);
         });
     }
-  }, [activeHistoryTab, currentUser?.id]);
+  }, [
+    activeHistoryTab,
+    currentUser?.id,
+    currentUser?.authUserId,
+    currentUser?.username,
+    currentUser?.email,
+  ]);
 
   const avatars = [
     { id: 1, label: "🦁 Simba" },
@@ -1665,26 +1684,40 @@ export default function ProfileView({
                     </div>
                   </div>
                 ) : (() => {
-                  const publishedList = (
-                    dbPublishedTips.length > 0
-                      ? dbPublishedTips
-                      : userPublishedTips.length > 0
-                        ? userPublishedTips
-                        : creatorMatch ? [creatorMatch] : []
-                  )
-                    .filter(Boolean)
-                    .map((tip: any) => ({
-                      ...tip,
-                      tipster: tip.tipster || {
-                        profile_id: currentUser?.username || "me",
-                        name: currentUser?.fullName || currentUser?.username || "You",
-                        username: currentUser?.username || "you",
-                        badge: "PRO UNLOCKER",
-                        avatarUrl: currentUser?.avatarUrl,
-                        winRate: "94%",
-                        isOfficial: false,
-                      },
-                    }));
+                  // Merge all published cards: database + local/in-memory, deduplicating by id
+                  const combined = [...dbPublishedTips, ...userPublishedTips];
+                  if (creatorMatch && !combined.some((t) => t.id === creatorMatch.id)) {
+                    combined.push(creatorMatch);
+                  }
+
+                  const uniqueMap = new Map<string, any>();
+                  combined.forEach((item) => {
+                    if (item && item.id) {
+                      uniqueMap.set(item.id, item);
+                    }
+                  });
+
+                  const authorDisplayName =
+                    currentUser?.fullName || currentUser?.username || "TakeTalon Pro";
+                  const authorUsername = currentUser?.username || "taketalon_pro";
+
+                  const publishedList = Array.from(uniqueMap.values()).map((tip: any) => ({
+                    ...tip,
+                    isPostCard: true,
+                    isUserCreated: true,
+                    oddsFixed: true,
+                    oddsAvailable: true,
+                    tipster: tip.tipster || {
+                      profile_id: currentUser?.id || currentUser?.authUserId || authorUsername,
+                      userId: currentUser?.id || currentUser?.authUserId || authorUsername,
+                      name: authorDisplayName,
+                      username: authorUsername,
+                      badge: "POST CREATOR",
+                      avatarUrl: currentUser?.avatarUrl,
+                      winRate: "94%",
+                      isOfficial: false,
+                    },
+                  }));
 
                   if (publishedList.length === 0) {
                     return (
@@ -1709,16 +1742,28 @@ export default function ProfileView({
                   }
 
                   return (
-                    <MatchList
-                      tips={publishedList}
-                      isProfileMode={true}
-                      currentUser={currentUser}
-                      theme={theme}
-                      lang={lang}
-                      isPro={isPro}
-                      onShakeTrigger={onShakeTrigger}
-                      onNavigateTab={onBackToHome}
-                    />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between px-1 text-[10px] font-bold text-slate-400">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>Kadi Zilizochapishwa na @{authorUsername}</span>
+                        </span>
+                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-500/10 border border-slate-500/20 text-slate-300">
+                          {publishedList.length} {publishedList.length === 1 ? "Kadi" : "Kadi"}
+                        </span>
+                      </div>
+                      <MatchList
+                        tips={publishedList}
+                        isProfileMode={true}
+                        currentUser={currentUser}
+                        theme={theme}
+                        lang={lang}
+                        isPro={isPro}
+                        onShakeTrigger={onShakeTrigger}
+                        onNavigateTab={onBackToHome}
+                        onViewProfile={onViewProfile}
+                      />
+                    </div>
                   );
                 })()}
               </div>

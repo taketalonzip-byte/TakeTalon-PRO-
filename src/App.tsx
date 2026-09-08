@@ -2594,6 +2594,7 @@ export default function App() {
                         activeUnlockersCount={unlockActiveUnlockers.length}
                         activelyUnlockingCount={unlockActivelyUnlocking.length}
                         onShakeTrigger={() => setShakeTrigger((prev) => prev + 1)}
+                        onViewProfile={handleViewProfile}
                       />
                     </motion.div>
                   )}

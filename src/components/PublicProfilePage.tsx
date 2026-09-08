@@ -36,6 +36,7 @@ import UnlockButton from "./UnlockButton";
 import VerifiedBadge from "./VerifiedBadge";
 import MatchList, { UserCircleSingleIcon } from "./MatchList";
 import { MatchTip, UserProfile } from "../types";
+import { fetchUserDatabasePosts } from "../lib/postsService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -100,6 +101,8 @@ export default function PublicProfilePage({
   const [copied, setCopied] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(false);
+  const [dbPosts, setDbPosts] = useState<MatchTip[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   // Fetch unlock stats kwa profile hii
   useEffect(() => {
@@ -109,6 +112,20 @@ export default function PublicProfilePage({
       setStatsLoading(false);
     });
   }, [profile.profile_id]);
+
+  // Fetch posts moja kwa moja kutoka Supabase database kwa ajili ya profile hii
+  useEffect(() => {
+    const targetKey = profile.profile_id || profile.username;
+    if (targetKey) {
+      setPostsLoading(true);
+      fetchUserDatabasePosts(targetKey)
+        .then((fetched) => {
+          if (Array.isArray(fetched)) setDbPosts(fetched);
+        })
+        .catch((e) => console.warn("Error fetching public profile posts:", e))
+        .finally(() => setPostsLoading(false));
+    }
+  }, [profile.profile_id, profile.username]);
 
   // Handle Share profile
   const handleShare = async () => {
@@ -134,16 +151,27 @@ export default function PublicProfilePage({
     }
   };
 
-  // Use the immutable profiles.id relation first. Names are only a legacy
-  // fallback for cards created before author_id was exposed to the UI.
-  const theirPosts = matchTips.filter(
-    (tip) =>
+  // Posts za mtu huyu (kutafuta kwa username, profile_id, au memory tips)
+  const matchedFromTips = matchTips.filter((tip) => {
+    const tName = (tip.tipster?.name || "").toLowerCase();
+    const tUname = ((tip.tipster as any)?.username || "").toLowerCase();
+    const pUname = (profile.username || "").toLowerCase();
+    const pFull = displayName(profile).toLowerCase();
+    const pId = profile.profile_id;
+    return (
       tip.isUserCreated &&
-      (tip.tipster.userId === profile.profile_id ||
-        (!tip.tipster.userId &&
-          (tip.tipster.name.toLowerCase() === profile.username.toLowerCase() ||
-            tip.tipster.name.toLowerCase() === displayName(profile).toLowerCase()))),
-  );
+      (tName === pUname ||
+        tName === pFull ||
+        tUname === pUname ||
+        (tip.tipster as any)?.userId === pId ||
+        (tip.tipster as any)?.profile_id === pId)
+    );
+  });
+
+  const combinedMap = new Map<string, MatchTip>();
+  matchedFromTips.forEach((t) => combinedMap.set(t.id, t));
+  dbPosts.forEach((t) => combinedMap.set(t.id, t));
+  const theirPosts = Array.from(combinedMap.values());
 
   // Contract kati yangu na huyu
   const myContract = currentProfileId

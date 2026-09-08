@@ -241,23 +241,33 @@ function PostCardProfile({
         ? "bg-[#0f1930] border-blue-900/80 text-slate-200 shadow-xl"
         : "bg-neutral-900 border-neutral-800 text-slate-300 shadow-xl";
 
+  const handleOpenProfile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentUser || !currentUser.isLoggedIn) {
+      if (onShakeTrigger) onShakeTrigger();
+      return;
+    }
+    if (onViewProfile && tipster) {
+      onViewProfile(tipster);
+    } else if (isCurrentUserPost && onNavigateToMyProfile) {
+      onNavigateToMyProfile();
+    } else if (onViewProfile) {
+      onViewProfile({ name: cleanUsername, username: cleanUsername });
+    }
+  };
+
   return (
     <div className="absolute top-2 left-2.5 z-30 flex flex-col items-start gap-1">
-      {/* Profile Button */}
+      {/* Profile Button: Shows avatar and author/buyer name, opens profile on click */}
       <motion.button
-        onClick={(e) => {
-          e.stopPropagation();
-          if (!currentUser || !currentUser.isLoggedIn) {
-            if (onShakeTrigger) onShakeTrigger();
-            return;
-          }
-          setIsExpanded(!isExpanded);
-        }}
-        className={`flex items-center flex-row h-6 rounded-full border p-0.5 px-1 shadow-sm cursor-pointer backdrop-blur-md transition-all ${containerBg}`}
+        id={`postcard-author-${cleanUsername}`}
+        onClick={handleOpenProfile}
+        title={`Profile ya @${cleanUsername}`}
+        className={`flex items-center flex-row h-6 max-w-[130px] rounded-full border p-0.5 px-1.5 shadow-sm cursor-pointer backdrop-blur-md transition-all active:scale-95 ${containerBg}`}
         layout
-        transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       >
-        {/* Avatar circle (anchored to the left) */}
+        {/* Avatar circle */}
         <div
           className={`w-5 h-5 rounded-full flex items-center justify-center font-mono font-black text-[7.5px] uppercase tracking-wider shadow-inner shrink-0 overflow-hidden ${avatarBg}`}
         >
@@ -273,22 +283,12 @@ function PostCardProfile({
           )}
         </div>
 
-        {/* Sliding/revealing Name Container (sliding to the right) */}
-        <AnimatePresence initial={false}>
-          {isExpanded && (
-            <motion.div
-              initial={{ width: 0, opacity: 0, marginLeft: 0 }}
-              animate={{ width: "auto", opacity: 1, marginLeft: 4 }}
-              exit={{ width: 0, opacity: 0, marginLeft: 0 }}
-              transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
-              className="overflow-hidden whitespace-nowrap flex items-center"
-            >
-              <span className="text-[8.5px] font-black tracking-wider pr-1 leading-none">
-                @{cleanUsername}
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Poster / Buyer username always visible */}
+        <div className="ml-1 overflow-hidden text-left flex items-center shrink min-w-0">
+          <span className="text-[8.5px] font-black tracking-wider truncate leading-none">
+            @{cleanUsername}
+          </span>
+        </div>
       </motion.button>
 
       {/* Menu Button and Dropdown (Three Dots) */}
@@ -322,26 +322,17 @@ function PostCardProfile({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: -5 }}
               transition={{ duration: 0.15 }}
-              className={`absolute left-0 mt-1 w-24 rounded-lg border py-1 shadow-lg z-50 text-[10px] font-bold ${dropdownBg}`}
+              className={`absolute left-0 mt-1 w-28 rounded-lg border py-1 shadow-lg z-50 text-[10px] font-bold ${dropdownBg}`}
             >
               <button
                 onClick={(e) => {
-                  e.stopPropagation();
-                  if (!currentUser || !currentUser.isLoggedIn) {
-                    if (onShakeTrigger) onShakeTrigger();
-                    return;
-                  }
                   setIsMenuOpen(false);
-                  if (onViewProfile && tipster) {
-                    onViewProfile(tipster);
-                  } else if (isCurrentUserPost && onNavigateToMyProfile) {
-                    onNavigateToMyProfile();
-                  }
+                  handleOpenProfile(e);
                 }}
-                className="w-full text-left px-2.5 py-1 hover:bg-slate-500/10 transition-colors flex items-center space-x-1 cursor-pointer"
+                className="w-full text-left px-2.5 py-1.5 hover:bg-slate-500/10 transition-colors flex items-center space-x-1.5 cursor-pointer"
               >
-                <span className="text-blue-500">.</span>
-                <span>Profile</span>
+                <span className="text-blue-500 font-bold">•</span>
+                <span>Fungua Profile</span>
               </button>
               <button
                 onClick={(e) => {
@@ -1851,6 +1842,16 @@ export default function MatchList({
                 {t.upcoming}
               </span>
             )}
+
+            {/* Post Card ID Badge */}
+            {(match.isPostCard || match.isUserCreated) && (
+              <span
+                title={`Database ID: ${match.id}`}
+                className="text-[7px] font-mono font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md tracking-wider uppercase select-all"
+              >
+                ID #{String(match.id).slice(0, 8).toUpperCase()}
+              </span>
+            )}
           </div>
 
           {/* League Logo Display */}
@@ -2098,9 +2099,16 @@ export default function MatchList({
                   const isHomeSelected = selectedBets?.[match.id] === "home";
                   const isDrawSelected = selectedBets?.[match.id] === "draw";
                   const isAwaySelected = selectedBets?.[match.id] === "away";
-                  const oddsAvailable = match.oddsAvailable === true;
-                  // Post-card odds stay fixed while a match is live, so Bet Now must be ghosted.
-                  const canBetNow = oddsAvailable && !isLive;
+                  const hasValidOdds = Boolean(
+                    match.odds &&
+                      typeof match.odds.home === "number" &&
+                      !isNaN(match.odds.home) &&
+                      match.odds.home > 0
+                  );
+                  const oddsAvailable = match.oddsAvailable === true || hasValidOdds;
+                  const isPostCard = Boolean(match.isPostCard || match.isUserCreated || (match as any).oddsFixed);
+                  // Post-card odds stay fixed with creator values; can bet anytime unless match ended
+                  const canBetNow = oddsAvailable && (isPostCard ? match.status !== "ENDED" : !isLive);
 
                   if (match.category === "Aviator") {
                     return (

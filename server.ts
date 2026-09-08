@@ -3048,9 +3048,10 @@ function toOtpRecord(row: any): OtpRecord {
   };
 }
 
-async function getOtpRecord(email: string): Promise<OtpRecord | null> {
+async function getOtpRecord(email: string, purpose: string = "registration"): Promise<OtpRecord | null> {
   const normalizedEmail = email.toLowerCase();
-  const cachedRecord = otpStore.get(normalizedEmail);
+  const storeKey = `${normalizedEmail}:${purpose}`;
+  const cachedRecord = otpStore.get(storeKey);
   if (cachedRecord && cachedRecord.expiresAt > Date.now()) return cachedRecord;
   if (!supabaseAdmin) return cachedRecord || null;
   try {
@@ -3058,35 +3059,36 @@ async function getOtpRecord(email: string): Promise<OtpRecord | null> {
       .from(OTP_TABLE)
       .select("email, otp_hash, first_name, expires_at, attempts_left, last_sent_at, resend_count, verified, verified_at")
       .eq("email", normalizedEmail)
-      .eq("purpose", "registration")
+      .eq("purpose", purpose)
       .maybeSingle(), "read");
     if (error) {
       console.warn("[OTP-STORE] DB read notice (falling back to memory):", error.message || error);
       return cachedRecord || null;
     }
     if (!data) {
-      otpStore.delete(normalizedEmail);
+      otpStore.delete(storeKey);
       return null;
     }
     const record = toOtpRecord(data);
-    otpStore.set(normalizedEmail, record);
+    otpStore.set(storeKey, record);
     return record;
   } catch (error: any) {
     console.warn("[OTP-STORE] DB read notice/timeout (falling back to memory):", error?.message || error);
-    const fallback = otpStore.get(normalizedEmail);
+    const fallback = otpStore.get(storeKey);
     if (fallback && fallback.expiresAt > Date.now()) return fallback;
     return null;
   }
 }
 
-async function saveOtpRecord(record: OtpRecord): Promise<void> {
+async function saveOtpRecord(record: OtpRecord, purpose: string = "registration"): Promise<void> {
   const normalizedEmail = record.email.toLowerCase();
-  otpStore.set(normalizedEmail, record);
+  const storeKey = `${normalizedEmail}:${purpose}`;
+  otpStore.set(storeKey, record);
   if (!supabaseAdmin) return;
   try {
     const { error } = await withOtpDbTimeout(supabaseAdmin.from(OTP_TABLE).upsert({
       email: normalizedEmail,
-      purpose: "registration",
+      purpose,
       otp_hash: record.otpHash,
       first_name: record.firstName || "",
       expires_at: new Date(record.expiresAt).toISOString(),
@@ -3108,12 +3110,13 @@ async function saveOtpRecord(record: OtpRecord): Promise<void> {
   }
 }
 
-async function deleteOtpRecord(email: string): Promise<void> {
+async function deleteOtpRecord(email: string, purpose: string = "registration"): Promise<void> {
   const normalizedEmail = email.toLowerCase();
-  otpStore.delete(normalizedEmail);
+  const storeKey = `${normalizedEmail}:${purpose}`;
+  otpStore.delete(storeKey);
   if (!supabaseAdmin) return;
   try {
-    const { error } = await supabaseAdmin.from(OTP_TABLE).delete().eq("email", normalizedEmail).eq("purpose", "registration");
+    const { error } = await supabaseAdmin.from(OTP_TABLE).delete().eq("email", normalizedEmail).eq("purpose", purpose);
     if (error) {
       console.warn("[OTP-STORE] DB delete notice:", error.message || error);
     }
@@ -3237,6 +3240,61 @@ async function sendOtpEmail(email: string, firstName: string | undefined, otp: s
     return response.ok;
   } catch (err: any) {
     console.warn("[OTP-SERVICE] Email dispatch failed:", err?.message || err);
+    return false;
+  }
+}
+
+async function sendPasswordResetOtpEmail(email: string, firstName: string | undefined, otp: string): Promise<boolean> {
+  const brevoKey = process.env.BREVO_API_KEY?.trim();
+  const senderEmail = process.env.BREVO_SENDER_EMAIL?.trim();
+
+  if (!brevoKey) {
+    console.error("[OTP-SERVICE] BREVO_API_KEY is missing; Password Reset OTP email was not sent.");
+    return false;
+  }
+
+  if (!senderEmail) {
+    console.error("[OTP-SERVICE] BREVO_SENDER_EMAIL is missing; Password Reset OTP email was not sent.");
+    return false;
+  }
+
+  try {
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; background-color: #0e1e2d; color: #ffffff; border-radius: 12px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #60a5fa; font-size: 24px; margin: 0; letter-spacing: 1px;">TAKETALON PRO</h1>
+          <p style="color: #94a3b8; font-size: 14px; margin-top: 4px;">Kurejesha Nywila / Password Reset Verification</p>
+        </div>
+        <div style="background-color: #172a3a; padding: 24px; border-radius: 8px; border: 1px solid #1e3a5f; text-align: center;">
+          <p style="font-size: 16px; margin: 0 0 16px 0; color: #e2e8f0;">Hujambo <strong>${firstName || "Mteja"}</strong>,</p>
+          <p style="font-size: 14px; color: #94a3b8; margin: 0 0 14px 0;">Umepokea ujumbe huu kwa sababu uliomba kuweka upya neno lako la siri (Password Reset) kwenye akaunti yako ya TakeTalon PRO.</p>
+          <p style="font-size: 14px; color: #94a3b8; margin: 0 0 20px 0;">Tumia nambari hii ya siri ya tarakimu 6 (OTP) ili kuweka nywila mpya:</p>
+          <div style="background: #0f172a; padding: 16px 24px; border-radius: 8px; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #38bdf8; display: inline-block; margin-bottom: 20px; border: 1px dashed #38bdf8;">
+            ${otp}
+          </div>
+          <p style="font-size: 13px; color: #64748b; margin: 0;">Nambari hii itaisha muda wake baada ya <strong>dakika 10</strong>. Usishiriki nambari hii na mtu yeyote.</p>
+        </div>
+        <div style="text-align: center; margin-top: 24px; font-size: 12px; color: #64748b;">
+          &copy; ${new Date().getFullYear()} TakeTalon PRO. Haki zote zimehifadhiwa.
+        </div>
+      </div>
+    `;
+
+    const response = await sendBrevoEmailWithRetry(brevoKey, {
+      sender: {
+        name: process.env.BREVO_SENDER_NAME || "TakeTalon PRO",
+        email: senderEmail,
+      },
+      to: [{ email, name: firstName || email }],
+      subject: `[TakeTalon PRO] ${otp} ni Nambari Yako ya Kurejesha Nywila (Password Reset OTP)`,
+      htmlContent: html,
+    });
+    if (!response.ok) {
+      console.warn(`[OTP-SERVICE] Brevo API send error (${response.statusCode}):`, response.body.slice(0, 500));
+    }
+    return response.ok;
+  } catch (err: any) {
+    console.warn("[OTP-SERVICE] Password reset email dispatch failed:", err?.message || err);
     return false;
   }
 }
@@ -3439,6 +3497,351 @@ const handleResendOtpRoute = async (req: Request, res: Response) => {
 
 app.post("/resend-otp", handleResendOtpRoute);
 app.post("/api/auth/resend-otp", handleResendOtpRoute);
+
+const handleForgotSendOtpRoute = async (req: Request, res: Response) => {
+  try {
+    const rawInput = (req.body?.email || req.body?.loginId || req.query?.email || "").toString().trim();
+    if (!rawInput) {
+      return res.status(400).json({ success: false, error: "Tafadhali weka barua pepe au namba/jina la akaunti yako." });
+    }
+
+    if (!supabaseAdmin) {
+      return res.status(503).json({ success: false, error: "Seva ya database haipatikani kwa sasa." });
+    }
+
+    let targetEmail = "";
+    let firstName = "";
+    const isEmail = rawInput.includes("@");
+
+    if (isEmail) {
+      targetEmail = rawInput.toLowerCase();
+      const { data: prof } = await supabaseAdmin
+        .from("profiles")
+        .select("email, first_name, username")
+        .eq("email", targetEmail)
+        .maybeSingle();
+
+      if (prof) {
+        firstName = prof.first_name || prof.username || "";
+      } else {
+        const { data: userList } = await supabaseAdmin.auth.admin.listUsers();
+        const found = userList?.users?.find((u: any) => u.email?.toLowerCase() === targetEmail);
+        if (!found) {
+          return res.status(404).json({
+            success: false,
+            error: "Akaunti yenye barua pepe hii haijapatikana. Tafadhali hakiki au sajili akaunti mpya.",
+          });
+        }
+        firstName = (found.user_metadata?.first_name as string) || "";
+      }
+    } else {
+      const sanitizedPhone = rawInput.replace(/[^0-9]/g, "");
+      let q = supabaseAdmin.from("profiles").select("email, first_name, username, phone");
+      if (sanitizedPhone.length >= 6) {
+        q = q.or(`username.ilike.${rawInput},phone.ilike.%${sanitizedPhone}%`);
+      } else {
+        q = q.or(`username.ilike.${rawInput}`);
+      }
+      const { data: prof } = await q.maybeSingle();
+      if (!prof || !prof.email) {
+        return res.status(404).json({
+          success: false,
+          error: `Akaunti yenye taarifa "${rawInput}" haijapatikana au haina barua pepe iliyosajiliwa.`,
+        });
+      }
+      targetEmail = prof.email.toLowerCase();
+      firstName = prof.first_name || prof.username || "";
+    }
+
+    const now = Date.now();
+    const existing = await getOtpRecord(targetEmail, "password_reset");
+
+    if (existing && now - existing.lastSentAt < 60000) {
+      const waitSeconds = Math.ceil((60000 - (now - existing.lastSentAt)) / 1000);
+      return res.status(429).json({
+        success: false,
+        cooldown_left: waitSeconds,
+        error: `Tafadhali subiri sekunde ${waitSeconds} kabla ya kuomba tena.`,
+      });
+    }
+
+    if (existing && existing.resendCount >= 5) {
+      return res.status(429).json({
+        success: false,
+        error: "Umezidisha idadi ya maombi ya OTP kwa sasa. Tafadhali subiri kidogo kabla ya kuomba tena.",
+      });
+    }
+
+    const generatedOtp = crypto.randomInt(100000, 1000000).toString();
+    const delivered = await sendPasswordResetOtpEmail(targetEmail, firstName, generatedOtp);
+    if (!delivered) {
+      return res.status(502).json({
+        success: false,
+        error: "Imeshindikana kutuma OTP ya kurejesha nywila kwenye barua pepe yako. Tafadhali jaribu tena baadaye.",
+      });
+    }
+
+    await saveOtpRecord({
+      otpHash: hashOtp(targetEmail, generatedOtp),
+      email: targetEmail,
+      firstName,
+      expiresAt: now + 10 * 60 * 1000,
+      attemptsLeft: 5,
+      lastSentAt: now,
+      resendCount: existing ? existing.resendCount + 1 : 0,
+      verified: false,
+    }, "password_reset");
+
+    return res.status(200).json({
+      success: true,
+      message: `Code ya OTP ya kurejesha nywila imetumwa kwenye barua pepe ${targetEmail}.`,
+      email: targetEmail,
+      expiry_minutes: 10,
+    });
+  } catch (err: any) {
+    console.error("[handleForgotSendOtpRoute] Error:", err);
+    return res.status(500).json({ success: false, error: err?.message || "Hitilafu imetokea wakati wa kuomba OTP ya kurejesha nywila." });
+  }
+};
+
+const handleForgotVerifyOtpRoute = async (req: Request, res: Response) => {
+  try {
+    const rawEmail = (req.body?.email || req.query?.email || "").toString().trim().toLowerCase();
+    const cleanOtp = (req.body?.otp || req.query?.otp || "").toString().trim();
+
+    if (!rawEmail || !cleanOtp) {
+      return res.status(400).json({ success: false, error: "Tafadhali weka barua pepe na code ya OTP." });
+    }
+
+    const record = await getOtpRecord(rawEmail, "password_reset");
+    const now = Date.now();
+
+    if (!record) {
+      return res.status(400).json({
+        success: false,
+        error: "Hakuna OTP ya kurejesha nywila iliyoombwa kwa barua pepe hii au imekwisha muda. Tafadhali omba tena.",
+      });
+    }
+
+    if (now > record.expiresAt) {
+      await deleteOtpRecord(rawEmail, "password_reset");
+      return res.status(400).json({
+        success: false,
+        error: "Muda wa OTP umekwisha (dakika 10 zimepita). Tafadhali omba OTP mpya.",
+      });
+    }
+
+    if (record.attemptsLeft <= 0) {
+      await deleteOtpRecord(rawEmail, "password_reset");
+      return res.status(400).json({
+        success: false,
+        error: "Umejaribu OTP isiyo sahihi mara nyingi mno. Tafadhali omba OTP mpya.",
+      });
+    }
+
+    if (record.otpHash !== hashOtp(rawEmail, cleanOtp)) {
+      record.attemptsLeft -= 1;
+      await saveOtpRecord(record, "password_reset");
+      return res.status(400).json({
+        success: false,
+        remaining_attempts: record.attemptsLeft,
+        error: `Code ya OTP si sahihi. Majaribio yaliyosalia: ${record.attemptsLeft}`,
+      });
+    }
+
+    record.verified = true;
+    await saveOtpRecord(record, "password_reset");
+
+    return res.status(200).json({
+      success: true,
+      message: "Code ya OTP imethibitishwa kwa mafanikio! Sasa unaweza kuweka nywila mpya.",
+    });
+  } catch (err: any) {
+    console.error("[handleForgotVerifyOtpRoute] Error:", err);
+    return res.status(500).json({ success: false, error: "Imeshindikana kuhakiki OTP kwa sasa." });
+  }
+};
+
+const handleForgotResendOtpRoute = async (req: Request, res: Response) => {
+  try {
+    const rawEmail = (req.body?.email || req.query?.email || "").toString().trim().toLowerCase();
+    if (!rawEmail || !rawEmail.includes("@")) {
+      return res.status(400).json({ success: false, error: "Tafadhali weka barua pepe sahihi." });
+    }
+
+    const now = Date.now();
+    const existing = await getOtpRecord(rawEmail, "password_reset");
+
+    if (existing) {
+      if (now - existing.lastSentAt < 60000) {
+        const waitSeconds = Math.ceil((60000 - (now - existing.lastSentAt)) / 1000);
+        return res.status(429).json({
+          success: false,
+          cooldown_left: waitSeconds,
+          error: `Tafadhali subiri sekunde ${waitSeconds} kabla ya kuomba tena.`,
+        });
+      }
+      if (existing.resendCount >= 5) {
+        return res.status(429).json({
+          success: false,
+          error: "Umezidisha idadi ya maombi ya OTP kwa sasa. Tafadhali subiri kidogo.",
+        });
+      }
+    }
+
+    const generatedOtp = crypto.randomInt(100000, 1000000).toString();
+    const firstName = existing?.firstName || "";
+    const delivered = await sendPasswordResetOtpEmail(rawEmail, firstName, generatedOtp);
+    if (!delivered) {
+      return res.status(502).json({
+        success: false,
+        error: "Imeshindikana kutuma OTP mpya ya kurejesha nywila. Tafadhali jaribu tena baadaye.",
+      });
+    }
+
+    await saveOtpRecord({
+      otpHash: hashOtp(rawEmail, generatedOtp),
+      email: rawEmail,
+      firstName,
+      expiresAt: now + 10 * 60 * 1000,
+      attemptsLeft: 5,
+      lastSentAt: now,
+      resendCount: (existing?.resendCount || 0) + 1,
+      verified: false,
+    }, "password_reset");
+
+    return res.status(200).json({
+      success: true,
+      message: `Code mpya ya OTP imetumwa kwenye barua pepe ${rawEmail}.`,
+    });
+  } catch (err: any) {
+    console.error("[handleForgotResendOtpRoute] Error:", err);
+    return res.status(500).json({ success: false, error: err?.message || "Hitilafu ya kutuma OTP." });
+  }
+};
+
+const handleForgotResetPasswordRoute = async (req: Request, res: Response) => {
+  try {
+    const rawEmail = (req.body?.email || "").toString().trim().toLowerCase();
+    const cleanOtp = (req.body?.otp || "").toString().trim();
+    const newPassword = (req.body?.new_password || req.body?.password || "").toString();
+
+    if (!rawEmail || !rawEmail.includes("@")) {
+      return res.status(400).json({ success: false, error: "Barua pepe inahitajika." });
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ success: false, error: "Nywila mpya lazima iwe na angalau herufi 8 au zaidi." });
+    }
+
+    const record = await getOtpRecord(rawEmail, "password_reset");
+    const now = Date.now();
+
+    if (!record) {
+      return res.status(400).json({
+        success: false,
+        error: "Hakuna OTP halali iliyoombwa kwa ajili ya kurejesha nywila. Tafadhali anza upya mchakato wa kurejesha nywila.",
+      });
+    }
+
+    if (now > record.expiresAt) {
+      await deleteOtpRecord(rawEmail, "password_reset");
+      return res.status(400).json({
+        success: false,
+        error: "Muda wa OTP umekwisha. Tafadhali omba OTP mpya.",
+      });
+    }
+
+    if (!record.verified) {
+      if (!cleanOtp) {
+        return res.status(400).json({ success: false, error: "Tafadhali weka code ya OTP." });
+      }
+      if (record.otpHash !== hashOtp(rawEmail, cleanOtp)) {
+        record.attemptsLeft -= 1;
+        await saveOtpRecord(record, "password_reset");
+        return res.status(400).json({
+          success: false,
+          remaining_attempts: record.attemptsLeft,
+          error: `Code ya OTP si sahihi. Majaribio yaliyosalia: ${record.attemptsLeft}`,
+        });
+      }
+    }
+
+    if (!supabaseAdmin) {
+      return res.status(503).json({ success: false, error: "Seva ya database haipatikani kwa sasa." });
+    }
+
+    let authUserId: string | null = null;
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("id, auth_user_id, email, username")
+      .eq("email", rawEmail)
+      .maybeSingle();
+
+    if (prof?.auth_user_id) {
+      authUserId = prof.auth_user_id;
+    }
+
+    if (!authUserId) {
+      const { data: userList, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
+      if (!listErr && userList?.users) {
+        const found = userList.users.find((u: any) => u.email?.toLowerCase() === rawEmail);
+        if (found) {
+          authUserId = found.id;
+        }
+      }
+    }
+
+    if (!authUserId) {
+      return res.status(404).json({
+        success: false,
+        error: "Akaunti ya Supabase Auth haijapatikana kwa barua pepe hii.",
+      });
+    }
+
+    const { error: updateAuthErr } = await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+      password: newPassword,
+      email_confirm: true,
+    });
+
+    if (updateAuthErr) {
+      console.error("[handleForgotResetPasswordRoute] updateUserById error:", updateAuthErr);
+      return res.status(500).json({
+        success: false,
+        error: `Imeshindikana kusasisha nywila: ${updateAuthErr.message}`,
+      });
+    }
+
+    if (prof && !prof.auth_user_id) {
+      await supabaseAdmin.from("profiles").update({ auth_user_id: authUserId, updated_at: new Date().toISOString() }).eq("id", prof.id);
+    }
+
+    await deleteOtpRecord(rawEmail, "password_reset");
+
+    return res.status(200).json({
+      success: true,
+      message: "Nywila yako imebadilishwa kikamilifu! Sasa unaweza kuingia kwa kutumia nywila yako mpya.",
+      email: rawEmail,
+    });
+  } catch (err: any) {
+    console.error("[handleForgotResetPasswordRoute] Error:", err);
+    return res.status(500).json({ success: false, error: err?.message || "Hitilafu imetokea wakati wa kubadilisha nywila." });
+  }
+};
+
+app.post("/forgot-password/send-otp", handleForgotSendOtpRoute);
+app.post("/api/auth/forgot-password/send-otp", handleForgotSendOtpRoute);
+app.post("/forgot-password", handleForgotSendOtpRoute);
+app.post("/api/auth/forgot-password", handleForgotSendOtpRoute);
+
+app.post("/forgot-password/verify-otp", handleForgotVerifyOtpRoute);
+app.post("/api/auth/forgot-password/verify-otp", handleForgotVerifyOtpRoute);
+
+app.post("/forgot-password/resend-otp", handleForgotResendOtpRoute);
+app.post("/api/auth/forgot-password/resend-otp", handleForgotResendOtpRoute);
+
+app.post("/forgot-password/reset", handleForgotResetPasswordRoute);
+app.post("/api/auth/forgot-password/reset", handleForgotResetPasswordRoute);
 
 const handleCreateAccountRoute = async (req: Request, res: Response) => {
   try {

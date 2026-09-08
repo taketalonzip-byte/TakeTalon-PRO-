@@ -114,11 +114,23 @@ const dictionary = {
     alreadyHaveAccount: "Already have an account?",
     loginHere: "Log In",
     forgotTitle: "Reset Password",
-    forgotDesc: "Enter your email to receive a password reset link.",
+    forgotDesc: "Enter your email to receive a 6-digit OTP code.",
     enterEmail: "Email Address",
-    loadingForgot: "Sending...",
-    sendForgotBtn: "Send Code",
+    loadingForgot: "Sending OTP...",
+    sendForgotBtn: "Send OTP Code",
     backToLogin: "Back to Log In",
+    forgotStep2Title: "Enter OTP & New Password",
+    forgotStep2Desc: "Enter the 6-digit OTP code sent to your email and your new password.",
+    forgotOtpLabel: "6-Digit OTP Code",
+    forgotOtpPlaceholder: "123456",
+    newPasswordLabel: "New Password",
+    confirmNewPasswordLabel: "Confirm New Password",
+    resetPasswordBtn: "Reset Password",
+    resendOtpBtn: "Resend OTP",
+    changeEmail: "Change Email",
+    otpExpiresIn: "Code expires in",
+    valOtpRequired: "Please enter the 6-digit OTP code.",
+    successPasswordReset: "Your password has been successfully reset! You can now log in.",
 
     // Validation & Messages
     valEmptyLogin: "Please enter your username/email/phone and password!",
@@ -135,7 +147,7 @@ const dictionary = {
 
     // Success
     successLogin: "Successfully logged in! Welcome back.",
-    successForgot: "Reset link has been sent to email: ",
+    successForgot: "OTP code has been sent to email: ",
   },
   sw: {
     back: "Rudi",
@@ -166,12 +178,24 @@ const dictionary = {
     termsLinkText: "Vigezo",
     alreadyHaveAccount: "Tayari una akaunti?",
     loginHere: "Ingia",
-    forgotTitle: "Weka Upya Nywila",
-    forgotDesc: "Weka barua pepe yako kupokea kiungo cha nywila.",
+    forgotTitle: "Kurejesha Nywila",
+    forgotDesc: "Weka barua pepe yako kupokea nambari ya siri ya OTP (tarakimu 6).",
     enterEmail: "Barua Pepe",
-    loadingForgot: "Inatuma...",
-    sendForgotBtn: "Tuma Namba",
+    loadingForgot: "Inatuma OTP...",
+    sendForgotBtn: "Tuma Code ya OTP",
     backToLogin: "Rudi Kuingia",
+    forgotStep2Title: "Weka OTP na Nywila Mpya",
+    forgotStep2Desc: "Weka tarakimu 6 za OTP ulizotumiwa na nywila yako mpya.",
+    forgotOtpLabel: "Code ya OTP (Tarakimu 6)",
+    forgotOtpPlaceholder: "123456",
+    newPasswordLabel: "Nywila Mpya",
+    confirmNewPasswordLabel: "Thibitisha Nywila Mpya",
+    resetPasswordBtn: "Weka Nywila Mpya",
+    resendOtpBtn: "Tuma Tena OTP",
+    changeEmail: "Badilisha Barua Pepe",
+    otpExpiresIn: "Code inaisha baada ya",
+    valOtpRequired: "Tafadhali weka tarakimu 6 kamili za OTP.",
+    successPasswordReset: "Nywila yako imebadilishwa kikamilifu! Sasa unaweza kuingia.",
 
     // Validation & Messages
     valEmptyLogin: "Tafadhali jaza taarifa na nywila yako!",
@@ -188,7 +212,7 @@ const dictionary = {
 
     // Success
     successLogin: "Umeingia kwa ufanisi!",
-    successForgot: "Kiungo cha kufufua nywila kimetumwa kwa: ",
+    successForgot: "Code ya OTP ya kurejesha nywila imetumwa kwa: ",
   },
   fr: {
     back: "Retour",
@@ -219,12 +243,24 @@ const dictionary = {
     termsLinkText: "Conditions",
     alreadyHaveAccount: "Vous avez déjà un compte?",
     loginHere: "Connexion",
-    forgotTitle: "Réinitialiser",
-    forgotDesc: "Saisissez votre e-mail pour recevoir un lien.",
+    forgotTitle: "Réinitialiser le mot de passe",
+    forgotDesc: "Entrez votre e-mail pour recevoir un code OTP à 6 chiffres.",
     enterEmail: "Adresse e-mail",
-    loadingForgot: "Envoi...",
-    sendForgotBtn: "Envoyer le code",
+    loadingForgot: "Envoi de l'OTP...",
+    sendForgotBtn: "Envoyer le code OTP",
     backToLogin: "Retour à la connexion",
+    forgotStep2Title: "Entrez l'OTP et le nouveau mot de passe",
+    forgotStep2Desc: "Saisissez le code OTP à 6 chiffres et votre nouveau mot de passe.",
+    forgotOtpLabel: "Code OTP (6 chiffres)",
+    forgotOtpPlaceholder: "123456",
+    newPasswordLabel: "Nouveau mot de passe",
+    confirmNewPasswordLabel: "Confirmer le nouveau mot de passe",
+    resetPasswordBtn: "Réinitialiser le mot de passe",
+    resendOtpBtn: "Renvoyer l'OTP",
+    changeEmail: "Modifier l'e-mail",
+    otpExpiresIn: "Le code expire dans",
+    valOtpRequired: "Veuillez entrer le code OTP à 6 chiffres.",
+    successPasswordReset: "Votre mot de passe a été réinitialisé avec succès ! Vous pouvez vous connecter.",
 
     // Validation & Messages
     valEmptyLogin: "Veuillez entrer vos identifiants !",
@@ -241,7 +277,7 @@ const dictionary = {
 
     // Success
     successLogin: "Connexion réussie !",
-    successForgot: "Le lien de réinitialisation a été envoyé : ",
+    successForgot: "Le code OTP a été envoyé à : ",
   },
 };
 
@@ -296,6 +332,19 @@ export default function AuthPage({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
+  // Forgot Password Multi-Step State (1: Request OTP | 2: Enter OTP & New Password)
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotOtpCode, setForgotOtpCode] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotRetypePassword, setForgotRetypePassword] = useState("");
+  const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
+  const [showForgotRetypePassword, setShowForgotRetypePassword] = useState(false);
+  const [forgotOtpExpirySeconds, setForgotOtpExpirySeconds] = useState(600);
+  const [forgotCooldownSeconds, setForgotCooldownSeconds] = useState(60);
+  const [forgotResendsRemaining, setForgotResendsRemaining] = useState(3);
+  const [forgotAttemptsRemaining, setForgotAttemptsRemaining] = useState(5);
 
   // Supabase server connection diagnostics
   const [supabaseStatus, setSupabaseStatus] = useState<{
@@ -424,6 +473,18 @@ export default function AuthPage({
     return () => clearInterval(interval);
   }, [mode, regStep]);
 
+  // Timer effect for Forgot Password OTP step
+  useEffect(() => {
+    if (mode !== "forgot" || forgotStep !== 2) return;
+
+    const interval = setInterval(() => {
+      setForgotOtpExpirySeconds((prev) => (prev > 0 ? prev - 1 : 0));
+      setForgotCooldownSeconds((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [mode, forgotStep]);
+
   // Recalculate age when birthday changes
   useEffect(() => {
     if (!birthday) {
@@ -474,6 +535,19 @@ export default function AuthPage({
     setSuccessMsg("");
     setShowPassword(false);
     setShowRetypePassword(false);
+
+    // Reset forgot password state
+    setForgotStep(1);
+    setForgotEmail("");
+    setForgotOtpCode("");
+    setForgotNewPassword("");
+    setForgotRetypePassword("");
+    setShowForgotNewPassword(false);
+    setShowForgotRetypePassword(false);
+    setForgotOtpExpirySeconds(600);
+    setForgotCooldownSeconds(60);
+    setForgotResendsRemaining(3);
+    setForgotAttemptsRemaining(5);
   };
 
   const handleToggleMode = (newMode: "login" | "register" | "forgot") => {
@@ -1099,8 +1173,8 @@ export default function AuthPage({
     }
   };
 
-  // ── FORGOT PASSWORD SUBMIT ─────────────────────────────────────────────────
-  const handleForgotSubmit = async (e: React.FormEvent) => {
+  // ── FORGOT PASSWORD OTP HANDLERS ──────────────────────────────────────────
+  const handleForgotSendOtp = async (e?: React.FormEvent) => {
     if (e && typeof e.preventDefault === "function") {
       e.preventDefault();
       e.stopPropagation();
@@ -1108,28 +1182,199 @@ export default function AuthPage({
     setError("");
     setSuccessMsg("");
 
-    if (!email || !validateEmail(email)) {
-      setError(t.valInvalidForgot);
+    const targetInput = forgotEmail.trim();
+    if (!targetInput) {
+      setError(t.valInvalidForgot || "Tafadhali weka barua pepe yako.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/`,
+      const res = await fetchAuthRequest("/forgot-password/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: targetInput }),
       });
 
-      if (resetError) throw resetError;
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = { error: "Imeshindikana kusoma majibu kutoka kwa server." };
+      }
 
-      setSuccessMsg(`${t.successForgot}${email}`);
+      if (!res.ok) {
+        if (data?.cooldown_left) setForgotCooldownSeconds(data.cooldown_left);
+        const message = data?.error || "Imeshindikana kutuma OTP ya kurejesha nywila.";
+        setError(message);
+        onNotification?.(message, "error");
+        return;
+      }
+
+      if (data.email) {
+        setForgotEmail(data.email);
+      }
+      setForgotStep(2);
+      setForgotOtpExpirySeconds((data.expiry_minutes || 10) * 60);
+      setForgotCooldownSeconds(60);
+      setForgotAttemptsRemaining(5);
+      setForgotResendsRemaining(3);
+
+      const message = data.message || `${t.successForgot}${data.email || targetInput}`;
+      setSuccessMsg(message);
+      onNotification?.(message, "success");
+    } catch (err: any) {
+      console.error("[FORGOT-SEND-OTP-ERROR]", err);
+      const message = isAuthRequestAbort(err)
+        ? "Server imechelewa kujibu. Tafadhali subiri kidogo kisha ujaribu tena."
+        : "Imeshindikana kuwasiliana na server kutuma OTP.";
+      setError(message);
+      onNotification?.(message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotResendOtp = async () => {
+    if (forgotCooldownSeconds > 0 || forgotResendsRemaining <= 0 || loading) return;
+
+    setError("");
+    setSuccessMsg("");
+    setLoading(true);
+
+    try {
+      const res = await fetchAuthRequest("/forgot-password/resend-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail.trim() }),
+      });
+
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = { error: "Imeshindikana kusoma majibu kutoka kwa server." };
+      }
+
+      if (!res.ok) {
+        if (data?.cooldown_left) setForgotCooldownSeconds(data.cooldown_left);
+        const message = data?.error || "Imeshindikana kutuma upya OTP.";
+        setError(message);
+        onNotification?.(message, "error");
+        return;
+      }
+
+      setForgotOtpExpirySeconds(600);
+      setForgotCooldownSeconds(60);
+      setForgotResendsRemaining((prev) => Math.max(0, prev - 1));
+      setForgotAttemptsRemaining(5);
+
+      const message = data.message || `Code mpya ya OTP imetumwa kwa ${forgotEmail}`;
+      setSuccessMsg(message);
+      onNotification?.(message, "success");
+    } catch (err: any) {
+      console.error("[FORGOT-RESEND-OTP-ERROR]", err);
+      const message = isAuthRequestAbort(err)
+        ? "Server imechelewa kujibu. Tafadhali jaribu tena baada ya muda mfupi."
+        : "Imeshindikana kutuma upya OTP.";
+      setError(message);
+      onNotification?.(message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotResetSubmit = async (e: React.FormEvent) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setError("");
+    setSuccessMsg("");
+
+    const cleanOtp = forgotOtpCode.trim().replace(/[^0-9]/g, "");
+    if (!cleanOtp || cleanOtp.length !== 6) {
+      const msg = t.valOtpRequired || "Tafadhali weka tarakimu 6 kamili za OTP.";
+      setError(msg);
+      return;
+    }
+
+    if (forgotOtpExpirySeconds <= 0) {
+      const msg = "Muda wa OTP umekwisha. Tafadhali bonyeza 'Tuma Tena OTP' kupokea code mpya.";
+      setError(msg);
+      return;
+    }
+
+    if (!forgotNewPassword || forgotNewPassword.length < 8) {
+      const msg = t.valPasswordLength || "Nywila lazima iwe na herufi 8 au zaidi!";
+      setError(msg);
+      return;
+    }
+
+    if (forgotNewPassword !== forgotRetypePassword) {
+      const msg = t.valPasswordMismatch || "Nywila hazifanani! Tafadhali hakiki.";
+      setError(msg);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetchAuthRequest("/forgot-password/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: forgotEmail.trim(),
+          otp: cleanOtp,
+          new_password: forgotNewPassword,
+        }),
+      });
+
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = { error: "Imeshindikana kusoma majibu kutoka kwa server." };
+      }
+
+      if (!res.ok) {
+        if (data?.remaining_attempts !== undefined) {
+          setForgotAttemptsRemaining(data.remaining_attempts);
+        }
+        const message = data?.error || "Imeshindikana kubadilisha nywila.";
+        setError(message);
+        onNotification?.(message, "error");
+        return;
+      }
+
+      const successNotice = data.message || t.successPasswordReset || "Nywila yako imebadilishwa kikamilifu! Sasa unaweza kuingia.";
+      setSuccessMsg(successNotice);
+      onNotification?.(successNotice, "success");
+
+      // Pre-fill loginId with the user's email so they can easily log in
+      setLoginId(forgotEmail.trim());
+
+      // Reset forgot fields
+      setForgotStep(1);
+      setForgotOtpCode("");
+      setForgotNewPassword("");
+      setForgotRetypePassword("");
+      setShowForgotNewPassword(false);
+      setShowForgotRetypePassword(false);
+
+      // Transition smoothly to login mode after 2 seconds
       setTimeout(() => {
         handleToggleMode("login");
         setSuccessMsg("");
-      }, 4000);
+      }, 2000);
     } catch (err: any) {
-      console.error("[FORGOT-ERROR]", err);
-      setError(err?.message || "Imeshindikana kutuma kiungo cha kurejesha nywila.");
+      console.error("[FORGOT-RESET-SUBMIT-ERROR]", err);
+      const message = isAuthRequestAbort(err)
+        ? "Server imechelewa kujibu. Tafadhali subiri kidogo kisha ujaribu tena."
+        : "Imeshindikana kubadilisha nywila. Tafadhali jaribu tena.";
+      setError(message);
+      onNotification?.(message, "error");
     } finally {
       setLoading(false);
     }
@@ -2015,7 +2260,7 @@ export default function AuthPage({
               className="space-y-4"
             >
               {/* Logo Only (No text below logo) */}
-              <div className="flex justify-center mb-2">
+              <div className="flex justify-center mb-1">
                 <img
                   src={AUTH_LOGO_URL}
                   onError={(e) => {
@@ -2049,57 +2294,260 @@ export default function AuthPage({
                 </motion.div>
               )}
 
-              <form onSubmit={handleForgotSubmit} className="space-y-3">
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    {t.enterEmail}
-                  </label>
-                  <input
-                    id="auth-forgot-email"
-                    type="email"
-                    required
-                    placeholder={t.enterEmail}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={inputClass}
-                    disabled={loading || !!successMsg}
-                  />
-                </div>
+              {forgotStep === 1 ? (
+                /* Step 1: Send OTP to Email */
+                <div className="space-y-3">
+                  <div className="text-center space-y-1">
+                    <div className="w-10 h-10 mx-auto rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                      <KeyRound className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-sm font-bold text-white">{t.forgotTitle}</h3>
+                    <p className="text-[11px] text-slate-400 leading-tight">{t.forgotDesc}</p>
+                  </div>
 
-                <div className="pt-1.5">
-                  <button
-                    id="auth-forgot-submit-btn"
-                    type="submit"
-                    disabled={loading || !!successMsg}
-                    className={`w-full py-2.5 sm:py-3 rounded-lg text-xs sm:text-sm font-display font-extrabold uppercase tracking-wider flex items-center justify-center space-x-2 transition-all cursor-pointer ${btnLoginClass} ${
-                      loading || !!successMsg ? "opacity-60 cursor-not-allowed" : "hover:scale-[1.01] active:scale-95"
-                    }`}
-                  >
-                    {loading ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>{t.loadingForgot}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>{t.sendForgotBtn}</span>
-                        <Send className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
+                  <form onSubmit={handleForgotSendOtp} className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        {t.enterEmail}
+                      </label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        <input
+                          id="auth-forgot-email"
+                          type="email"
+                          required
+                          placeholder={t.emailPlaceholder || t.enterEmail}
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          className={`${inputClass} pl-10`}
+                          disabled={loading}
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-1.5">
+                      <button
+                        id="auth-forgot-send-btn"
+                        type="submit"
+                        disabled={loading || !forgotEmail.trim()}
+                        className={`w-full py-2.5 sm:py-3 rounded-lg text-xs sm:text-sm font-display font-extrabold uppercase tracking-wider flex items-center justify-center space-x-2 transition-all cursor-pointer ${btnLoginClass} ${
+                          loading || !forgotEmail.trim() ? "opacity-60 cursor-not-allowed" : "hover:scale-[1.01] active:scale-95"
+                        }`}
+                      >
+                        {loading ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>{t.loadingForgot}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>{t.sendForgotBtn}</span>
+                            <Send className="w-4 h-4" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
                 </div>
-              </form>
+              ) : (
+                /* Step 2: Verify OTP & Set New Password */
+                <div className="space-y-3">
+                  <div className="text-center space-y-1.5">
+                    <div className="w-10 h-10 mx-auto rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-sm font-bold text-white">{t.forgotStep2Title}</h3>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-[11px] text-slate-300">
+                      <Mail className="w-3 h-3 text-emerald-400" />
+                      <span className="font-mono">{forgotEmail}</span>
+                      <button
+                        type="button"
+                        onClick={() => setForgotStep(1)}
+                        className="ml-1 text-[10px] text-blue-400 hover:text-blue-300 underline font-medium"
+                      >
+                        {t.changeEmail}
+                      </button>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleForgotResetSubmit} className="space-y-3">
+                    {/* OTP Code */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                          {t.forgotOtpLabel}
+                        </label>
+                        <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-400" />
+                          <span>
+                            {Math.floor(forgotOtpExpirySeconds / 60)}:
+                            {String(forgotOtpExpirySeconds % 60).padStart(2, "0")}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        <input
+                          id="auth-forgot-otp-input"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={6}
+                          required
+                          placeholder="••••••"
+                          value={forgotOtpCode}
+                          onChange={(e) =>
+                            setForgotOtpCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))
+                          }
+                          className={`${inputClass} pl-10 text-center font-mono tracking-[0.25em] text-base font-bold`}
+                          disabled={loading}
+                          autoFocus
+                        />
+                      </div>
+                      {/* Resend OTP Row */}
+                      <div className="flex items-center justify-between pt-0.5 px-0.5">
+                        <span className="text-[10px] text-slate-400">
+                          Majaribio:{" "}
+                          <strong className="text-slate-200">{forgotAttemptsRemaining}</strong>
+                        </span>
+                        {forgotCooldownSeconds > 0 ? (
+                          <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                            <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                            <span>Tuma tena baada ya {forgotCooldownSeconds}s</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleForgotResendOtp}
+                            disabled={loading || forgotResendsRemaining <= 0}
+                            className={`text-[10px] font-semibold text-blue-400 hover:text-blue-300 hover:underline cursor-pointer flex items-center gap-1 ${
+                              forgotResendsRemaining <= 0 ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
+                          >
+                            <RefreshCw className="w-2.5 h-2.5" />
+                            <span>
+                              {t.resendOtpBtn} ({forgotResendsRemaining})
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* New Password */}
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        {t.newPasswordLabel}
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        <input
+                          id="auth-forgot-new-password"
+                          type={showForgotNewPassword ? "text" : "password"}
+                          required
+                          minLength={8}
+                          placeholder={t.passwordMin}
+                          value={forgotNewPassword}
+                          onChange={(e) => setForgotNewPassword(e.target.value)}
+                          className={`${inputClass} pl-10 pr-10`}
+                          disabled={loading}
+                        />
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                        >
+                          {showForgotNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm New Password */}
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        {t.confirmNewPasswordLabel}
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        <input
+                          id="auth-forgot-confirm-password"
+                          type={showForgotRetypePassword ? "text" : "password"}
+                          required
+                          minLength={8}
+                          placeholder={t.confirmPassword}
+                          value={forgotRetypePassword}
+                          onChange={(e) => setForgotRetypePassword(e.target.value)}
+                          className={`${inputClass} pl-10 pr-10`}
+                          disabled={loading}
+                        />
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => setShowForgotRetypePassword(!showForgotRetypePassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                        >
+                          {showForgotRetypePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Reset Submit Button */}
+                    <div className="pt-2">
+                      <button
+                        id="auth-forgot-reset-submit-btn"
+                        type="submit"
+                        disabled={
+                          loading ||
+                          forgotOtpCode.trim().length !== 6 ||
+                          !forgotNewPassword ||
+                          forgotNewPassword.length < 8 ||
+                          forgotNewPassword !== forgotRetypePassword
+                        }
+                        className={`w-full py-2.5 sm:py-3 rounded-lg text-xs sm:text-sm font-display font-extrabold uppercase tracking-wider flex items-center justify-center space-x-2 transition-all cursor-pointer ${btnLoginClass} ${
+                          loading ||
+                          forgotOtpCode.trim().length !== 6 ||
+                          !forgotNewPassword ||
+                          forgotNewPassword.length < 8 ||
+                          forgotNewPassword !== forgotRetypePassword
+                            ? "opacity-60 cursor-not-allowed"
+                            : "hover:scale-[1.01] active:scale-95"
+                        }`}
+                      >
+                        {loading ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>Inathibitisha...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck className="w-4 h-4" />
+                            <span>{t.resetPasswordBtn}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
 
               <div className="text-center pt-1">
                 <button
                   id="auth-forgot-back-to-login-btn"
-                  onClick={() => handleToggleMode("login")}
+                  type="button"
+                  onClick={() => {
+                    if (forgotStep === 2) {
+                      setForgotStep(1);
+                    } else {
+                      handleToggleMode("login");
+                    }
+                  }}
                   className={`inline-flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                     isLight ? "text-slate-600 hover:text-slate-900" : "text-slate-400 hover:text-white"
                   }`}
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>{t.backToLogin}</span>
+                  <span>{forgotStep === 2 ? "Rudi Nyuma" : t.backToLogin}</span>
                 </button>
               </div>
             </motion.div>
