@@ -192,14 +192,24 @@ export async function createDatabasePost(params: {
       }),
     });
     const data = await res.json();
-    if (data.success && data.post) {
+    const expectedCardBetId = params.match.cardBetId || params.match.externalMatchId;
+    const persistedCardBetId = data.snapshot?.card_bet_id || data.post?.card_bet_id;
+    if (
+      res.ok &&
+      data.success === true &&
+      data.persisted === true &&
+      data.post?.id &&
+      data.snapshot?.id &&
+      expectedCardBetId &&
+      persistedCardBetId === expectedCardBetId
+    ) {
       const fullPost = {
         ...data.post,
         match_snapshots: data.snapshot ? [data.snapshot] : [],
       };
       return dbPostToMatchTip(fullPost);
     }
-    console.error("[createDatabasePost] Supabase rejected post:", res.status, data);
+    console.error("[createDatabasePost] Persistence acknowledgement failed:", res.status, data);
     return null;
   } catch (err) {
     console.error("Error creating database post:", err);

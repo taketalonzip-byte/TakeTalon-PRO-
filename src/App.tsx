@@ -1935,39 +1935,7 @@ export default function App() {
           // snapshot have both been written successfully.
           setCreatorIsLoading(false);
           setCreatorIsPublished(true);
-          const userTip: MatchTip = dbTip || {
-            ...creatorMatch,
-            id: `user-published-${Date.now()}`,
-            time:
-              lang === "sw"
-                ? "Hivi sasa (LIVE)"
-                : lang === "fr"
-                  ? "En ce moment (LIVE)"
-                  : "Just now (LIVE)",
-            status: "LIVE",
-            liveMinutes: "1'",
-            confidence: 98,
-            odds: {
-              home: creatorOddHome ?? creatorMatch.odds?.home ?? 1.8,
-              draw: creatorOddDraw ?? creatorMatch.odds?.draw ?? 3.2,
-              away: creatorOddAway ?? creatorMatch.odds?.away ?? 2.5,
-            },
-            payoutBadge: `FBU ${(creatorDeposit * 1.5).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-            isPremium: true,
-            isLocked: false,
-            isUserCreated: true, // Tag as user-created so it bypasses empty state checks
-            tipster: {
-              name: currentUser?.fullName || currentUser?.username || "Mtabiri Professional",
-              avatarLetter: (currentUser?.username || "M").charAt(0).toUpperCase(),
-              avatarUrl: currentUser?.avatarUrl || null,
-              badge: "PRO UNLOCKER",
-              isOfficial: false,
-            },
-            predictionTip: pTip,
-            analysisText:
-              creatorMatch.analysisText ||
-              "Uchambuzi wa kina kutoka kwa mtabiri wetu mkuu wa kitaalamu.",
-          };
+          const userTip: MatchTip = dbTip;
 
           setUserPublishedTips((prev) => [userTip, ...prev]);
           setMatchTips((prev) => [userTip, ...prev]);

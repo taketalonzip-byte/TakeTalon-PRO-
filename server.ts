@@ -227,7 +227,18 @@ app.post("/api/supabase/create-post", async (req, res) => {
       await supabaseAdmin.from("posts").delete().eq("id", post.id);
       throw snapshotError;
     }
-    return res.status(201).json({ success: true, post, snapshot: savedSnapshot });
+    const persisted = Boolean(
+      post?.id &&
+        savedSnapshot?.id &&
+        savedSnapshot.post_id === post.id &&
+        savedSnapshot.card_bet_id === cardBetId,
+    );
+    if (!persisted) {
+      await supabaseAdmin.from("match_snapshots").delete().eq("id", savedSnapshot?.id);
+      await supabaseAdmin.from("posts").delete().eq("id", post.id);
+      return res.status(500).json({ error: "persistence_acknowledgement_failed" });
+    }
+    return res.status(201).json({ success: true, persisted: true, post, snapshot: savedSnapshot });
   } catch (error: any) {
     console.error("[supabase/create-post]", error?.message || error);
     return res.status(500).json({ error: "Failed to create persistent post card" });
