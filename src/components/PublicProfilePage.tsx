@@ -134,12 +134,15 @@ export default function PublicProfilePage({
     }
   };
 
-  // Posts za mtu huyu (kutafuta kwa username)
+  // Use the immutable profiles.id relation first. Names are only a legacy
+  // fallback for cards created before author_id was exposed to the UI.
   const theirPosts = matchTips.filter(
     (tip) =>
       tip.isUserCreated &&
-      (tip.tipster.name.toLowerCase() === profile.username.toLowerCase() ||
-        tip.tipster.name.toLowerCase() === displayName(profile).toLowerCase()),
+      (tip.tipster.userId === profile.profile_id ||
+        (!tip.tipster.userId &&
+          (tip.tipster.name.toLowerCase() === profile.username.toLowerCase() ||
+            tip.tipster.name.toLowerCase() === displayName(profile).toLowerCase()))),
   );
 
   // Contract kati yangu na huyu
