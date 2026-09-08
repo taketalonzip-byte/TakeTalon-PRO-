@@ -136,6 +136,12 @@ app.get("/api/supabase/posts", async (req, res) => {
 });
 
 app.post("/api/supabase/create-post", async (req, res) => {
+  if (!hasSupabaseServiceRoleKey) {
+    return res.status(503).json({
+      error: "server_admin_not_configured",
+      message: "SUPABASE_SERVICE_ROLE_KEY is required to persist Post Cards.",
+    });
+  }
   if (!supabaseAdmin) return res.status(503).json({ error: "DB offline" });
   const body = req.body || {};
   const match = body.match || {};
@@ -148,6 +154,16 @@ app.post("/api/supabase/create-post", async (req, res) => {
   const asString = (value: unknown, fallback = "") => String(value ?? fallback).trim() || fallback;
   const isUuid = (value: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
   const externalMatchId = asString(match.external_match_id || match.externalMatchId, `local-${Date.now()}`);
+  const contentText =
+    typeof body.content === "string"
+      ? body.content
+      : JSON.stringify(body.content || {});
+  let contentObject: any = {};
+  try {
+    contentObject = typeof body.content === "object" ? body.content : JSON.parse(contentText);
+  } catch {
+    contentObject = {};
+  }
   const snapshot = {
     sport: asString(match.sport, "football"),
     provider: asString(match.provider, "ESPN"),
@@ -187,11 +203,11 @@ app.post("/api/supabase/create-post", async (req, res) => {
     if (!validProfile) return res.status(400).json({ error: "profile_not_found" });
     const { data: post, error: postError } = await supabaseAdmin
       .from("posts")
-      .insert({ author_id: profileId, content: typeof body.content === "string" ? body.content : JSON.stringify(body.content || {}), post_type: body.post_type || "match_prediction" })
+      .insert({ author_id: profileId, content: contentText, post_type: body.post_type || "match_prediction" })
       .select("id, author_id, content, post_type, created_at, updated_at")
       .single();
     if (postError) throw postError;
-    const odds = typeof body.content === "object" ? body.content?.odds : null;
+    const odds = contentObject?.odds || {};
     const snapshotWithOdds = {
       ...snapshot,
       post_id: post.id,
@@ -267,8 +283,11 @@ const rawSupabaseUrl =
 
 const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
 const supabaseServiceKey =
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "").trim() ||
+  (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim() ||
   "placeholder-key";
+const hasSupabaseServiceRoleKey =
+  Boolean((process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim()) &&
+  supabaseServiceKey !== "placeholder-key";
 
 const isDbConfigured =
   supabaseUrl !== "https://placeholder-project.supabase.co" &&
