@@ -11,6 +11,8 @@ export interface Team {
 
 export interface MatchTip {
   id: string;
+  /** Stable source Card Bet identity; distinct from the persisted post row UUID. */
+  cardBetId?: string;
   sport: string;
   category: string;
   league: string;

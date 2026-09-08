@@ -120,7 +120,7 @@ app.get("/api/supabase/posts", async (req, res) => {
   try {
     let query = supabaseAdmin
       .from("posts")
-      .select("id, author_id, content, post_type, created_at, updated_at, profiles(first_name,last_name,username,avatar_url,is_pro,is_verified), match_snapshots(*)")
+      .select("id, author_id, card_bet_id, content, post_type, created_at, updated_at, profiles(first_name,last_name,username,avatar_url,is_pro,is_verified), match_snapshots(*)")
       .eq("post_type", "match_prediction")
       .order("created_at", { ascending: false })
       .limit(100);
@@ -153,7 +153,9 @@ app.post("/api/supabase/create-post", async (req, res) => {
   };
   const asString = (value: unknown, fallback = "") => String(value ?? fallback).trim() || fallback;
   const isUuid = (value: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
-  const externalMatchId = asString(match.external_match_id || match.externalMatchId, `local-${Date.now()}`);
+  const cardBetId = asString(match.card_bet_id || match.cardBetId || match.external_match_id || match.externalMatchId);
+  if (!cardBetId) return res.status(400).json({ error: "card_bet_id is required" });
+  const externalMatchId = asString(match.external_match_id || match.externalMatchId, cardBetId);
   const contentText =
     typeof body.content === "string"
       ? body.content
@@ -165,6 +167,7 @@ app.post("/api/supabase/create-post", async (req, res) => {
     contentObject = {};
   }
   const snapshot = {
+    card_bet_id: cardBetId,
     sport: asString(match.sport, "football"),
     provider: asString(match.provider, "ESPN"),
     external_match_id: externalMatchId,
@@ -203,8 +206,8 @@ app.post("/api/supabase/create-post", async (req, res) => {
     if (!validProfile) return res.status(400).json({ error: "profile_not_found" });
     const { data: post, error: postError } = await supabaseAdmin
       .from("posts")
-      .insert({ author_id: profileId, content: contentText, post_type: body.post_type || "match_prediction" })
-      .select("id, author_id, content, post_type, created_at, updated_at")
+      .insert({ author_id: profileId, card_bet_id: cardBetId, content: contentText, post_type: body.post_type || "match_prediction" })
+      .select("id, author_id, card_bet_id, content, post_type, created_at, updated_at")
       .single();
     if (postError) throw postError;
     const odds = contentObject?.odds || {};

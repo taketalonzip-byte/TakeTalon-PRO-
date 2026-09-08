@@ -66,6 +66,7 @@ export function dbPostToMatchTip(post: any): MatchTip {
 
   return {
     id: post.id,
+    cardBetId: post.card_bet_id || snapshot?.card_bet_id || snapshot?.external_match_id || undefined,
     sport: snapshot?.sport || "football",
     category: "Football",
     league: snapshot?.competition_name || "VIP Pro League",
@@ -146,6 +147,7 @@ export async function createDatabasePost(params: {
     oddsHome?: number;
     oddsDraw?: number;
     oddsAway?: number;
+    cardBetId?: string;
     creatorDeposit?: number;
     creatorMinBetterBalance?: number;
     externalMatchId?: string;
@@ -177,6 +179,7 @@ export async function createDatabasePost(params: {
           odds_home: params.match.oddsHome ?? 1.8,
           odds_draw: params.match.oddsDraw ?? 3.2,
           odds_away: params.match.oddsAway ?? 2.5,
+          card_bet_id: params.match.cardBetId || params.match.externalMatchId,
           external_match_id: params.match.externalMatchId,
           provider: params.match.provider || "ESPN",
           competition_code: params.match.competitionCode || null,

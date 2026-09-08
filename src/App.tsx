@@ -50,8 +50,7 @@ const AuthPage = lazy(() => import("./components/AuthPage"));
 const CasinoGamePlay = lazy(() => import("./components/CasinoGamePlay"));
 const PublicProfilePage = lazy(() => import("./components/PublicProfilePage"));
 import CommentsPage from "./components/CommentsPage";
-import { INITIAL_MATCH_TIPS, TOP_TIPSTERS } from "./data";
-import { INITIAL_UNLOCKERS_TIPS } from "./unlockersData";
+import { TOP_TIPSTERS } from "./data";
 import { MatchTip, Transaction, CartItem } from "./types";
 import { useUnlocks } from "./hooks/useUnlocks";
 import { PublicProfile } from "./lib/unlockService";
@@ -1237,8 +1236,9 @@ export default function App() {
   };
 
   // Match tips list local state
-  const [matchTips, setMatchTips] = useState<MatchTip[]>(INITIAL_MATCH_TIPS);
-  const [unlockersTips, setUnlockersTips] = useState<MatchTip[]>(INITIAL_UNLOCKERS_TIPS);
+  // Home feed contains only persisted user cards; fixture cards come from live data.
+  const [matchTips, setMatchTips] = useState<MatchTip[]>([]);
+  const [unlockersTips, setUnlockersTips] = useState<MatchTip[]>([]);
 
   // Real-time API state indicators
   const [isLiveLoading, setIsLiveLoading] = useState(false);
@@ -1726,53 +1726,6 @@ export default function App() {
     }
   }, [isPro]);
 
-  // Simulate an unlocker posting a tip after 12 seconds to showcase real-time updates in the For You feed
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const simulatedTip: MatchTip = {
-        id: `simulated-unlocker-${Date.now()}`,
-        sport: "Football",
-        category: "UK",
-        league: "Premier League",
-        gender: "Man",
-        time: "Leo, 22:00 EAT",
-        status: "UPCOMING",
-        confidence: 94,
-        homeTeam: { name: "Chelsea", bgGlow: "rgba(37, 99, 235, 0.4)" },
-        awayTeam: { name: "Arsenal", bgGlow: "rgba(239, 68, 68, 0.4)" },
-        odds: { home: 2.45, draw: 3.4, away: 2.7 },
-        payoutBadge: "FBU 450k",
-        isPremium: true,
-        isLocked: true, // Needs unlocking or PRO Elite
-        isUserCreated: true, // Set to true so it floats on the For You feed!
-        tipster: {
-          name: "Mtabiri_TZ",
-          avatarLetter: "M",
-          badge: "GOLD GURU",
-          isOfficial: false,
-        },
-        predictionTip: "Arsenal kushinda (Away Win)",
-        analysisText:
-          "Arsenal wapo kwenye fomu bora ya ugenini msimu huu. Chelsea wana majeruhi wengi kwenye ulinzi.",
-      };
-
-      setMatchTips((prev) => {
-        if (prev.some((tip) => tip.id.startsWith("simulated-unlocker-"))) {
-          return prev;
-        }
-        return [simulatedTip, ...prev];
-      });
-      setUnlockersTips((prev) => {
-        if (prev.some((tip) => tip.id.startsWith("simulated-unlocker-"))) {
-          return prev;
-        }
-        return [simulatedTip, ...prev];
-      });
-    }, 12000);
-
-    return () => clearTimeout(timer);
-  }, [lang]);
-
   const handleAddTransaction = (
     type: "DEPOSIT" | "WITHDRAW" | "BET_PLACE" | "BET_WIN" | "UPGRADE_PRO",
     amount: number,
@@ -2027,12 +1980,8 @@ export default function App() {
     setCreatorIsPublished(false);
     setCreatorPublishSeconds(0);
 
-      const simulated = cartSimulatedBettersLive.map((b) => ({
-        ...b,
-        status: "Matched",
-      }));
-
-      setCreatorMatchedBetters(simulated);
+      // Matching is not persisted yet; never present calculated/mock users as real.
+      setCreatorMatchedBetters([]);
 
       // Create and append user-published tip so it appears in the For You feed
       if (creatorMatch) {
@@ -2065,6 +2014,7 @@ export default function App() {
             oddsHome: creatorOddHome ?? creatorMatch.odds?.home ?? 1.8,
             oddsDraw: creatorOddDraw ?? creatorMatch.odds?.draw ?? 3.2,
             oddsAway: creatorOddAway ?? creatorMatch.odds?.away ?? 2.5,
+            cardBetId: String(creatorMatch.id),
             externalMatchId: creatorMatch.id,
             provider: "ESPN",
             competitionCode: creatorMatch.espnLeagueCode || null,
@@ -2139,10 +2089,10 @@ export default function App() {
           );
           addNotification(
             lang === "sw"
-              ? `Kadi ya VIP imechapishwa & Wachezaji ${cartCalculatedCount} wameunganishwa kiotomatiki!`
+              ? "Post Card imehifadhiwa Supabase kwa mafanikio."
               : lang === "fr"
-                ? `Fiche VIP publiée & ${cartCalculatedCount} Joueurs connectés automatiquement !`
-                : `VIP Card published & ${cartCalculatedCount} Players connected automatically!`,
+                ? "La fiche a été enregistrée avec succès dans Supabase."
+                : "Post Card saved to Supabase successfully.",
             "success",
           );
         }).catch((error) => {
@@ -3957,10 +3907,10 @@ export default function App() {
                               <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950 shrink-0" />
                               <span>
                                 {lang === "sw"
-                                  ? `Inakusanya na Kupanga Vitu 12... (${creatorPublishSeconds}s)`
+                                  ? "Inahifadhi Post Card kwenye Supabase..."
                                   : lang === "fr"
-                                    ? `Assemblage de la Carte 12 Vitu... (${creatorPublishSeconds}s)`
-                                    : `Assembling 12 Components... (${creatorPublishSeconds}s)`}
+                                    ? "Enregistrement de la fiche dans Supabase..."
+                                    : "Saving Post Card to Supabase..."}
                               </span>
                             </>
                           ) : creatorDeposit > userBalance ? (
