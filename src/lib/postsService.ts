@@ -43,14 +43,36 @@ export function dbPostToMatchTip(post: any): MatchTip {
     away: readOdd(storedOdds.away ?? storedOdds.odds_away, 2.5),
   };
 
+  const kickoffUtc = snapshot?.scheduled_start_time_utc || snapshot?.kickoff_timestamp || null;
+  const postingStatus = String(snapshot?.match_status_at_posting || "UPCOMING").toUpperCase();
+  const finalStatus = String(snapshot?.final_status || "").toUpperCase();
+  const kickoffMs = kickoffUtc ? Date.parse(kickoffUtc) : Number.NaN;
+  const nowMs = Date.now();
+  const hasEnded =
+    ["FINISHED", "ENDED", "CANCELLED", "POSTPONED", "SUSPENDED", "AWARDED"].includes(finalStatus) ||
+    (Number.isFinite(kickoffMs) && nowMs >= kickoffMs + 3 * 60 * 60 * 1000);
+  const status: MatchTip["status"] = hasEnded
+    ? "ENDED"
+    : (Number.isFinite(kickoffMs) && nowMs >= kickoffMs) || ["LIVE", "IN_PLAY", "PAUSED"].includes(postingStatus)
+      ? "LIVE"
+      : "UPCOMING";
+  const time = hasEnded
+    ? "Iliisha"
+    : status === "LIVE"
+      ? "Hivi sasa (LIVE)"
+      : kickoffUtc
+        ? new Date(kickoffUtc).toLocaleString()
+        : "Inakuja";
+
   return {
     id: post.id,
     sport: snapshot?.sport || "football",
     category: "Football",
     league: snapshot?.competition_name || "VIP Pro League",
-    time: "Hivi sasa (LIVE)",
-    status: (snapshot?.match_status_at_posting as any) || "LIVE",
-    liveMinutes: "1'",
+    time,
+    kickoffUtc,
+    status,
+    liveMinutes: status === "LIVE" ? "LIVE" : undefined,
     espnEventId: snapshot?.external_match_id || undefined,
     espnLeagueCode: snapshot?.match_group || null,
     confidence: 98,

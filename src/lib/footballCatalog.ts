@@ -17,7 +17,8 @@ export interface FootballLeagueEntry {
 export const FOOTBALL_CATALOG: FootballLeagueEntry[] = [
   { code: "FIFA_WORLD", slug: "fifa.world", name: "FIFA World Cup", country: "International" },
   { code: "FIFA_WWC", slug: "fifa.wwc", name: "FIFA Women's World Cup", country: "International" },
-  { code: "UEFA_CHAMPIONS", slug: "uefa.champions", name: "UEFA Champions League", country: "Europe" },
+  // Keep this code aligned with football_competitions.code and the backend ESPN map.
+  { code: "CL", slug: "uefa.champions", name: "UEFA Champions League", country: "Europe" },
   { code: "ENG_1", slug: "eng.1", name: "English Premier League", country: "England" },
   { code: "ENG_FA", slug: "eng.fa", name: "English FA Cup", country: "England" },
   { code: "ENG_LEAGUE_CUP", slug: "eng.league_cup", name: "English Carabao Cup", country: "England" },
