@@ -96,6 +96,10 @@ export default function GovernancePanel({
   const [loadingProposals, setLoadingProposals] = useState<boolean>(false);
   const [approvingProposalId, setApprovingProposalId] = useState<string | null>(null);
   const [emergencyReason, setEmergencyReason] = useState<string>("");
+  const [emergencyOwnerQuery, setEmergencyOwnerQuery] = useState<string>("");
+  const [emergencyOwnerResults, setEmergencyOwnerResults] = useState<PublicProfile[]>([]);
+  const [selectedEmergencyOwner, setSelectedEmergencyOwner] = useState<PublicProfile | null>(null);
+  const [isSearchingEmergencyOwner, setIsSearchingEmergencyOwner] = useState<boolean>(false);
   const [isSubmittingEmergency, setIsSubmittingEmergency] = useState<boolean>(false);
 
   // Color classes according to theme
@@ -269,6 +273,25 @@ export default function GovernancePanel({
     return () => clearTimeout(timer);
   }, [roleQuery]);
 
+  useEffect(() => {
+    if (!emergencyOwnerQuery || emergencyOwnerQuery.length < 2) {
+      setEmergencyOwnerResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearchingEmergencyOwner(true);
+      try {
+        const results = await searchProfiles(emergencyOwnerQuery, currentUser?.authUserId || null);
+        setEmergencyOwnerResults(results);
+      } catch {
+        setEmergencyOwnerResults([]);
+      } finally {
+        setIsSearchingEmergencyOwner(false);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [emergencyOwnerQuery, currentUser?.authUserId]);
+
   // Helper notice display
   const notify = (msg: string, type: "success" | "error" | "info") => {
     setFeedback({ msg, type });
@@ -379,6 +402,10 @@ export default function GovernancePanel({
 
   // ── 4. SUPER_ADMIN: Emergency Owner Removal RPC ─────────────────────────────
   const handleProposeEmergencyRemoval = async () => {
+    if (!selectedEmergencyOwner) {
+      notify(lang === "sw" ? "Chagua akaunti ya Owner mpya kwanza." : "Select the proposed new Owner first.", "error");
+      return;
+    }
     if (!emergencyReason || emergencyReason.trim().length < 5) {
       notify(lang === "sw" ? "Tafadhali andika sababu ya dharura (reason)." : "Please provide an emergency reason.", "error");
       return;
@@ -389,7 +416,8 @@ export default function GovernancePanel({
 
     try {
       const { data, error } = await supabase.rpc("superadmin_propose_emergency_removal", {
-        p_reason: emergencyReason,
+        p_new_owner_profile_id: selectedEmergencyOwner.profile_id || selectedEmergencyOwner.id,
+        p_reason: emergencyReason.trim(),
       });
 
       if (error) {
@@ -397,6 +425,8 @@ export default function GovernancePanel({
       } else {
         notify(data?.message || (lang === "sw" ? "Emergency Removal proposal imewasilishwa!" : "Emergency removal proposed!"), "success");
         setEmergencyReason("");
+        setEmergencyOwnerQuery("");
+        setSelectedEmergencyOwner(null);
         fetchProposals();
       }
     } catch (err: any) {
@@ -848,15 +878,53 @@ export default function GovernancePanel({
                 <div className="flex items-center space-x-2">
                   <AlertTriangle className="w-4 h-4 text-rose-400" />
                   <h4 className="text-xs font-black uppercase text-rose-300">
-                    Emergency: Propose Owner Removal (SuperAdmin Only)
+                    Emergency: Nominate First Owner (SuperAdmin Only)
                   </h4>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={emergencyOwnerQuery}
+                    onChange={(e) => setEmergencyOwnerQuery(e.target.value)}
+                    placeholder="Username ya anayependekezwa kuwa Owner..."
+                    className={`w-full px-3 py-2 text-xs font-bold rounded-xl border focus:outline-none focus:border-amber-500 ${
+                      theme === "light"
+                        ? "bg-slate-50 border-slate-300 text-slate-900"
+                        : "bg-neutral-950 border-neutral-800 text-white"
+                    }`}
+                  />
+                  {isSearchingEmergencyOwner && <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-400" />}
+                  {emergencyOwnerResults.length > 0 && (
+                    <div className="space-y-1">
+                      {emergencyOwnerResults.slice(0, 5).map((prof) => (
+                        <button
+                          key={prof.profile_id || prof.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedEmergencyOwner(prof);
+                            setEmergencyOwnerResults([]);
+                            setEmergencyOwnerQuery(prof.username);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-lg border border-slate-700 bg-slate-950/60 hover:border-amber-500 text-xs text-slate-200"
+                        >
+                          @{prof.username} <span className="text-[9px] text-slate-500">({prof.role})</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {selectedEmergencyOwner && (
+                    <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-amber-500/40 bg-amber-500/10 text-xs text-amber-200">
+                      <span>Owner mpya: @{selectedEmergencyOwner.username}</span>
+                      <button type="button" onClick={() => setSelectedEmergencyOwner(null)} className="text-slate-400 hover:text-white">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                   <input
                     type="text"
                     value={emergencyReason}
                     onChange={(e) => setEmergencyReason(e.target.value)}
-                    placeholder="Andika sababu ya dharura ya kuondoa Owner..."
+                    placeholder="Sababu ya proposal/removal..."
                     className={`flex-1 px-3 py-2 text-xs font-bold rounded-xl border focus:outline-none focus:border-rose-500 ${
                       theme === "light"
                         ? "bg-slate-50 border-slate-300 text-slate-900"
@@ -865,7 +933,7 @@ export default function GovernancePanel({
                   />
                   <button
                     onClick={handleProposeEmergencyRemoval}
-                    disabled={!emergencyReason || isSubmittingEmergency}
+                    disabled={!selectedEmergencyOwner || !emergencyReason || isSubmittingEmergency}
                     className="px-4 py-2 bg-rose-600 hover:bg-rose-500 active:scale-95 disabled:opacity-40 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shrink-0 flex items-center justify-center space-x-1 cursor-pointer"
                   >
                     {isSubmittingEmergency ? (
@@ -873,7 +941,7 @@ export default function GovernancePanel({
                     ) : (
                       <>
                         <UserX className="w-4 h-4" />
-                        <span>Propose Removal</span>
+                        <span>Propose First Owner</span>
                       </>
                     )}
                   </button>
