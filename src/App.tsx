@@ -2025,20 +2025,7 @@ export default function App() {
     setCreatorError(null);
     setCreatorIsLoading(true);
     setCreatorIsPublished(false);
-    setCreatorPublishSeconds(30);
-
-    const publishTimer = setInterval(() => {
-      setCreatorPublishSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(publishTimer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    setTimeout(() => {
-      clearInterval(publishTimer);
+    setCreatorPublishSeconds(0);
 
       const simulated = cartSimulatedBettersLive.map((b) => ({
         ...b,
@@ -2137,6 +2124,27 @@ export default function App() {
           setUserPublishedTips((prev) => [userTip, ...prev]);
           setMatchTips((prev) => [userTip, ...prev]);
           setUnlockersTips((prev) => [userTip, ...prev]);
+
+          // Debit and report success only after both the post and its immutable
+          // match snapshot have been persisted successfully.
+          setUserBalance((prev) => prev - creatorDeposit);
+          handleAddTransaction(
+            "BET_PLACE",
+            creatorDeposit,
+            lang === "sw"
+              ? `Dhamana ya Kadi ya VIP: ${creatorMatch.homeTeam.name} vs ${creatorMatch.awayTeam.name}`
+              : lang === "fr"
+                ? `Dépôt de Fiche VIP : ${creatorMatch.homeTeam.name} vs ${creatorMatch.awayTeam.name}`
+                : `VIP Card Deposit: ${creatorMatch.homeTeam.name} vs ${creatorMatch.awayTeam.name}`,
+          );
+          addNotification(
+            lang === "sw"
+              ? `Kadi ya VIP imechapishwa & Wachezaji ${cartCalculatedCount} wameunganishwa kiotomatiki!`
+              : lang === "fr"
+                ? `Fiche VIP publiée & ${cartCalculatedCount} Joueurs connectés automatiquement !`
+                : `VIP Card published & ${cartCalculatedCount} Players connected automatically!`,
+            "success",
+          );
         }).catch((error) => {
           console.error("[handleCreatorPublishInCart] persistent post error:", error);
           setCreatorIsLoading(false);
@@ -2149,30 +2157,6 @@ export default function App() {
           );
         });
       }
-
-      // Deduct immediately from wallet balance
-      setUserBalance((prev) => prev - creatorDeposit);
-
-      // Create transaction log
-      handleAddTransaction(
-        "BET_PLACE",
-        creatorDeposit,
-        lang === "sw"
-          ? `Dhamana ya Kadi ya VIP: ${creatorMatch ? `${creatorMatch.homeTeam.name} vs ${creatorMatch.awayTeam.name}` : "Mechi ya VIP"}`
-          : lang === "fr"
-            ? `Dépôt de Fiche VIP : ${creatorMatch ? `${creatorMatch.homeTeam.name} vs ${creatorMatch.awayTeam.name}` : "Match VIP"}`
-            : `VIP Card Deposit: ${creatorMatch ? `${creatorMatch.homeTeam.name} vs ${creatorMatch.awayTeam.name}` : "VIP Match"}`,
-      );
-
-      addNotification(
-        lang === "sw"
-          ? `Kadi ya VIP imechapishwa & Wachezaji ${cartCalculatedCount} wameunganishwa kiotomatiki!`
-          : lang === "fr"
-            ? `Fiche VIP publiée & ${cartCalculatedCount} Joueurs connectés automatiquement !`
-            : `VIP Card published & ${cartCalculatedCount} Players connected automatically!`,
-        "success",
-      );
-    }, 1500);
   };
 
   // Click handler to unlock/inspect individual premium locked dots (now opens the Creator studio inside the Shopping Cart!)
