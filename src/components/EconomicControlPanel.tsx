@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Calculator, CheckCircle2, ChevronDown, Info, Loader2, Lock, RefreshCw, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
@@ -56,6 +56,11 @@ export default function EconomicControlPanel({ currentUser, theme, lang, onBack,
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const notifyRef = useRef(onAddNotification);
+
+  useEffect(() => {
+    notifyRef.current = onAddNotification;
+  }, [onAddNotification]);
 
   const role = String(currentUser?.role || "").toUpperCase();
   const allowed = role === "OWNER" || role === "SUPER_ADMIN";
@@ -69,11 +74,11 @@ export default function EconomicControlPanel({ currentUser, theme, lang, onBack,
     setLoading(true);
     const { data, error } = await supabase.from("business_rules").select("key,value,category,control_mode,version,description").eq("is_active", true).order("category").order("key").limit(200);
     if (error) {
-      onAddNotification(lang === "sw" ? "Imeshindikana kusoma makundi ya miamala." : "Could not load transaction groups.", "error");
+      notifyRef.current(lang === "sw" ? "Imeshindikana kusoma makundi ya miamala." : "Could not load transaction groups.", "error");
       setRules([]);
     } else setRules((data || []) as RuleRow[]);
     setLoading(false);
-  }, [lang, onAddNotification]);
+  }, [lang]);
 
   useEffect(() => { loadRules(); }, [loadRules]);
 
