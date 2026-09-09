@@ -2311,6 +2311,29 @@ export default function App() {
                         lang={lang}
                         onSelectProfile={handleViewProfile}
                       />
+                      <section
+                        aria-labelledby="taketalon-home-title"
+                        className={`mx-3 mt-3 rounded-xl border px-4 py-3 sm:mx-4 ${
+                          theme === "light"
+                            ? "border-slate-200 bg-slate-50 text-slate-800"
+                            : "border-blue-300/20 bg-slate-950/20 text-slate-100"
+                        }`}
+                      >
+                        <h1 id="taketalon-home-title" className="text-sm font-bold tracking-tight">
+                          TakeTalon PRO — Sports Tips, Live Fixtures &amp; Games
+                        </h1>
+                        <p className={`mt-1 text-xs leading-5 ${theme === "light" ? "text-slate-600" : "text-slate-300"}`}>
+                          Discover live sports fixtures, community tipsters and simulation games. Browse TakeTalon freely, then log in or register when you are ready to use account features.
+                        </p>
+                        <a
+                          href="/about/"
+                          className={`mt-2 inline-flex text-xs font-semibold underline underline-offset-2 ${
+                            theme === "light" ? "text-blue-700" : "text-cyan-300"
+                          }`}
+                        >
+                          About TakeTalon PRO
+                        </a>
+                      </section>
                       {/* Main Match cards feed is always visible as requested */}
                       <MatchList
                         tips={filteredTips}
