@@ -188,6 +188,7 @@ export default function App() {
 
     // Dynamic Android OS System Status Bar & System Navigation Bar theme-color (matching PostCard background)
     const themeColor = theme === "blue" ? "#3B6D99" : theme === "dark" ? "#0d0d0d" : "#ffffff";
+    document.documentElement.style.colorScheme = theme === "light" ? "light" : "dark";
 
     let metaTheme = document.querySelector('meta[name="theme-color"]');
     if (!metaTheme) {
