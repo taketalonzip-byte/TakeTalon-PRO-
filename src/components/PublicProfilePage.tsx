@@ -180,7 +180,7 @@ export default function PublicProfilePage({
   const iAmUnlocker = !!myContract && myContract.unlocker_id === currentProfileId;
   const iAmUnlocked = !!myContract && myContract.unlocked_id === currentProfileId;
 
-  const monthlyCost = businessRules.monthly_cost_fbu;
+  const monthlyCost = businessRules.effective_monthly_cost_fbu;
 
   // ── Styles ────────────────────────────────────────────────────────────────
   const bg = isDark

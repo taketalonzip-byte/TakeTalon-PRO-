@@ -134,7 +134,7 @@ export default function TipstersList({
       ? `${profile.first_name} ${profile.last_name}`
       : profile.username;
 
-  const monthlyCost = businessRules.monthly_cost_fbu;
+  const monthlyCost = businessRules.effective_monthly_cost_fbu;
 
   const i18n = {
     en: {
@@ -398,7 +398,7 @@ export default function TipstersList({
           <Clock className="w-3 h-3 shrink-0 text-slate-400" />
           <p className="text-[8px] font-medium leading-tight">
             {tx.paymentInfo(
-              businessRules.monthly_cost_fbu,
+              businessRules.effective_monthly_cost_fbu,
               businessRules.tipster_share_fbu,
               businessRules.commission_fbu,
             )}
