@@ -44,6 +44,7 @@ import {
   AlertTriangle,
   Ban,
   Trash2,
+  Info,
 } from "lucide-react";
 import TalonLogo from "./TalonLogo";
 import SettingsIcon from "./SettingsIcon";
@@ -1854,6 +1855,22 @@ export default function WalletView({
           <ChevronRight className="w-4 h-4 text-rose-500" />
         </button>
       )}
+
+      {/* About TakeTalon PRO — last item in the Menu */}
+      <a
+        href="/about/"
+        className={`w-full text-left p-3 rounded-2xl border flex items-center justify-between mt-1.5 transition-all cursor-pointer ${
+          theme === "light"
+            ? "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+            : "bg-slate-900/20 border-slate-800 text-slate-300 hover:bg-slate-900/40"
+        }`}
+      >
+        <span className="flex items-center space-x-2 text-[11px] uppercase tracking-wide">
+          <Info className="w-4 h-4 text-cyan-400" />
+          <span>{lang === "sw" ? "Kuhusu TakeTalon PRO" : lang === "fr" ? "À propos de TakeTalon PRO" : "About TakeTalon PRO"}</span>
+        </span>
+        <ChevronRight className="w-4 h-4 text-cyan-400" />
+      </a>
 
       {/* Footer copyright */}
       <div
