@@ -2531,6 +2531,7 @@ export default function App() {
                         setLang={setLang}
                         onBackToHome={goBack}
                         currentUser={currentUser}
+                        premiumMembershipPriceFbu={unlockBusinessRules.effective_premium_membership_price_fbu}
                         setCurrentUser={setCurrentUser}
                         onOpenAuth={() => {
                           setAuthModalMode("login");

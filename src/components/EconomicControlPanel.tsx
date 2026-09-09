@@ -34,7 +34,7 @@ const CATEGORY_META: Record<Category, { title: string; sw: string; description: 
 };
 
 const orderedCategories = Object.keys(CATEGORY_META) as Category[];
-const percentKeys = new Set(["pricing_scale_factor", "commission_month", "tva_rate"]);
+const percentKeys = new Set(["pricing_scale_factor", "premium_membership_scale_factor", "commission_month", "tva_rate"]);
 const moneyKeys = new Set(["unlock_price_x_month", "unlock_price_y_month"]);
 
 function labelFor(rule: RuleRow, lang: string) {
@@ -56,6 +56,7 @@ export default function EconomicControlPanel({ currentUser, theme, lang, onBack,
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const notifyRef = useRef(onAddNotification);
 
   useEffect(() => {
@@ -77,6 +78,13 @@ export default function EconomicControlPanel({ currentUser, theme, lang, onBack,
       notifyRef.current(lang === "sw" ? "Imeshindikana kusoma makundi ya miamala." : "Could not load transaction groups.", "error");
       setRules([]);
     } else setRules((data || []) as RuleRow[]);
+    const { data: pending } = await supabase
+      .from("business_rule_change_requests")
+      .select("id,rule_key,requested_value,requested_by_profile_id,requested_at,status")
+      .eq("status", "PENDING")
+      .order("requested_at", { ascending: false })
+      .limit(50);
+    setPendingRequests(pending || []);
     setLoading(false);
   }, [lang]);
 
@@ -87,6 +95,8 @@ export default function EconomicControlPanel({ currentUser, theme, lang, onBack,
   // Base price, commission, recipient share and per-interval amounts derive from it.
   const selectedRule = selectedCategory === "ACCESS"
     ? rules.find((rule) => rule.key === "pricing_scale_factor")
+    : selectedCategory === "SUBSCRIPTION"
+      ? rules.find((rule) => rule.key === "premium_membership_scale_factor")
     : rules.find((rule) => rule.key === selectedKey);
   const baseUnlockPrice = rules.find((rule) => rule.key === "unlock_price_x_month")?.value ?? 500;
   const scale = rules.find((rule) => rule.key === "pricing_scale_factor")?.value ?? 1;
@@ -103,6 +113,8 @@ export default function EconomicControlPanel({ currentUser, theme, lang, onBack,
     if (rule.category === "ACCESS" && rule.key === "unlock_price_x_month") return `${effectiveUnlock.toFixed(4)} FBU effective`;
     if (rule.category === "ACCESS" && rule.key === "unlock_price_y_month") return `${recipientMonth.toFixed(4)} FBU effective`;
     if (rule.category === "ACCESS" && rule.key === "commission_month") return `${(commissionRate * 100).toFixed(2)}% of effective`;
+    if (rule.key === "premium_membership_scale_factor") return `${(rule.value * 100).toFixed(2)}% of PRO Elite base`;
+    if (rule.key === "premium_membership_scale_factor") return `${(rule.value * 100).toFixed(2)}% of PRO Elite base`;
     if (percentKeys.has(rule.key)) return `${(rule.value * 100).toFixed(2)}%`;
     return `${rule.value}${moneyKeys.has(rule.key) ? " FBU" : ""}`;
   };
@@ -129,8 +141,22 @@ export default function EconomicControlPanel({ currentUser, theme, lang, onBack,
       const message = (data as any)?.error || error?.message || "update_failed";
       onAddNotification(lang === "sw" ? `Mabadiliko yamekataliwa: ${message}` : `Change rejected: ${message}`, "error");
     } else {
-      setFeedback(lang === "sw" ? "Mabadiliko yamehifadhiwa na audit log imeandikwa." : "Change saved and written to the audit log.");
-      onAddNotification(lang === "sw" ? "Udhibiti wa muamala umebadilishwa." : "Transaction control updated.", "success");
+      setFeedback(lang === "sw" ? "Ombi limehifadhiwa. Subiri SuperAdmin mmoja athibitishe." : "Change submitted. One SuperAdmin must approve it before activation.");
+      onAddNotification(lang === "sw" ? "Ombi la mabadiliko linasubiri uthibitisho wa SuperAdmin." : "Change is pending one SuperAdmin approval.", "info");
+      await loadRules();
+    }
+    setSaving(false);
+  };
+
+  const approveRequest = async (requestId: string) => {
+    if (role !== "SUPER_ADMIN") return;
+    setSaving(true);
+    const { data, error } = await supabase.rpc("approve_economic_rule_change", { p_request_id: requestId });
+    if (error || (data as any)?.ok === false) {
+      onAddNotification(lang === "sw" ? `Uthibitisho umekataliwa: ${(data as any)?.error || error?.message}` : `Approval rejected: ${(data as any)?.error || error?.message}`, "error");
+    } else {
+      setFeedback(lang === "sw" ? "Mabadiliko yameanza kufanya kazi." : "Approved change is now active.");
+      onAddNotification(lang === "sw" ? "Mabadiliko yameidhinishwa na kuanza kufanya kazi." : "Change approved and activated.", "success");
       await loadRules();
     }
     setSaving(false);
@@ -156,9 +182,10 @@ export default function EconomicControlPanel({ currentUser, theme, lang, onBack,
           {loading ? <div className={`py-8 flex items-center justify-center gap-2 text-xs ${muted}`}><Loader2 className="w-4 h-4 animate-spin" />{lang === "sw" ? "Inatafuta mipangilio..." : "Loading controls..."}</div> : categoryRules.length === 0 ? <div className={`p-4 rounded-xl border ${inner} flex gap-2`}><Info className="w-4 h-4 text-sky-400 shrink-0" /><p className={`text-xs ${muted}`}>{lang === "sw" ? "Kundi hili halijaunganishwa na rule yoyote bado. Litaonekana hapa likishasanidiwa kwenye database." : "No database rule is configured for this group yet. It will appear here once configured."}</p></div> : <div className="space-y-2">{categoryRules.map((rule) => <button key={rule.key} onClick={() => setSelectedKey(rule.key)} className={`w-full text-left p-3 rounded-xl border transition-all ${selectedKey === rule.key ? "border-sky-400/50 bg-sky-500/10" : inner}`}><div className="flex items-center justify-between gap-2"><span className={`text-xs font-black ${primary}`}>{labelFor(rule, lang)}</span><span className={`text-[9px] font-mono ${muted}`}>v{rule.version}</span></div><div className={`text-[10px] font-mono mt-1 ${selectedKey === rule.key ? "text-sky-300" : muted}`}>{rule.key} = {displayValue(rule)}</div></button>)}</div>}
         </div>
 
-        {selectedRule && selectedCategory !== "SYSTEM" && <div className={`p-4 rounded-2xl border ${card} space-y-3`}><div className="flex items-center gap-2"><SlidersHorizontal className="w-4 h-4 text-amber-400" /><h3 className={`font-black text-xs uppercase ${primary}`}>{lang === "sw" ? "Tekeleza mpangilio" : "Apply selected control"}</h3></div><div className={`p-3 rounded-xl border ${inner}`}><div className="flex justify-between"><span className={`text-xs font-black ${primary}`}>{selectedCategory === "ACCESS" ? (lang === "sw" ? "Asilimia kuu ya Access" : "Canonical Access percentage") : labelFor(selectedRule, lang)}</span><span className={`text-[10px] ${muted}`}>{selectedRule.control_mode}</span></div><p className={`text-[10px] mt-1 ${muted}`}>{selectedCategory === "ACCESS" ? (lang === "sw" ? "Hii pekee ndiyo inabadilishwa. Bei, commission, share na malipo ya kila dakika 30 vitajihesabu vyenyewe." : "Change this only. Price, commission, recipient share and 30-minute payouts are derived automatically.") : (selectedRule.description || "Changes are versioned and audited.")}</p><div className="flex gap-2 mt-3"><input type="number" min="0" max="100" step="0.01" value={inputValue} onChange={(e) => setInputValue(Number(e.target.value))} className={`flex-1 p-3 rounded-xl border ${inner} ${primary} font-mono`} /><span className={`self-center text-sm font-black ${muted}`}>%</span></div><button onClick={saveRule} disabled={saving || loading || selectedCategory !== "ACCESS"} className="w-full mt-3 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black text-xs uppercase flex items-center justify-center gap-2">{saving ? <><Loader2 className="w-4 h-4 animate-spin" />{lang === "sw" ? "Inatafuta na kubadilisha..." : "Loading and updating..."}</> : <><CheckCircle2 className="w-4 h-4" />{lang === "sw" ? "Tekeleza mpangilio" : "Apply control"}</>}</button></div>{feedback && <p className="text-xs text-emerald-400 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" />{feedback}</p>}</div>}
+        {selectedRule && selectedCategory !== "SYSTEM" && <div className={`p-4 rounded-2xl border ${card} space-y-3`}><div className="flex items-center gap-2"><SlidersHorizontal className="w-4 h-4 text-amber-400" /><h3 className={`font-black text-xs uppercase ${primary}`}>{lang === "sw" ? "Tekeleza mpangilio" : "Apply selected control"}</h3></div><div className={`p-3 rounded-xl border ${inner}`}><div className="flex justify-between"><span className={`text-xs font-black ${primary}`}>{selectedCategory === "ACCESS" ? (lang === "sw" ? "Asilimia kuu ya Access" : "Canonical Access percentage") : selectedCategory === "SUBSCRIPTION" ? (lang === "sw" ? "Asilimia kuu ya Premium Membership" : "Canonical Premium Membership percentage") : labelFor(selectedRule, lang)}</span><span className={`text-[10px] ${muted}`}>{selectedRule.control_mode}</span></div><p className={`text-[10px] mt-1 ${muted}`}>{selectedCategory === "ACCESS" ? (lang === "sw" ? "Bei, commission, share na malipo ya kila dakika 30 vitajihesabu vyenyewe." : "Price, commission, recipient share and 30-minute payouts are derived automatically.") : selectedCategory === "SUBSCRIPTION" ? (lang === "sw" ? "PRO Elite ina base ya 15,000 FBU; asilimia hii itaanza baada ya SuperAdmin mmoja kuidhinisha." : "PRO Elite has a 15,000 FBU base; this percentage activates after one SuperAdmin approval.") : (selectedRule.description || "Changes are versioned and audited.")}</p><div className="flex gap-2 mt-3"><input type="number" min="0" max="100" step="0.01" value={inputValue} onChange={(e) => setInputValue(Number(e.target.value))} className={`flex-1 p-3 rounded-xl border ${inner} ${primary} font-mono`} /><span className={`self-center text-sm font-black ${muted}`}>%</span></div><button onClick={saveRule} disabled={saving || loading || !["ACCESS", "SUBSCRIPTION"].includes(selectedCategory)} className="w-full mt-3 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black text-xs uppercase flex items-center justify-center gap-2">{saving ? <><Loader2 className="w-4 h-4 animate-spin" />{lang === "sw" ? "Inatafuta na kubadilisha..." : "Loading and updating..."}</> : <><CheckCircle2 className="w-4 h-4" />{lang === "sw" ? "Tuma kwa approval" : "Submit for approval"}</>}</button></div>{feedback && <p className="text-xs text-emerald-400 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" />{feedback}</p>}</div>}
 
-        <div className={`p-4 rounded-2xl border ${card} space-y-3`}><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Calculator className="w-4 h-4 text-emerald-400" /><h3 className={`font-black text-xs uppercase ${primary}`}>{lang === "sw" ? "Preview ya Access" : "Access preview"}</h3></div><button onClick={loadRules} disabled={loading} className={`text-[10px] ${muted} flex items-center gap-1`}><RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />Refresh</button></div><div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center"><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>BASE / MONTH</p><p className={`font-black text-xs ${primary}`}>{baseUnlockPrice} FBU</p></div><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>SCALE</p><p className={`font-black text-xs ${primary}`}>{(scale * 100).toFixed(2)}%</p></div><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>X EFFECTIVE</p><p className="font-black text-xs text-emerald-400">{effectiveUnlock.toFixed(4)} FBU</p></div><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>Y / MONTH</p><p className="font-black text-xs text-emerald-400">{recipientMonth.toFixed(4)} FBU</p></div><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>Y / {intervalMinutes} MIN</p><p className={`font-black text-xs ${primary}`}>{recipientPerInterval.toFixed(4)} FBU</p></div><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>COMMISSION / {intervalMinutes} MIN</p><p className={`font-black text-xs ${primary}`}>{commissionPerInterval.toFixed(4)} FBU</p></div></div></div>
+        <div className={`p-4 rounded-2xl border ${card} space-y-3`}><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Calculator className="w-4 h-4 text-emerald-400" /><h3 className={`font-black text-xs uppercase ${primary}`}>{selectedCategory === "SUBSCRIPTION" ? (lang === "sw" ? "Preview ya Premium Membership" : "Premium Membership preview") : (lang === "sw" ? "Preview ya Access" : "Access preview")}</h3></div><button onClick={loadRules} disabled={loading} className={`text-[10px] ${muted} flex items-center gap-1`}><RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />Refresh</button></div>{selectedCategory === "SUBSCRIPTION" ? <div className="grid grid-cols-2 gap-2 text-center"><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>BASE PRO ELITE</p><p className={`font-black text-xs ${primary}`}>{rules.find((r) => r.key === "premium_membership_price_fbu")?.value.toLocaleString() || "15,000"} FBU</p></div><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>SCALE</p><p className={`font-black text-xs ${primary}`}>{((rules.find((r) => r.key === "premium_membership_scale_factor")?.value || 1) * 100).toFixed(2)}%</p></div><div className={`p-2.5 rounded-xl border ${inner} col-span-2`}><p className={`text-[9px] ${muted}`}>EFFECTIVE PRO ELITE PRICE</p><p className="font-black text-sm text-emerald-400">{((rules.find((r) => r.key === "premium_membership_price_fbu")?.value || 15000) * (rules.find((r) => r.key === "premium_membership_scale_factor")?.value || 1)).toLocaleString()} FBU</p></div></div> : <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center"><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>BASE / MONTH</p><p className={`font-black text-xs ${primary}`}>{baseUnlockPrice} FBU</p></div><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>SCALE</p><p className={`font-black text-xs ${primary}`}>{(scale * 100).toFixed(2)}%</p></div><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>X EFFECTIVE</p><p className="font-black text-xs text-emerald-400">{effectiveUnlock.toFixed(4)} FBU</p></div><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>Y / MONTH</p><p className="font-black text-xs text-emerald-400">{recipientMonth.toFixed(4)} FBU</p></div><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>Y / {intervalMinutes} MIN</p><p className={`font-black text-xs ${primary}`}>{recipientPerInterval.toFixed(4)} FBU</p></div><div className={`p-2.5 rounded-xl border ${inner}`}><p className={`text-[9px] ${muted}`}>COMMISSION / {intervalMinutes} MIN</p><p className={`font-black text-xs ${primary}`}>{commissionPerInterval.toFixed(4)} FBU</p></div></div>}</div>
+        {pendingRequests.length > 0 && <div className={`p-4 rounded-2xl border ${card} space-y-2`}><div className="flex items-center justify-between"><h3 className={`font-black text-xs uppercase ${primary}`}>{lang === "sw" ? "Mabadiliko yanayosubiri" : "Pending economic changes"}</h3><span className="text-[9px] text-amber-400">1 SuperAdmin approval</span></div>{pendingRequests.map((request) => <div key={request.id} className={`p-3 rounded-xl border ${inner} flex items-center justify-between gap-3`}><div><p className={`text-xs font-black ${primary}`}>{request.rule_key}</p><p className={`text-[10px] ${muted}`}>Requested: {(Number(request.requested_value) * 100).toFixed(2)}%</p></div>{role === "SUPER_ADMIN" ? <button onClick={() => approveRequest(request.id)} disabled={saving} className="px-3 py-2 rounded-lg bg-emerald-500 text-slate-950 text-[10px] font-black uppercase disabled:opacity-50">Approve</button> : <span className="text-[10px] text-amber-400">Awaiting approval</span>}</div>)}</div>}
       </>}
     </div>
   );

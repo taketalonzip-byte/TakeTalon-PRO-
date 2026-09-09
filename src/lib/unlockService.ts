@@ -37,6 +37,9 @@ export interface BusinessRules {
   commission_fbu: number;
   pricing_scale_factor: number;
   effective_monthly_cost_fbu: number;
+  premium_membership_scale_factor: number;
+  premium_membership_price_fbu: number;
+  effective_premium_membership_price_fbu: number;
 }
 
 // ─── Shared row → PublicProfile mapper ───────────────────────────────────────
@@ -362,6 +365,9 @@ const DEFAULT_RULES: BusinessRules = {
   commission_fbu: 50,
   pricing_scale_factor: 1,
   effective_monthly_cost_fbu: 500,
+  premium_membership_scale_factor: 1,
+  premium_membership_price_fbu: 15000,
+  effective_premium_membership_price_fbu: 15000,
 };
 
 export async function fetchBusinessRules(): Promise<BusinessRules> {
@@ -384,12 +390,17 @@ export async function fetchBusinessRules(): Promise<BusinessRules> {
   const scale = map["pricing_scale_factor"] ?? DEFAULT_RULES.pricing_scale_factor;
   const commissionRate = map["commission_month"] ?? 0.1;
   const effectivePrice = basePrice * scale;
+  const premiumBase = map["premium_membership_price_fbu"] ?? DEFAULT_RULES.premium_membership_price_fbu;
+  const premiumScale = map["premium_membership_scale_factor"] ?? DEFAULT_RULES.premium_membership_scale_factor;
   return {
     monthly_cost_fbu: basePrice,
     tipster_share_fbu: effectivePrice * (1 - commissionRate),
     commission_fbu: effectivePrice * commissionRate,
     pricing_scale_factor: scale,
     effective_monthly_cost_fbu: effectivePrice,
+    premium_membership_scale_factor: premiumScale,
+    premium_membership_price_fbu: premiumBase,
+    effective_premium_membership_price_fbu: premiumBase * premiumScale,
   };
 }
 

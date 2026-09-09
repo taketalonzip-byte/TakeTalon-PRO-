@@ -512,6 +512,7 @@ interface WalletViewProps {
   isLifetime?: boolean;
   setIsLifetime?: (lifetime: boolean) => void;
   currentUser?: { isLoggedIn: boolean; username: string; email: string; phone?: string; avatarUrl?: string | null; role?: string | null } | null;
+  premiumMembershipPriceFbu?: number;
   setCurrentUser?: any;
   onOpenAuth?: () => void;
   eyeComfort?: boolean;
@@ -540,6 +541,7 @@ export default function WalletView({
   isLifetime: propIsLifetime,
   setIsLifetime: propSetIsLifetime,
   currentUser,
+  premiumMembershipPriceFbu = 15000,
   setCurrentUser,
   onOpenAuth,
   eyeComfort = false,
@@ -677,7 +679,7 @@ export default function WalletView({
   // MOCK: Local-only simulation, haina backend persistence bado. Lazima iunganishwe na /api endpoint wakati wa Backend Integration Phase.
   const handleUpgradeToPro = () => {
     if (isPro) return;
-    const upgradeCost = 15000; // 15K FBU
+    const upgradeCost = premiumMembershipPriceFbu;
     if (userBalance < upgradeCost) {
       onAddNotification(upgradeErr, "error");
       return;
@@ -734,10 +736,10 @@ export default function WalletView({
         : "Your account is already PRO Elite";
   const upgradeBtnAction =
     lang === "sw"
-      ? "Anza PRO Elite Sasa (FBU 15,000)"
+      ? `Anza PRO Elite Sasa (FBU ${premiumMembershipPriceFbu.toLocaleString()})`
       : lang === "fr"
-        ? "Devenir PRO Elite Sasa (FBU 15,000)"
-        : "Start PRO Elite Now (FBU 15,000)";
+        ? `Devenir PRO Elite Sasa (FBU ${premiumMembershipPriceFbu.toLocaleString()})`
+        : `Start PRO Elite Now (FBU ${premiumMembershipPriceFbu.toLocaleString()})`;
   const txHistoryHeader =
     lang === "sw"
       ? "HISTORIA YA MIAMALA"
