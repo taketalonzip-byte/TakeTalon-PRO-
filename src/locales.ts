@@ -294,12 +294,12 @@ export const locales: Record<LanguageType, TranslationSchema> = {
     viewAll: "View All",
     buyPro: "BUY PRO",
 
-    subscribeBtn: "Unlock (500 FBU/month)",
+    subscribeBtn: "Unlock",
     subscribedBtn: "✓ Unlocked",
     unlockingBtn: "Unlocking...",
     subscribeEarnings: "Earnings: ~0.625 FBU/hr · 15 FBU/day · 450 FBU/month",
     subscribeSuccess: "Unlocked! 450 FBU sent to tipster.",
-    subscribeMonthly: "500 FBU/month",
+    subscribeMonthly: "Database price/month",
     signOutNotif: "You have signed out safely!",
   },
   fr: {
@@ -440,12 +440,12 @@ export const locales: Record<LanguageType, TranslationSchema> = {
     viewAll: "Voir Tout",
     buyPro: "ACHETER PRO",
 
-    subscribeBtn: "Débloquer (500 FBU/mois)",
+    subscribeBtn: "Débloquer",
     subscribedBtn: "✓ Débloqué",
     unlockingBtn: "Déblocage...",
     subscribeEarnings: "Gains : ~0.625 FBU/h · 15 FBU/jour · 450 FBU/mois",
     subscribeSuccess: "Débloqué ! 450 FBU envoyés au pronostiqueur.",
-    subscribeMonthly: "500 FBU/mois",
+    subscribeMonthly: "Prix de la base/mois",
     signOutNotif: "Vous vous êtes déconnecté en toute sécurité !",
   },
   sw: {
@@ -586,12 +586,12 @@ export const locales: Record<LanguageType, TranslationSchema> = {
     viewAll: "Ona Zote",
     buyPro: "NUNUA PRO",
 
-    subscribeBtn: "Fungua (500 FBU/mwezi)",
+    subscribeBtn: "Fungua",
     subscribedBtn: "✓ Imefunguliwa",
     unlockingBtn: "Inafungua...",
     subscribeEarnings: "Mapato: ~0.625 FBU/saa · 15 FBU/siku · 450 FBU/mwezi",
     subscribeSuccess: "Ume-unlock! 450 FBU zimetumwa kwa mwatabiri.",
-    subscribeMonthly: "500 FBU/mwezi",
+    subscribeMonthly: "Bei ya database/mwezi",
     signOutNotif: "Umetoka kwenye akaunti yako kwa usalama!",
   },
 };

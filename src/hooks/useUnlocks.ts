@@ -46,6 +46,8 @@ export function useUnlocks({
     monthly_cost_fbu: 500,
     tipster_share_fbu: 450,
     commission_fbu: 50,
+    pricing_scale_factor: 1,
+    effective_monthly_cost_fbu: 500,
   });
   const [loading, setLoading] = useState(false);
 
@@ -153,14 +155,15 @@ export function useUnlocks({
         return false;
       }
 
-      // Optimistically create temp record immediately so UI switches instantly to 'active' (Unlocking)
+      // Optimistically create a pending record; the recipient must accept it
+      // before the database reserves the effective amount.
       const tempRecord: UnlockRecord = {
         id: `rec-temp-${Date.now()}`,
         unlocker_id: profileId,
         unlocked_id: targetProfileId,
-        status: "active",
+        status: "pending",
         created_at: new Date().toISOString(),
-        accepted_at: new Date().toISOString(),
+        accepted_at: null,
         cancelled_at: null,
       };
 
@@ -185,12 +188,13 @@ export function useUnlocks({
           prev.map((r) => (r.id === tempRecord.id ? newRecord : r)),
         );
         await refresh();
+        const effectiveCost = businessRules.effective_monthly_cost_fbu.toLocaleString();
         const msg =
           lang === "sw"
-            ? "Milango imefunguliwa! Miamala ya FBU 500 itafanyika kila baada ya dakika 30."
+            ? `Ombi la unlock limetumwa. Baada ya kukubaliwa, bei itakuwa FBU ${effectiveCost} kwa mwezi.`
             : lang === "fr"
-              ? "Débloqué avec succès ! 500 FBU seront déduits toutes les 30 minutes."
-              : "Unlocked successfully! 500 FBU deducted every 30 minutes.";
+              ? `Demande envoyée. Après acceptation, le prix effectif sera de ${effectiveCost} FBU par mois.`
+              : `Unlock request sent. After acceptance, the effective price is ${effectiveCost} FBU per month.`;
         onNotification?.(msg, "success");
         return true;
       } else {
@@ -200,10 +204,10 @@ export function useUnlocks({
         if (result.error === "insufficient_balance") {
           msg =
             lang === "sw"
-              ? "Salio halitoshi! Unahitaji angalau FBU 500 kwenye wallet yako ili ku-unlock."
+              ? `Salio halitoshi! Unahitaji angalau FBU ${businessRules.effective_monthly_cost_fbu.toLocaleString()} kwenye wallet yako ili ku-unlock.`
               : lang === "fr"
-                ? "Solde insuffisant ! Vous avez besoin d'au moins 500 FBU."
-                : "Insufficient balance! You need at least 500 FBU to unlock.";
+                ? `Solde insuffisant ! Vous avez besoin d'au moins ${businessRules.effective_monthly_cost_fbu.toLocaleString()} FBU.`
+                : `Insufficient balance! You need at least ${businessRules.effective_monthly_cost_fbu.toLocaleString()} FBU to unlock.`;
         } else if (
           result.error === "already_requested" ||
           result.error === "already_exists" ||
@@ -240,7 +244,7 @@ export function useUnlocks({
         return false;
       }
     },
-    [profileId, lang, onNotification, onRequireAuth, refresh],
+    [businessRules.effective_monthly_cost_fbu, profileId, lang, onNotification, onRequireAuth, refresh],
   );
 
   const cancel = useCallback(

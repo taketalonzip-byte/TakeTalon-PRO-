@@ -2728,141 +2728,15 @@ app.post("/api/admin/reconcile-unregistered-sender", async (req, res) => {
   });
 });
 
-app.post("/api/supabase/request-unlock", async (req, res) => {
-  if (!supabaseAdmin) return res.status(503).json({ error: "DB offline" });
-  try {
-    const { unlocker_id, unlocked_id } = req.body;
-    if (!unlocker_id || !unlocked_id) {
-      return res.status(400).json({ error: "Missing required parameters" });
-    }
-
-    if (unlocker_id === unlocked_id) {
-      return res.status(400).json({ error: "cannot_unlock_self", message: "Huwezi ku-unlock akaunti yako mwenyewe." });
-    }
-
-    const { data: existingContract } = await supabaseAdmin
-      .from("unlock_contracts")
-      .select("*")
-      .eq("unlocker_id", unlocker_id)
-      .eq("unlocked_id", unlocked_id)
-      .in("status", ["active", "pending"])
-      .maybeSingle();
-
-    if (existingContract) {
-      return res.status(200).json({ ok: true, record: existingContract, message: "Akaunti hii tayari imefunguliwa." });
-    }
-
-    let { data: unlockerWallet } = await supabaseAdmin
-      .from("wallets")
-      .select("*")
-      .eq("profile_id", unlocker_id)
-      .maybeSingle();
-
-    if (!unlockerWallet) {
-      const { data: newW } = await supabaseAdmin
-        .from("wallets")
-        .upsert({ profile_id: unlocker_id, balance: 0, reserved_balance: 0 }, { onConflict: "profile_id" })
-        .select("*")
-        .maybeSingle();
-      unlockerWallet = newW;
-    }
-
-    const currentBal = Number(unlockerWallet?.balance || 0);
-    const reservedBal = Number(unlockerWallet?.reserved_balance || 0);
-    const availableBal = Math.max(0, currentBal - reservedBal);
-
-    const UNLOCK_COST = 500;
-    const TIPSTER_SHARE = 450;
-
-    if (availableBal < UNLOCK_COST) {
-      return res.status(400).json({
-        error: "insufficient_balance",
-        message: `Salio lako (FBU ${availableBal.toLocaleString()}) halitoshi ku-unlock akaunti hii. Unahitaji angalau FBU ${UNLOCK_COST}.`,
-      });
-    }
-
-    const { data: unlockedProfile } = await supabaseAdmin.from("profiles").select("username, full_name").eq("id", unlocked_id).maybeSingle();
-    const { data: unlockerProfile } = await supabaseAdmin.from("profiles").select("username, full_name").eq("id", unlocker_id).maybeSingle();
-    const unlockedName = unlockedProfile?.username || unlockedProfile?.full_name || "Mchambuzi";
-    const unlockerName = unlockerProfile?.username || unlockerProfile?.full_name || "Mtumiaji";
-
-    const newUnlockerBal = currentBal - UNLOCK_COST;
-    await supabaseAdmin
-      .from("wallets")
-      .update({ balance: newUnlockerBal, updated_at: new Date().toISOString() })
-      .eq("profile_id", unlocker_id);
-
-    let { data: tipsterWallet } = await supabaseAdmin
-      .from("wallets")
-      .select("*")
-      .eq("profile_id", unlocked_id)
-      .maybeSingle();
-
-    if (!tipsterWallet) {
-      const { data: createdTipsterW } = await supabaseAdmin
-        .from("wallets")
-        .upsert({ profile_id: unlocked_id, balance: 0, reserved_balance: 0 }, { onConflict: "profile_id" })
-        .select("*")
-        .maybeSingle();
-      tipsterWallet = createdTipsterW;
-    }
-
-    const tipsterCurrentBal = Number(tipsterWallet?.balance || 0);
-    await supabaseAdmin
-      .from("wallets")
-      .update({ balance: tipsterCurrentBal + TIPSTER_SHARE, updated_at: new Date().toISOString() })
-      .eq("profile_id", unlocked_id);
-
-    try {
-      await supabaseAdmin.from("wallet_transactions").insert({
-        wallet_id: unlockerWallet?.id,
-        profile_id: unlocker_id,
-        type: "UNLOCK_PAYMENT",
-        amount: -UNLOCK_COST,
-        description: `Malipo ya ku-unlock akaunti ya @${unlockedName}`,
-        created_at: new Date().toISOString(),
-      });
-    } catch (txErr) {
-      console.warn("[request-unlock] wallet_transactions insert warn:", txErr);
-    }
-
-    try {
-      await supabaseAdmin.from("wallet_transactions").insert({
-        wallet_id: tipsterWallet?.id,
-        profile_id: unlocked_id,
-        type: "UNLOCK_EARNING",
-        amount: TIPSTER_SHARE,
-        description: `Mapato ya ku-unlock kutoka kwa @${unlockerName}`,
-        created_at: new Date().toISOString(),
-      });
-    } catch (txErr) {
-      console.warn("[request-unlock] tipster wallet_transactions insert warn:", txErr);
-    }
-
-    const { data: inserted, error: insertErr } = await supabaseAdmin
-      .from("unlock_contracts")
-      .insert({
-        unlocker_id,
-        unlocked_id,
-        status: "active",
-        requested_at: new Date().toISOString(),
-        accepted_at: new Date().toISOString(),
-        last_charged_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (insertErr) return res.status(400).json({ error: insertErr.message });
-
-    res.json({
-      ok: true,
-      record: inserted,
-      new_unlocker_balance: newUnlockerBal - reservedBal,
-    });
-  } catch (e: any) {
-    console.error("[request-unlock] error:", e);
-    res.status(500).json({ error: e.message });
-  }
+app.post("/api/supabase/request-unlock", async (_req, res) => {
+  // Deprecated: Unlock requests must use the authenticated database RPC.
+  // Keeping this route non-mutating prevents legacy clients from bypassing
+  // economic rules and the wallet ledger.
+  return res.status(410).json({
+    ok: false,
+    error: "deprecated_unlock_route",
+    message: "Use the authenticated request_unlock database RPC.",
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

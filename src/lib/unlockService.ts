@@ -32,9 +32,11 @@ export interface PublicProfile {
 }
 
 export interface BusinessRules {
-  monthly_cost_fbu: number; // 500
-  tipster_share_fbu: number; // 450
-  commission_fbu: number; // 50
+  monthly_cost_fbu: number;
+  tipster_share_fbu: number;
+  commission_fbu: number;
+  pricing_scale_factor: number;
+  effective_monthly_cost_fbu: number;
 }
 
 // ─── Shared row → PublicProfile mapper ───────────────────────────────────────
@@ -289,24 +291,18 @@ export async function requestUnlock(
     return { ok: false, error: "cannot_unlock_self" };
   }
 
-  // ALL unlocks MUST go through server API route /api/supabase/request-unlock
-  // which verifies DB wallet balance (min 500 FBU) and atomically deducts payment
+  // ALL unlocks MUST go through the database RPC. The RPC reads the active
+  // economic rule and atomically reserves the effective amount.
   try {
-    const res = await fetch("/api/supabase/request-unlock", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        unlocker_id: customUnlockerProfileId,
-        unlocked_id: unlockedProfileId,
-      }),
+    const { data, error } = await supabase.rpc("request_unlock", {
+      p_unlocked_profile_id: unlockedProfileId,
     });
-    const data = await res.json();
-    if (res.ok) {
-      return { ok: true, record: data.record || data, new_balance: data.new_unlocker_balance };
-    }
-    return { ok: false, error: data?.error || "insufficient_balance" };
+    if (error) return { ok: false, error: error.message };
+    const result = data as any;
+    if (result?.ok === false) return { ok: false, error: result.error };
+    return { ok: true, record: result?.record || result };
   } catch (e: any) {
-    console.error("[unlockService] API request-unlock error:", e);
+    console.error("[unlockService] RPC request_unlock error:", e);
     return { ok: false, error: e?.message || "server_error" };
   }
 }
@@ -364,6 +360,8 @@ const DEFAULT_RULES: BusinessRules = {
   monthly_cost_fbu: 500,
   tipster_share_fbu: 450,
   commission_fbu: 50,
+  pricing_scale_factor: 1,
+  effective_monthly_cost_fbu: 500,
 };
 
 export async function fetchBusinessRules(): Promise<BusinessRules> {
@@ -382,10 +380,16 @@ export async function fetchBusinessRules(): Promise<BusinessRules> {
     map[row.key] = Number(row.value);
   }
 
+  const basePrice = map["unlock_price_x_month"] ?? DEFAULT_RULES.monthly_cost_fbu;
+  const scale = map["pricing_scale_factor"] ?? DEFAULT_RULES.pricing_scale_factor;
+  const commissionRate = map["commission_month"] ?? 0.1;
+  const effectivePrice = basePrice * scale;
   return {
-    monthly_cost_fbu: map["unlock_price_x_month"] ?? DEFAULT_RULES.monthly_cost_fbu,
-    tipster_share_fbu: map["unlock_price_y_month"] ?? DEFAULT_RULES.tipster_share_fbu,
-    commission_fbu: map["commission_month"] ?? DEFAULT_RULES.commission_fbu,
+    monthly_cost_fbu: basePrice,
+    tipster_share_fbu: effectivePrice * (1 - commissionRate),
+    commission_fbu: effectivePrice * commissionRate,
+    pricing_scale_factor: scale,
+    effective_monthly_cost_fbu: effectivePrice,
   };
 }
 

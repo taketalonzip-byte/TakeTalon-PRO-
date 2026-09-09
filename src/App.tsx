@@ -1071,7 +1071,7 @@ export default function App() {
       return;
     }
     if (subscribedTipsters.includes(tipsterName)) return;
-    const cost = 500;
+    const cost = unlockBusinessRules.effective_monthly_cost_fbu;
     if (userBalance < cost) {
       addNotification(t.insufficientFunds, "error");
       return;
@@ -1082,10 +1082,10 @@ export default function App() {
 
     const detailedMsg =
       lang === "sw"
-        ? `Ume-unlock ${tipsterName} kwa 500 FBU! 450 FBU zimetumwa kwake, na 50 FBU kama kamisheni ya TakeTalon.`
+        ? `Ume-unlock ${tipsterName} kwa FBU ${cost.toLocaleString()} kwa bei ya sasa.`
         : lang === "fr"
-          ? `Débloqué ${tipsterName} pour 500 FBU ! 450 FBU ont été envoyés au pronostiqueur et 50 FBU comme commission TakeTalon.`
-          : `Unlocked ${tipsterName} for 500 FBU! 450 FBU sent to the tipster and 50 FBU kept as TakeTalon commission.`;
+          ? `Débloqué ${tipsterName} pour ${cost.toLocaleString()} FBU au prix effectif.`
+          : `Unlocked ${tipsterName} for ${cost.toLocaleString()} FBU at the effective price.`;
 
     addNotification(detailedMsg, "success");
   };
