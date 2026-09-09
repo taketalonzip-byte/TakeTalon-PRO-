@@ -44,6 +44,7 @@ const AgentView = lazy(() => import("./components/AgentView"));
 const NotificationsView = lazy(() => import("./components/NotificationsView"));
 const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
 const GovernancePanel = lazy(() => import("./components/GovernancePanel"));
+const EconomicControlPanel = lazy(() => import("./components/EconomicControlPanel"));
 const FootballPage = lazy(() => import("./components/FootballPage"));
 const SportPage = lazy(() => import("./components/SportPage"));
 const AuthPage = lazy(() => import("./components/AuthPage"));
@@ -2799,6 +2800,24 @@ export default function App() {
                         lang={lang}
                         onAddNotification={addNotification}
                         onClose={() => handleSetActiveTab("Home")}
+                      />
+                    </motion.div>
+                  )}
+
+                  {activeTab === "EconomicControl" && (
+                    <motion.div
+                      key="economic-control-screen"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <EconomicControlPanel
+                        currentUser={currentUser}
+                        theme={theme}
+                        lang={lang}
+                        onAddNotification={addNotification}
+                        onBack={() => handleSetActiveTab("Wallet")}
                       />
                     </motion.div>
                   )}

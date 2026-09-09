@@ -1224,6 +1224,31 @@ export default function WalletView({
               </span>
             </button>
           )}
+
+          {/* Economic Transaction Control (OWNER & SUPER_ADMIN only) */}
+          {isGovernanceUser && setActiveTab && (
+            <button
+              onClick={() => setActiveTab("EconomicControl")}
+              className={`w-full text-left p-2 rounded-xl flex items-center justify-between transition-all duration-200 cursor-pointer ${
+                theme === "light"
+                  ? "text-amber-900 bg-amber-50/60 hover:bg-amber-100/70 border border-amber-200/60"
+                  : "text-amber-300 bg-amber-950/20 hover:bg-amber-900/30 border border-amber-500/20"
+              }`}
+            >
+              <span className="flex items-center space-x-2.5 text-[10px]">
+                <Scale className="w-4 h-4 text-amber-400" />
+                <span className="font-extrabold uppercase tracking-wide">
+                  {lang === "sw" ? "Udhibiti wa Miamala" : "Transaction Control"}
+                </span>
+              </span>
+              <span className="flex items-center space-x-1">
+                <span className="text-[8px] font-mono font-black px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 uppercase">
+                  OWNER / SUPER
+                </span>
+                <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
