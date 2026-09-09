@@ -2432,19 +2432,6 @@ app.post(["/api/profile-photo/upload", "/api/supabase/upload-avatar"], async (re
             console.warn("[PROFILE_PHOTO_UPLOAD] Failed to update avatar_url in profiles table:", e);
           }
 
-          try {
-            await supabaseAdmin.from("profile_photo_transactions").insert({
-              user_id: profileId,
-              photo_id: generatedPhotoId,
-              action: "NEW_PROFILE",
-              amount: 0,
-              currency: "FBu",
-              status: "SUCCESS",
-              reference_id: `tx-photo-new-${Date.now()}`,
-            });
-          } catch (e) {
-            // ignore
-          }
         }
       } catch (dbErr) {
         console.warn("[PROFILE_PHOTO_UPLOAD] DB update error, continuing with client payload:", dbErr);
@@ -2506,16 +2493,6 @@ app.post("/api/profile-photo/switch", async (req, res) => {
     await supabaseAdmin.from("profile_photos").update({ is_current: false }).eq("user_id", profile.id);
     await supabaseAdmin.from("profile_photos").update({ is_current: true, updated_at: nowIso }).eq("id", photo_id);
     await supabaseAdmin.from("profiles").update({ avatar_url: targetPhoto.photo_url, last_profile_changed_at: nowIso }).eq("id", profile.id);
-
-    await supabaseAdmin.from("profile_photo_transactions").insert({
-      user_id: profile.id,
-      photo_id: targetPhoto.id,
-      action: "SWITCH_EXISTING",
-      amount: 0,
-      currency: "FBu",
-      status: "SUCCESS",
-      reference_id: `tx-photo-switch-${Date.now()}`,
-    });
 
     return res.json({
       ok: true,
@@ -2583,16 +2560,6 @@ app.post("/api/profile-photo/delete", async (req, res) => {
       await supabaseAdmin.from("profiles").update({ avatar_url: nextAvatarUrl }).eq("id", profile.id);
     }
 
-    await supabaseAdmin.from("profile_photo_transactions").insert({
-      user_id: profile.id,
-      photo_id: targetPhoto.id,
-      action: "DELETE_PHOTO",
-      amount: 0,
-      currency: "FBu",
-      status: "SUCCESS",
-      reference_id: `tx-photo-del-${Date.now()}`,
-    });
-
     return res.json({
       ok: true,
       photo_id: targetPhoto.id,
@@ -2638,16 +2605,6 @@ app.post("/api/profile-photo/restore", async (req, res) => {
       restored_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq("id", photo_id);
-
-    await supabaseAdmin.from("profile_photo_transactions").insert({
-      user_id: profile.id,
-      photo_id: targetPhoto.id,
-      action: "RESTORE_PHOTO",
-      amount: 0,
-      currency: "FBu",
-      status: "SUCCESS",
-      reference_id: `tx-photo-restore-${Date.now()}`,
-    });
 
     return res.json({
       ok: true,
