@@ -116,9 +116,14 @@ export default function AdminDashboard({
       console.warn("[AdminDashboard] Supabase RPC failed, trying fallback API:", err);
     }
 
-    // 2. Fallback: Call Express API endpoint
+    // 2. Fallback: Call authenticated Cloudflare admin canary
     try {
-      const res = await fetch("/api/admin/unregistered-senders");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("Admin session token missing");
+      const res = await fetch("/api/cloudflare/admin/unregistered-senders", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       if (res.ok) {
         const body = await res.json();
         if (body.ok && Array.isArray(body.data)) {
