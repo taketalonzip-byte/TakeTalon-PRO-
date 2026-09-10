@@ -2,7 +2,11 @@ export const buildGamesHandler = (loadMatches: (request: Request, env: any) => P
   try {
     const response = await loadMatches(request, env);
     const data: any = await response.json();
-    const games = (data.matches || []).map((match: any) => {
+    // Tennis can return hundreds of grouped ESPN entries. The full match route
+    // remains available; the generic card feed only needs a bounded first page
+    // to stay within edge CPU and response limits.
+    const sourceMatches = (data.matches || []).slice(0, sport === "tennis" ? 300 : 500);
+    const games = sourceMatches.map((match: any) => {
       const isTennis = sport === "tennis";
       const isVolleyball = sport === "volleyball";
       const home = isTennis ? match.player1 : match.homeTeam;
