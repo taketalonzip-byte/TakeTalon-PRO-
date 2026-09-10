@@ -1,4 +1,6 @@
-const ESPN_TENNIS_BASE = "https://site.api.espn.com/apis/site/v2/sports/tennis";
+// ESPN blocks the site.api host from Cloudflare edge requests with HTTP 403.
+// The equivalent site.web.api host is accepted and returns the same scoreboard schema.
+const ESPN_TENNIS_BASE = "https://site.web.api.espn.com/apis/site/v2/sports/tennis";
 
 const statusOf = (type: any) => {
   const state = type?.state || "pre";
