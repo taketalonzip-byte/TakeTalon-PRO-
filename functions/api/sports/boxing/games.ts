@@ -1,7 +1,7 @@
 import { onRequest as loadBouts } from "./fixtures";
-export const onRequest = async ({ request, env }: { request: Request; env: any }) => {
+export const onRequest = async () => {
   try {
-    const response = await loadBouts({ request, env });
+    const response = await loadBouts();
     const data: any = await response.json();
     const games = (data.bouts || []).map((bout: any) => ({
       id: String(bout.id), sport: "Boxing", league: bout.event, league_logo: null, country: "International", league_id: "espn-boxing",
