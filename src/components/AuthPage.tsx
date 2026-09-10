@@ -360,11 +360,11 @@ export default function AuthPage({
   const checkSupabaseServer = async () => {
     setSupabaseStatus((prev) => ({ ...prev, checking: true }));
     try {
-      const res = await fetch("/api/cloudflare/supabase-status");
+      const res = await fetch("/api/health");
       const data = await res.json();
       setSupabaseStatus({
         checking: false,
-        status: data?.status || (data?.ok ? "ONLINE" : "TIMEOUT_OR_UNREACHABLE"),
+        status: data?.dbConnected ? "ONLINE" : "DB_ERROR",
         message: data?.message,
         latencyMs: data?.latencyMs,
       });
