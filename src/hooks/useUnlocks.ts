@@ -86,6 +86,13 @@ export function useUnlocks({
   // ── Real-time subscription on unlock_contracts ────────────────────────────────
 
   useEffect(() => {
+    if (!profileId) return;
+    const handleRulesUpdated = () => { fetchBusinessRules().then(setBusinessRules); };
+    window.addEventListener("taketalon:business-rules-updated", handleRulesUpdated);
+    return () => window.removeEventListener("taketalon:business-rules-updated", handleRulesUpdated);
+  }, [profileId]);
+
+  useEffect(() => {
     if (!profileId || !isSupabaseConfigured) return;
 
     const channel = supabase
