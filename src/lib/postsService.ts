@@ -1,5 +1,6 @@
 import { MatchTip } from "../types";
 import { getTeamLogoUrl } from "./teamLogos";
+import { supabase } from "./supabase";
 
 export function dbPostToMatchTip(post: any): MatchTip {
   const snapshot =
@@ -171,9 +172,11 @@ export async function createDatabasePost(params: {
   try {
     const bodyContent =
       typeof params.content === "object" ? JSON.stringify(params.content) : params.content;
-    const res = await fetch("/api/supabase/create-post", {
+    const accessToken = (await supabase.auth.getSession()).data.session?.access_token;
+    if (!accessToken) throw new Error("Authenticated session token missing");
+    const postPayload = {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({
         profile_id: params.profileId,
         content: bodyContent,
@@ -198,7 +201,9 @@ export async function createDatabasePost(params: {
           match_status: params.match.matchStatus || "UPCOMING",
         },
       }),
-    });
+    };
+    let res = await fetch("/api/cloudflare/supabase/create-post", postPayload);
+    if (res.status >= 500) res = await fetch("/api/supabase/create-post", postPayload);
     const data = await res.json();
     const expectedCardBetId = params.match.cardBetId || params.match.externalMatchId;
     const persistedCardBetId = data.snapshot?.card_bet_id || data.post?.card_bet_id;
