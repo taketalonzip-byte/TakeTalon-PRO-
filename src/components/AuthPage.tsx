@@ -992,20 +992,26 @@ export default function AuthPage({
     setLoading(true);
 
     try {
-      const res = await fetchAuthRequest("/verify-otp", {
+      const otpPayload = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim(),
-          otp: cleanOtp,
-        }),
-      });
+        body: JSON.stringify({ email: email.trim(), otp: cleanOtp }),
+      };
+      let res = await fetchAuthRequest("/api/cloudflare/auth/verify-otp", otpPayload);
 
       let data: any = {};
       try {
         data = await res.json();
       } catch {
         data = { error: "Imeshindikana kusoma majibu kutoka kwa server." };
+      }
+      if (res.status >= 500 || data?.isConnectionError || data?.retryable) {
+        res = await fetchAuthRequest("/verify-otp", otpPayload);
+        try {
+          data = await res.json();
+        } catch {
+          data = { error: "Imeshindikana kusoma majibu kutoka kwa server." };
+        }
       }
 
       if (!res.ok) {
