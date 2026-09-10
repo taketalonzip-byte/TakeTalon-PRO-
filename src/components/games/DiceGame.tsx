@@ -271,6 +271,7 @@ export const DiceGame: React.FC<DiceGameProps> = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                Minimum: {formatFBU(minimumStakeFbu)} FBU ·
                 Bet Amount (FBU) - Max 100,000 FBU
               </label>
               <button
@@ -287,7 +288,7 @@ export const DiceGame: React.FC<DiceGameProps> = ({
               max={Math.min(balanceFBU, 100000)}
               value={betFBU}
               onChange={(e) =>
-                setBetFBU(Math.max(minimumStakeFbu, Math.min(100000, parseInt(e.target.value) || 100)))
+                setBetFBU(Math.max(minimumStakeFbu, Math.min(100000, parseInt(e.target.value) || minimumStakeFbu)))
               }
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 font-mono text-xs font-bold text-emerald-300 focus:outline-none focus:border-emerald-500"
             />

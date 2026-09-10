@@ -298,6 +298,7 @@ export const CrystalGame: React.FC<CrystalGameProps> = ({
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                Minimum: {formatFBU(minimumStakeFbu)} FBU ·
                 Bet Amount (FBU) - Max 100,000 FBU
               </label>
               <span className="text-[10px] font-mono text-sky-400 font-bold">
@@ -311,7 +312,7 @@ export const CrystalGame: React.FC<CrystalGameProps> = ({
                 max={Math.min(balanceFBU, 100000)}
                 value={betFBU}
                 onChange={(e) =>
-                  setBetFBU(Math.max(minimumStakeFbu, Math.min(100000, parseInt(e.target.value) || 100)))
+                  setBetFBU(Math.max(minimumStakeFbu, Math.min(100000, parseInt(e.target.value) || minimumStakeFbu)))
                 }
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 font-mono text-xs font-bold text-sky-300 focus:outline-none focus:border-sky-500"
               />

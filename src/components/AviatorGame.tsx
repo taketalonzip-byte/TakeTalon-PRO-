@@ -733,6 +733,7 @@ export default function AviatorGame({
           <span
             className={`font-bold uppercase ${theme === "light" ? "text-slate-600" : "text-slate-400"}`}
           >
+            <span className="mr-2 text-amber-400">Min: {minimumStakeFbu.toLocaleString()} FBU</span>
             {lang === "sw"
               ? "Kiasi cha Dau (FBU)"
               : lang === "fr"
@@ -782,7 +783,7 @@ export default function AviatorGame({
             type="number"
             disabled={gameState !== "BETTING" || placedBetAmount !== null}
             value={betAmount}
-            onChange={(e) => setBetAmount(Math.max(minimumStakeFbu, parseInt(e.target.value) || 500))}
+            onChange={(e) => setBetAmount(Math.max(minimumStakeFbu, parseInt(e.target.value) || minimumStakeFbu))}
             className={`flex-1 text-center font-mono font-black text-xs border rounded-lg py-1 focus:outline-none transition-all ${
               theme === "light"
                 ? "bg-white border-slate-200 text-slate-800 focus:border-amber-500"
