@@ -59,7 +59,15 @@ const mapEvent = (event: any, tour: string) => {
 };
 
 const fetchTour = async (tour: string) => {
-  const response = await fetch(`${ESPN_TENNIS_BASE}/${tour}/scoreboard`, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) });
+  const response = await fetch(`${ESPN_TENNIS_BASE}/${tour}/scoreboard`, {
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "Accept-Language": "en-US,en;q=0.9",
+      "User-Agent": "Mozilla/5.0 (compatible; TakeTalon/1.0; +https://taketalon.pages.dev/)",
+      Referer: "https://www.espn.com/",
+    },
+    signal: AbortSignal.timeout(10000),
+  });
   if (!response.ok) throw new Error(`ESPN Tennis returned HTTP ${response.status} for ${tour}`);
   const data: any = await response.json();
   const events = Array.isArray(data.events) ? data.events : [];
