@@ -1,0 +1,2 @@
+import { genericEspnGames } from "../_generic-espn";
+export const onRequest = async () => Response.json({ games: await genericEspnGames("cricket", [{ code: "IPL", slug: "8048", name: "Indian Premier League", country: "India" }, { code: "BBL", slug: "8044", name: "Big Bash League", country: "Australia" }, { code: "WC", slug: "8039", name: "ICC Cricket World Cup", country: "International" }]), source: "espn" });
