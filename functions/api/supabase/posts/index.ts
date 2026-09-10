@@ -1,4 +1,4 @@
-import { supabaseGet, type SupabaseEnv } from "./_shared";
+import { supabaseGet, type SupabaseEnv } from "../_shared";
 export const onRequest = async ({ request, env }: { request: Request; env: SupabaseEnv }) => {
   try {
     const url = new URL(request.url); const author = url.searchParams.get("author_id");
