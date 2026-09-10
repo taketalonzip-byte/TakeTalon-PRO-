@@ -360,7 +360,7 @@ export default function AuthPage({
   const checkSupabaseServer = async () => {
     setSupabaseStatus((prev) => ({ ...prev, checking: true }));
     try {
-      const res = await fetch("/api/supabase/status");
+      const res = await fetch("/api/cloudflare/supabase-status");
       const data = await res.json();
       setSupabaseStatus({
         checking: false,
