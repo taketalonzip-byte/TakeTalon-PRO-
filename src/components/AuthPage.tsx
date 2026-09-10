@@ -1218,11 +1218,15 @@ export default function AuthPage({
     setLoading(true);
 
     try {
-      const res = await fetchAuthRequest("/forgot-password/send-otp", {
+      const forgotSendPayload = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: targetInput }),
-      });
+      };
+      let res = await fetchAuthRequest("/api/cloudflare/auth/forgot-password/send-otp", forgotSendPayload);
+      if (res.status >= 500) {
+        res = await fetchAuthRequest("/forgot-password/send-otp", forgotSendPayload);
+      }
 
       let data: any = {};
       try {
@@ -1271,11 +1275,13 @@ export default function AuthPage({
     setLoading(true);
 
     try {
-      const res = await fetchAuthRequest("/forgot-password/resend-otp", {
+      const resendPayload = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: forgotEmail.trim() }),
-      });
+      };
+      let res = await fetchAuthRequest("/api/cloudflare/auth/forgot-password/resend-otp", resendPayload);
+      if (res.status >= 500) res = await fetchAuthRequest("/forgot-password/resend-otp", resendPayload);
 
       let data: any = {};
       try {
@@ -1348,7 +1354,7 @@ export default function AuthPage({
     setLoading(true);
 
     try {
-      const res = await fetchAuthRequest("/forgot-password/reset", {
+      const resetPayload = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1356,7 +1362,9 @@ export default function AuthPage({
           otp: cleanOtp,
           new_password: forgotNewPassword,
         }),
-      });
+      };
+      let res = await fetchAuthRequest("/api/cloudflare/auth/forgot-password/reset", resetPayload);
+      if (res.status >= 500) res = await fetchAuthRequest("/forgot-password/reset", resetPayload);
 
       let data: any = {};
       try {
