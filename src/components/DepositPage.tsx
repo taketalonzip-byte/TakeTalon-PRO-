@@ -176,48 +176,24 @@ export default function DepositPage({
   // Single "did the deposit land yet?" check — reused by the polling loop below
   const checkDepositStatus = async (): Promise<DepositCheckResult> => {
     try {
-      // Query recent sms_messages in Supabase database to verify real deposit
-      let query = supabase.from("sms_messages").select("*").order("created_at", { ascending: false }).limit(10);
-      const { data, error } = await query;
-
-      if (error) {
-        console.warn("[DepositPage] verification db check warning:", error.message);
-      }
-
-      const matchedSms = (data || []).find((msg: any) => {
-        const body = (msg.message || msg.body || "").toLowerCase();
-        const sender = (msg.sender || msg.sender_phone || "").toLowerCase();
+      const canonicalQuery = supabase
+        .from("sms_deposit_logs")
+        .select("parsed_amount,status,sms_reference,matched_profile_id,processed_at")
+        .eq("status", "matched")
+        .eq("matched_profile_id", profileId || "")
+        .order("processed_at", { ascending: false })
+        .limit(10);
+      const { data: canonicalLogs } = await canonicalQuery;
+      const canonicalMatch = (canonicalLogs || []).find((log: any) => {
         const ref = transactionRef.trim().toLowerCase();
-        const phone = senderPhone.trim().toLowerCase();
-
-        if (ref && body.includes(ref)) return true;
-        if (phone && sender.includes(phone)) return true;
-        return false;
+        return !ref || String(log.sms_reference || "").toLowerCase() === ref;
       });
-
-      if (matchedSms) {
-        const amount = matchedSms.amount || 1000;
+      if (canonicalMatch && Number(canonicalMatch.parsed_amount) > 0) {
         const methodName = selectedMethod ? agentsMap[selectedMethod].title : "Mobile Money";
-        return { status: "success", amount, methodName };
+        return { status: "success", amount: Number(canonicalMatch.parsed_amount), methodName };
       }
-
-      // If not immediately found in DB, trigger backend SMS poll sync check
-      const syncRes = await fetch("/api/sms").then((r) => r.json()).catch(() => null);
-
-      if (syncRes && syncRes.data && syncRes.data.length > 0) {
-        const freshMatched = syncRes.data.find((m: any) => {
-          const b = (m.message || "").toLowerCase();
-          const ref = transactionRef.trim().toLowerCase();
-          return ref && b.includes(ref);
-        });
-
-        if (freshMatched) {
-          const amount = freshMatched.amount || 1000;
-          const methodName = selectedMethod ? agentsMap[selectedMethod].title : "Mobile Money";
-          return { status: "success", amount, methodName };
-        }
-      }
-
+      // SMS presence alone is not proof of a wallet credit; wait for a matched
+      // sms_deposit_logs row linked to this profile and a positive amount.
       return { status: "pending" };
     } catch (err: any) {
       console.error("[DepositPage] Verification error:", err);
