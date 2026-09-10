@@ -185,7 +185,7 @@ export default function ProfileView({
     if (!key) return;
     setIsPhotoLoading(true);
     try {
-      const res = await fetch(`/api/cloudflare/profile-history?user_id=${encodeURIComponent(key)}`);
+      const res = await fetch(`/api/health?probe=profile-history&user_id=${encodeURIComponent(key)}`);
       const data = await safeParseJsonResponse(res);
       if (res.ok && data.ok) {
         setActivePhotos(data.activePhotos || []);
