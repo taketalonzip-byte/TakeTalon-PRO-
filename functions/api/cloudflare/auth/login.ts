@@ -22,6 +22,14 @@ export const onRequest = async ({ request, env }: { request: Request; env: Login
 
   try {
     let email = cleanId.toLowerCase();
+    if (cleanId.includes("@") && serviceKey) {
+      const profileResponse = await fetch(`${base}/rest/v1/profiles?select=email&email=eq.${encodeURIComponent(email)}&limit=1`, {
+        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }, signal: AbortSignal.timeout(5000),
+      });
+      if (!profileResponse.ok) return json({ ok: false, isConnectionError: true, error: "Seva ya Supabase haijibu kwa wakati." }, 504);
+      const profiles: any[] = await profileResponse.json();
+      if (!profiles.length) return json({ ok: false, isAccountNotFound: true, error: "Akaunti yenye barua pepe hii haijapatikana au neno la siri si sahihi. Tafadhali hakiki herufi za barua pepe au sajili akaunti." }, 401);
+    }
     if (!cleanId.includes("@")) {
       if (!serviceKey) return json({ ok: false, isConnectionError: true, error: "Username login haijasidiwa kwenye canary." }, 503);
       const sanitizedPhone = cleanId.replace(/[^0-9]/g, "");
