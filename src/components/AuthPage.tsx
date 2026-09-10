@@ -742,16 +742,19 @@ export default function AuthPage({
       let serverIsNotFound = false;
 
       try {
-        const sLoginRes = await fetch("/api/auth/login", {
+        const loginPayload = {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            loginId: cleanInput,
-            password: loginPassword,
-          }),
-        });
+          body: JSON.stringify({ loginId: cleanInput, password: loginPassword }),
+        };
+        let sLoginRes = await fetch("/api/cloudflare/auth/login", loginPayload);
+        let sLoginData = await sLoginRes.json().catch(() => null);
 
-        const sLoginData = await sLoginRes.json().catch(() => null);
+        // Render remains a rollback fallback only for Cloudflare/network failures.
+        if (sLoginRes.status >= 500 || sLoginData?.isConnectionError) {
+          sLoginRes = await fetch("/api/auth/login", loginPayload);
+          sLoginData = await sLoginRes.json().catch(() => null);
+        }
 
         if (sLoginRes.ok && sLoginData?.ok && sLoginData?.profile) {
           const prof = sLoginData.profile;
