@@ -641,7 +641,9 @@ export default function WalletView({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ profile_id: profileId, amount: withdrawAmount }),
         });
-        if (!res.ok) throw new Error("Backend rejected withdrawal");
+        if (!res.ok || !res.headers.get("content-type")?.includes("application/json")) {
+          throw new Error("Authoritative withdrawal endpoint unavailable");
+        }
       }
       onAddTransaction("WITHDRAW", withdrawAmount, withdrawDesc);
       setShowWithdrawModal(false);
