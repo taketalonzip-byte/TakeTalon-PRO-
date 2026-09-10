@@ -11,6 +11,8 @@
  * - Temporary local copy deletion immediately after server confirmation
  */
 
+import { supabase } from "./supabase";
+
 const DB_NAME = "taketalon_profile_photo_db";
 const STORE_NAME = "pending_photo_uploads";
 const DB_VERSION = 1;
@@ -287,9 +289,11 @@ async function performServerUpload(
   base64Data: string,
   fileName: string
 ): Promise<{ ok: boolean; avatar_url?: string; message?: string; error?: string }> {
-  const res = await fetch("/api/profile-photo/upload", {
+  const accessToken = (await supabase.auth.getSession()).data.session?.access_token;
+  if (!accessToken) throw new Error("Authenticated session token missing");
+  let res = await fetch("/api/cloudflare/profile-photo/upload", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
     body: JSON.stringify({
       user_id: userId,
       base64_data: base64Data,
@@ -297,6 +301,13 @@ async function performServerUpload(
     }),
   });
 
+  if (res.status >= 500) {
+    res = await fetch("/api/profile-photo/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, base64_data: base64Data, file_name: fileName }),
+    });
+  }
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
     let jsonErr;
