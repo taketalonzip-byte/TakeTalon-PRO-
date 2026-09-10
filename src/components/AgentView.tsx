@@ -104,7 +104,14 @@ export default function AgentView({
 
   const fetchSmsLogs = () => {
     setFetchingLogs(true);
-    fetch("/api/sms-gateway")
+    supabase.auth.getSession()
+      .then(({ data: sessionData }) => {
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) throw new Error("Authenticated session token missing");
+        return fetch("/api/cloudflare/admin/sms-gateway", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+      })
       .then((res) => res.json())
       .then((data) => {
         if (data && Array.isArray(data.auditLogs)) {
