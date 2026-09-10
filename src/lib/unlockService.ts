@@ -47,6 +47,17 @@ export interface BusinessRules {
   crystal_minimum_stake_fbu: number;
   dice_minimum_stake_fbu: number;
   plinko_minimum_stake_fbu: number;
+  bet_slip_minimum_scale_factor: number;
+  aviator_minimum_scale_factor: number;
+  slot777_minimum_scale_factor: number;
+  crystal_minimum_scale_factor: number;
+  dice_minimum_scale_factor: number;
+  plinko_minimum_scale_factor: number;
+  vip_card_minimum_scale_factor: number;
+  vip_card_minimum_capital_fbu: number;
+  vip_card_players_balance_filter_fbu: number;
+  effective_vip_card_minimum_capital_fbu: number;
+  effective_vip_card_players_balance_filter_fbu: number;
 }
 
 // ─── Shared row → PublicProfile mapper ───────────────────────────────────────
@@ -382,6 +393,17 @@ const DEFAULT_RULES: BusinessRules = {
   crystal_minimum_stake_fbu: 100,
   dice_minimum_stake_fbu: 100,
   plinko_minimum_stake_fbu: 100,
+  bet_slip_minimum_scale_factor: 1,
+  aviator_minimum_scale_factor: 1,
+  slot777_minimum_scale_factor: 1,
+  crystal_minimum_scale_factor: 1,
+  dice_minimum_scale_factor: 1,
+  plinko_minimum_scale_factor: 1,
+  vip_card_minimum_scale_factor: 1,
+  vip_card_minimum_capital_fbu: 1000,
+  vip_card_players_balance_filter_fbu: 1000,
+  effective_vip_card_minimum_capital_fbu: 1000,
+  effective_vip_card_players_balance_filter_fbu: 1000,
 };
 
 export async function fetchBusinessRules(): Promise<BusinessRules> {
@@ -407,7 +429,9 @@ export async function fetchBusinessRules(): Promise<BusinessRules> {
   const premiumBase = map["premium_membership_price_fbu"] ?? DEFAULT_RULES.premium_membership_price_fbu;
   const premiumScale = map["premium_membership_scale_factor"] ?? DEFAULT_RULES.premium_membership_scale_factor;
   const gamesScale = map["games_betting_minimum_scale_factor"] ?? DEFAULT_RULES.games_betting_minimum_scale_factor;
-  const scaledMinimum = (key: string, fallback: number) => (map[key] ?? fallback) * gamesScale;
+  const gameScale = (key: string) => map[key] ?? gamesScale;
+  const baseMinimum = (key: string, fallback: number) => map[key] ?? fallback;
+  const vipScale = map["vip_card_minimum_scale_factor"] ?? 1;
   return {
     monthly_cost_fbu: basePrice,
     tipster_share_fbu: effectivePrice * (1 - commissionRate),
@@ -418,12 +442,23 @@ export async function fetchBusinessRules(): Promise<BusinessRules> {
     premium_membership_price_fbu: premiumBase,
     effective_premium_membership_price_fbu: premiumBase * premiumScale,
     games_betting_minimum_scale_factor: gamesScale,
-    bet_slip_minimum_stake_fbu: scaledMinimum("bet_slip_minimum_stake_fbu", 500),
-    aviator_minimum_stake_fbu: scaledMinimum("aviator_minimum_stake_fbu", 500),
-    slot777_minimum_stake_fbu: scaledMinimum("slot777_minimum_stake_fbu", 100),
-    crystal_minimum_stake_fbu: scaledMinimum("crystal_minimum_stake_fbu", 100),
-    dice_minimum_stake_fbu: scaledMinimum("dice_minimum_stake_fbu", 100),
-    plinko_minimum_stake_fbu: scaledMinimum("plinko_minimum_stake_fbu", 100),
+    bet_slip_minimum_stake_fbu: baseMinimum("bet_slip_minimum_stake_fbu", 500) * gameScale("bet_slip_minimum_scale_factor"),
+    aviator_minimum_stake_fbu: baseMinimum("aviator_minimum_stake_fbu", 500) * gameScale("aviator_minimum_scale_factor"),
+    slot777_minimum_stake_fbu: baseMinimum("slot777_minimum_stake_fbu", 100) * gameScale("slot777_minimum_scale_factor"),
+    crystal_minimum_stake_fbu: baseMinimum("crystal_minimum_stake_fbu", 100) * gameScale("crystal_minimum_scale_factor"),
+    dice_minimum_stake_fbu: baseMinimum("dice_minimum_stake_fbu", 100) * gameScale("dice_minimum_scale_factor"),
+    plinko_minimum_stake_fbu: baseMinimum("plinko_minimum_stake_fbu", 100) * gameScale("plinko_minimum_scale_factor"),
+    bet_slip_minimum_scale_factor: gameScale("bet_slip_minimum_scale_factor"),
+    aviator_minimum_scale_factor: gameScale("aviator_minimum_scale_factor"),
+    slot777_minimum_scale_factor: gameScale("slot777_minimum_scale_factor"),
+    crystal_minimum_scale_factor: gameScale("crystal_minimum_scale_factor"),
+    dice_minimum_scale_factor: gameScale("dice_minimum_scale_factor"),
+    plinko_minimum_scale_factor: gameScale("plinko_minimum_scale_factor"),
+    vip_card_minimum_scale_factor: vipScale,
+    vip_card_minimum_capital_fbu: baseMinimum("vip_card_minimum_capital_fbu", 1000),
+    vip_card_players_balance_filter_fbu: baseMinimum("vip_card_players_balance_filter_fbu", 1000),
+    effective_vip_card_minimum_capital_fbu: baseMinimum("vip_card_minimum_capital_fbu", 1000) * vipScale,
+    effective_vip_card_players_balance_filter_fbu: baseMinimum("vip_card_players_balance_filter_fbu", 1000) * vipScale,
   };
 }
 

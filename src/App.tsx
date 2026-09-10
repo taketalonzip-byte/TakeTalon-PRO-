@@ -1828,6 +1828,26 @@ export default function App() {
       return;
     }
 
+    if (creatorDeposit < unlockBusinessRules.effective_vip_card_minimum_capital_fbu) {
+      addNotification(
+        lang === "sw"
+          ? `Minimum ya VIP Card capital ni FBU ${unlockBusinessRules.effective_vip_card_minimum_capital_fbu.toLocaleString()}.`
+          : `VIP Card capital minimum is FBU ${unlockBusinessRules.effective_vip_card_minimum_capital_fbu.toLocaleString()}.`,
+        "error",
+      );
+      return;
+    }
+
+    if (creatorMinBetterBalance < unlockBusinessRules.effective_vip_card_players_balance_filter_fbu) {
+      addNotification(
+        lang === "sw"
+          ? `Minimum ya VIP Card players balance filter ni FBU ${unlockBusinessRules.effective_vip_card_players_balance_filter_fbu.toLocaleString()}.`
+          : `VIP Card players balance filter minimum is FBU ${unlockBusinessRules.effective_vip_card_players_balance_filter_fbu.toLocaleString()}.`,
+        "error",
+      );
+      return;
+    }
+
     if (creatorDeposit <= 0) {
       addNotification(
         lang === "sw"
@@ -3588,9 +3608,10 @@ export default function App() {
                           </div>
                           <input
                             type="number"
+                            min={unlockBusinessRules.effective_vip_card_minimum_capital_fbu}
                             value={creatorDeposit}
                             onChange={(e) =>
-                              setCreatorDeposit(Math.max(1000, Number(e.target.value) || 0))
+                              setCreatorDeposit(Math.max(unlockBusinessRules.effective_vip_card_minimum_capital_fbu, Number(e.target.value) || 0))
                             }
                             className={`w-full rounded-lg px-2.5 py-1 text-[11px] font-mono font-black border ${
                               theme === "light"
@@ -3689,9 +3710,10 @@ export default function App() {
                           </div>
                           <input
                             type="number"
+                            min={unlockBusinessRules.effective_vip_card_players_balance_filter_fbu}
                             value={creatorMinBetterBalance}
                             onChange={(e) =>
-                              setCreatorMinBetterBalance(Math.max(100, Number(e.target.value) || 0))
+                              setCreatorMinBetterBalance(Math.max(unlockBusinessRules.effective_vip_card_players_balance_filter_fbu, Number(e.target.value) || 0))
                             }
                             className={`w-full rounded-lg px-2.5 py-1 text-[11px] font-mono font-black border ${
                               theme === "light"
