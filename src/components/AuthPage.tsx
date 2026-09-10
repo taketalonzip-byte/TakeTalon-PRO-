@@ -919,20 +919,29 @@ export default function AuthPage({
     setSuccessMsg("");
 
     try {
-      const res = await fetchAuthRequest("/send-otp", {
+      const otpPayload = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: emailToSend,
           first_name: fName || firstName.trim(),
         }),
-      });
+      };
+      let res = await fetchAuthRequest("/api/cloudflare/auth/send-otp", otpPayload);
 
       let data: any = {};
       try {
         data = await res.json();
       } catch {
         data = { error: "Imeshindikana kusoma majibu kutoka kwa server." };
+      }
+      if (res.status >= 500 || data?.isConnectionError) {
+        res = await fetchAuthRequest("/send-otp", otpPayload);
+        try {
+          data = await res.json();
+        } catch {
+          data = { error: "Imeshindikana kusoma majibu kutoka kwa server." };
+        }
       }
 
       if (!res.ok) {
