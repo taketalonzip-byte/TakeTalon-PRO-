@@ -2741,6 +2741,7 @@ export default function App() {
                         lang={lang}
                         currentUser={currentUser}
                         userBalance={userBalance}
+                        effectiveAgentJoinFeeFbu={unlockBusinessRules.effective_agent_join_fee_fbu}
                         onUpdateBalance={(amount) => setUserBalance((prev) => prev + amount)}
                         onAddTransaction={(desc, amount, type) => {
                           const txType = type === "WITHDRAWAL" ? "WITHDRAW" : "DEPOSIT";

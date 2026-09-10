@@ -58,6 +58,9 @@ export interface BusinessRules {
   vip_card_players_balance_filter_fbu: number;
   effective_vip_card_minimum_capital_fbu: number;
   effective_vip_card_players_balance_filter_fbu: number;
+  agent_join_fee_fbu: number;
+  agent_join_fee_scale_factor: number;
+  effective_agent_join_fee_fbu: number;
 }
 
 // ─── Shared row → PublicProfile mapper ───────────────────────────────────────
@@ -404,6 +407,9 @@ const DEFAULT_RULES: BusinessRules = {
   vip_card_players_balance_filter_fbu: 1000,
   effective_vip_card_minimum_capital_fbu: 1000,
   effective_vip_card_players_balance_filter_fbu: 1000,
+  agent_join_fee_fbu: 1000,
+  agent_join_fee_scale_factor: 1,
+  effective_agent_join_fee_fbu: 1000,
 };
 
 export async function fetchBusinessRules(): Promise<BusinessRules> {
@@ -432,6 +438,8 @@ export async function fetchBusinessRules(): Promise<BusinessRules> {
   const gameScale = (key: string) => map[key] ?? gamesScale;
   const baseMinimum = (key: string, fallback: number) => map[key] ?? fallback;
   const vipScale = map["vip_card_minimum_scale_factor"] ?? 1;
+  const agentBase = map["agent_join_fee_fbu"] ?? DEFAULT_RULES.agent_join_fee_fbu;
+  const agentScale = map["agent_join_fee_scale_factor"] ?? DEFAULT_RULES.agent_join_fee_scale_factor;
   return {
     monthly_cost_fbu: basePrice,
     tipster_share_fbu: effectivePrice * (1 - commissionRate),
@@ -459,6 +467,9 @@ export async function fetchBusinessRules(): Promise<BusinessRules> {
     vip_card_players_balance_filter_fbu: baseMinimum("vip_card_players_balance_filter_fbu", 1000),
     effective_vip_card_minimum_capital_fbu: baseMinimum("vip_card_minimum_capital_fbu", 1000) * vipScale,
     effective_vip_card_players_balance_filter_fbu: baseMinimum("vip_card_players_balance_filter_fbu", 1000) * vipScale,
+    agent_join_fee_fbu: agentBase,
+    agent_join_fee_scale_factor: agentScale,
+    effective_agent_join_fee_fbu: agentBase * agentScale,
   };
 }
 

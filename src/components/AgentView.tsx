@@ -24,12 +24,14 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import AdminDashboard from "./AdminDashboard";
+import { supabase } from "../lib/supabase";
 
 interface AgentViewProps {
   theme: "light" | "dark" | "blue";
   lang: "en" | "fr" | "sw";
   currentUser: any;
   userBalance: number;
+  effectiveAgentJoinFeeFbu: number;
   onUpdateBalance: (amount: number) => void;
   onAddTransaction: (desc: string, amount: number, type: "DEPOSIT" | "WITHDRAWAL") => void;
   onAddNotification?: (msg: string, type: "success" | "error" | "info") => void;
@@ -41,6 +43,7 @@ export default function AgentView({
   lang,
   currentUser,
   userBalance,
+  effectiveAgentJoinFeeFbu,
   onUpdateBalance,
   onAddTransaction,
   onAddNotification,
@@ -50,6 +53,16 @@ export default function AgentView({
   const [isAgent, setIsAgent] = useState<boolean>(() => {
     return currentUser?.role === "AGENT" || currentUser?.role === "ADMIN" || currentUser?.role === "SUPER_ADMIN";
   });
+  const [joiningAgent, setJoiningAgent] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!currentUser?.isLoggedIn) return;
+    supabase.from("agent_accounts").select("id,status").eq("status", "active").maybeSingle().then(({ data }) => {
+      if (!cancelled && data) setIsAgent(true);
+    });
+    return () => { cancelled = true; };
+  }, [currentUser?.isLoggedIn]);
 
   const [subTab, setSubTab] = useState<"agent" | "unregistered">("agent");
 
@@ -141,29 +154,39 @@ export default function AgentView({
     );
   }, [simPhone, simAmount, agentSystemBalance]);
 
-  const handleJoinAgent = () => {
+  const handleJoinAgent = async () => {
     if (!currentUser || !currentUser.isLoggedIn) {
       alert(lang === "sw" ? "Tafadhali jisajili kwanza!" : "Please register first!");
       return;
     }
 
-    if (userBalance < 1000) {
+    if (userBalance < effectiveAgentJoinFeeFbu) {
       alert(
         lang === "sw"
-          ? "Salio lako halitoshi! Unahitaji FBU 1,000 kujiunga na Wakala wa TakeTalon."
-          : "Your balance is insufficient! You need 1,000 FBU to join TakeTalon Agent.",
+          ? `Salio lako halitoshi! Unahitaji FBU ${effectiveAgentJoinFeeFbu.toLocaleString()} kujiunga na Wakala wa TakeTalon.`
+          : `Your balance is insufficient! You need ${effectiveAgentJoinFeeFbu.toLocaleString()} FBU to join TakeTalon Agent.`,
       );
       return;
     }
 
-    // Deduct fee and join
-    onUpdateBalance(-1000);
+    setJoiningAgent(true);
+    const { data, error } = await supabase.rpc("join_taketalon_agent");
+    const result = data as { ok?: boolean; error?: string; fee_paid_fbu?: number } | null;
+    if (error || !result?.ok) {
+      const message = result?.error || error?.message || "join_failed";
+      alert(lang === "sw" ? `Kujiunga kumekataliwa: ${message}` : `Agent activation failed: ${message}`);
+      setJoiningAgent(false);
+      return;
+    }
+    const paid = Number(result.fee_paid_fbu ?? effectiveAgentJoinFeeFbu);
+    onUpdateBalance(-paid);
     onAddTransaction(
-      lang === "sw" ? "Kujiunga na TakeTalon Agent" : "Joined TakeTalon Agent Program",
-      -1000,
+      lang === "sw" ? `Kujiunga na TakeTalon Agent (${paid.toLocaleString()} FBU)` : `Joined TakeTalon Agent Program (${paid.toLocaleString()} FBU)`,
+      -paid,
       "WITHDRAWAL",
     );
     setIsAgent(true);
+    setJoiningAgent(false);
 
     alert(
       lang === "sw"
@@ -428,16 +451,17 @@ export default function AgentView({
               </div>
             </div>
             <span className="text-xs font-mono font-black text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/20">
-              1,000 FBU
+              {effectiveAgentJoinFeeFbu.toLocaleString()} FBU
             </span>
           </div>
 
           <button
             onClick={handleJoinAgent}
+            disabled={joiningAgent}
             className="w-full py-2.5 rounded-xl text-xs font-display font-black uppercase tracking-wider text-center text-white bg-blue-600 hover:bg-blue-500 active:scale-95 transition-all shadow-md shadow-blue-500/10 cursor-pointer flex items-center justify-center space-x-1.5"
           >
             <span>
-              {lang === "sw" ? "Lipa 1,000 FBU na Kujiunga Sasa" : "Pay 1,000 FBU & Join Agent Now"}
+              {joiningAgent ? (lang === "sw" ? "Inawasha Wakala..." : "Activating Agent...") : lang === "sw" ? `Lipa ${effectiveAgentJoinFeeFbu.toLocaleString()} FBU na Kujiunga Sasa` : `Pay ${effectiveAgentJoinFeeFbu.toLocaleString()} FBU & Join Agent Now`}
             </span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
