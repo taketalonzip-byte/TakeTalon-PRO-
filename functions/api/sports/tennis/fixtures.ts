@@ -37,7 +37,7 @@ const mapEvent = (event: any, tour: string) => {
   return {
     id: matchId,
     sport: "tennis",
-    tournament: { id: event.id || "tour", name: tournamentName, shortName: event.shortName || tournamentName, tour: tour.toUpperCase(), country: "International", emblem: null, category: competition.type?.text || "Singles" },
+    tournament: { id: event.id || "tour", name: tournamentName, shortName: event.shortName || tournamentName, tour: tour.toUpperCase(), country: "International", emblem: null, category: event.groupingName || competition.type?.text || "Singles" },
     round: competition.round?.displayName || statusType.detail,
     discipline: competition.type?.text || "Singles",
     player1: side(player1, "Player 1"),
@@ -60,7 +60,18 @@ const fetchTour = async (tour: string) => {
   const response = await fetch(`${ESPN_TENNIS_BASE}/${tour}/scoreboard`, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) });
   if (!response.ok) throw new Error(`ESPN Tennis returned HTTP ${response.status} for ${tour}`);
   const data: any = await response.json();
-  return (Array.isArray(data.events) ? data.events : []).map((event: any) => mapEvent(event, tour)).filter(Boolean);
+  const events = Array.isArray(data.events) ? data.events : [];
+  const expanded = events.flatMap((event: any) => {
+    if (Array.isArray(event.competitions) && event.competitions.length > 0) return [event];
+    return (event.groupings || []).flatMap((grouping: any) =>
+      (grouping.competitions || []).map((competition: any) => ({
+        ...event,
+        groupingName: grouping.grouping?.displayName,
+        competitions: [competition],
+      }))
+    );
+  });
+  return expanded.map((event: any) => mapEvent(event, tour)).filter(Boolean);
 };
 
 export const onRequest = async ({ request }: { request: Request }) => {
