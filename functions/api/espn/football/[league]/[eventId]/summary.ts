@@ -13,7 +13,7 @@ export const onRequest = async ({ params }: { params: { league?: string; eventId
   if (!slug || !eventId) return Response.json({ error: "invalid_espn_event" }, { status: 400 });
 
   try {
-    const response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/summary?event=${eventId}`, {
+    const response = await fetch(`https://site.web.api.espn.com/apis/site/v2/sports/soccer/${slug}/summary?event=${eventId}`, {
       headers: { Accept: "application/json", "User-Agent": "TakeTalon/1.0" },
       signal: AbortSignal.timeout(10000),
     });
