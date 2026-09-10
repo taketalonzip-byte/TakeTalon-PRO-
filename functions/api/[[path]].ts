@@ -12,7 +12,7 @@ type PagesRequestContext<Env> = {
 
 export const onRequest = async ({ request, env }: PagesRequestContext<PagesEnv>) => {
   const incomingUrl = new URL(request.url);
-  if (incomingUrl.pathname === "/api/supabase/status" && request.method === "GET") {
+  if ((incomingUrl.pathname === "/api/supabase/status" || incomingUrl.pathname === "/api/cloudflare/supabase-status") && request.method === "GET") {
     const key = env.SUPABASE_SERVICE_ROLE_KEY || env.VITE_SUPABASE_ANON_KEY || "";
     const start = Date.now();
     if (!env.SUPABASE_URL || !key) return Response.json({ ok: false, configured: false, status: "NOT_CONFIGURED" });
