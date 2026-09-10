@@ -1,6 +1,6 @@
-export const buildGamesHandler = (loadMatches: (request: Request, env: any) => Promise<Response>, sport: string) => async ({ request, env }: { request: Request; env: any }) => {
+export const buildGamesHandler = (loadMatches: (context: { request: Request; env: any }) => Promise<Response>, sport: string) => async ({ request, env }: { request: Request; env: any }) => {
   try {
-    const response = await loadMatches(request, env);
+    const response = await loadMatches({ request, env });
     const data: any = await response.json();
     // Tennis can return hundreds of grouped ESPN entries. The full match route
     // remains available; the generic card feed only needs a bounded first page
