@@ -95,14 +95,9 @@ export const onRequest = async ({ request }: { request: Request }) => {
   try {
     const results = await Promise.allSettled(tours.map(fetchTour));
     const matches = results.flatMap((result) => result.status === "fulfilled" ? result.value.matches : []);
-    const diagnostics = results.map((result, index) => result.status === "fulfilled"
-      ? { tour: tours[index], eventCount: result.value.eventCount, expandedCount: result.value.expandedCount, error: null }
-      : { tour: tours[index], eventCount: 0, expandedCount: 0, error: String(result.reason?.message || result.reason) });
     const unique = Array.from(new Map(matches.map((match: any) => [String(match.id), match])).values()).filter((match: any) => !statusFilter || (statusFilter === "LIVE" ? match.isLive : match.status === statusFilter));
     unique.sort((a: any, b: any) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime());
-    const response: Record<string, any> = { ok: true, sport: "tennis", provider: "espn", count: unique.length, matches: unique };
-    if (url.searchParams.get("debug") === "1") response.debug = diagnostics;
-    return Response.json(response);
+    return Response.json({ ok: true, sport: "tennis", provider: "espn", count: unique.length, matches: unique });
   } catch (error: any) {
     return Response.json({ ok: false, error: error?.message || String(error) }, { status: 500 });
   }
