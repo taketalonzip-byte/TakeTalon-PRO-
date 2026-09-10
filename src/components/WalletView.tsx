@@ -512,7 +512,7 @@ interface WalletViewProps {
   isLifetime?: boolean;
   setIsLifetime?: (lifetime: boolean) => void;
   currentUser?: { isLoggedIn: boolean; username: string; email: string; phone?: string; avatarUrl?: string | null; role?: string | null } | null;
-  premiumMembershipPriceFbu?: number;
+  premiumMembershipPriceFbu: number;
   setCurrentUser?: any;
   onOpenAuth?: () => void;
   eyeComfort?: boolean;
@@ -541,7 +541,7 @@ export default function WalletView({
   isLifetime: propIsLifetime,
   setIsLifetime: propSetIsLifetime,
   currentUser,
-  premiumMembershipPriceFbu = 15000,
+  premiumMembershipPriceFbu,
   setCurrentUser,
   onOpenAuth,
   eyeComfort = false,
@@ -1002,7 +1002,7 @@ export default function WalletView({
                 >
                   FBU 30,000
                 </span>
-                <span className="text-sm font-mono font-black text-amber-550">FBU 15,000</span>
+                <span className="text-sm font-mono font-black text-amber-550">FBU {premiumMembershipPriceFbu.toLocaleString()}</span>
               </div>
             </div>
 
