@@ -1118,7 +1118,7 @@ export default function AuthPage({
     setLoading(true);
 
     try {
-      const res = await fetchAuthRequest("/create-account", {
+      const createPayload = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1132,13 +1132,22 @@ export default function AuthPage({
           birthday,
           terms_accepted: acceptTerms,
         }),
-      });
+      };
+      let res = await fetchAuthRequest("/api/cloudflare/auth/create-account", createPayload);
 
       let data: any = {};
       try {
         data = await res.json();
       } catch {
         data = { error: "Imeshindikana kusoma majibu kutoka kwa server." };
+      }
+      if (res.status >= 500 || data?.isConnectionError || data?.retryable) {
+        res = await fetchAuthRequest("/create-account", createPayload);
+        try {
+          data = await res.json();
+        } catch {
+          data = { error: "Imeshindikana kusoma majibu kutoka kwa server." };
+        }
       }
 
       if (!res.ok || data?.success === false) {
