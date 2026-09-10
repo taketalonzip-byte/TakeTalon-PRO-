@@ -16,4 +16,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://taketalon-pro.onrender.com/sitemap.xml
+Sitemap: https://taketalon.pages.dev/sitemap.xml
