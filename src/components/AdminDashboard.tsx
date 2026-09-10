@@ -226,10 +226,13 @@ export default function AdminDashboard({
           successMsg = `FBU ${(data.amount || amount).toLocaleString()} zimehamishiwa kwenye wallet ya @${data.username}`;
         }
       } else {
-        // 2. Fallback: Call Express API endpoint
-        const res = await fetch("/api/admin/reconcile-unregistered-sender", {
+        // 2. Fallback: Call the protected Cloudflare Function endpoint
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) throw new Error("Admin session expired");
+        const res = await fetch("/api/cloudflare/admin/reconcile-unregistered-sender", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
           body: JSON.stringify({
             phone_normalized: targetPhone,
             profile_id: profileId,
