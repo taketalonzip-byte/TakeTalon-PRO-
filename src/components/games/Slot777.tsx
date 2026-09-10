@@ -22,6 +22,7 @@ import { sound } from "@/lib/casino/sound";
 
 interface Slot777Props {
   balanceFBU: number;
+  minimumStakeFbu?: number;
   onPlaceBet: (
     amountFBU: number,
     payoutFBU: number,
@@ -41,6 +42,7 @@ interface Slot777Props {
 
 export const Slot777: React.FC<Slot777Props> = ({
   balanceFBU,
+  minimumStakeFbu = 100,
   onPlaceBet,
   serverSeed,
   serverSeedHash,
@@ -49,7 +51,8 @@ export const Slot777: React.FC<Slot777Props> = ({
   incrementNonce,
   onOpenVerifier,
 }) => {
-  const [betFBU, setBetFBU] = useState<number>(1000);
+  const [betFBU, setBetFBU] = useState<number>(minimumStakeFbu);
+  useEffect(() => { setBetFBU((prev) => Math.max(minimumStakeFbu, prev)); }, [minimumStakeFbu]);
   const [reels, setReels] = useState<SlotSymbol[]>([
     SLOT_SYMBOLS[0],
     SLOT_SYMBOLS[0],
@@ -164,7 +167,7 @@ export const Slot777: React.FC<Slot777Props> = ({
   }, [autoSpin, isSpinning, balanceFBU, betFBU]);
 
   const adjustBet = (amount: number) => {
-    setBetFBU((prev) => Math.max(100, Math.min(balanceFBU, prev + amount)));
+    setBetFBU((prev) => Math.max(minimumStakeFbu, Math.min(balanceFBU, prev + amount)));
   };
 
   return (
@@ -271,11 +274,11 @@ export const Slot777: React.FC<Slot777Props> = ({
             <div className="flex items-center gap-1.5 mb-2">
               <input
                 type="number"
-                min="100"
+                min={minimumStakeFbu}
                 max={Math.min(balanceFBU, 100000)}
                 value={betFBU}
                 onChange={(e) =>
-                  setBetFBU(Math.max(100, Math.min(100000, parseInt(e.target.value) || 100)))
+                  setBetFBU(Math.max(minimumStakeFbu, Math.min(100000, parseInt(e.target.value) || 100)))
                 }
                 className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 font-mono text-xs font-bold text-amber-300 focus:outline-none focus:border-amber-500"
               />

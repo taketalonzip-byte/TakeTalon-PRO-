@@ -29,6 +29,7 @@ interface Props {
   onBack: () => void;
   theme: Theme;
   lang?: Lang;
+  minimumStakes?: { slot777: number; crystal: number; dice: number; plinko: number };
 }
 
 export default function CasinoProGame({
@@ -41,6 +42,7 @@ export default function CasinoProGame({
   onBack,
   theme,
   lang = "en",
+  minimumStakes = { slot777: 100, crystal: 100, dice: 100, plinko: 100 },
 }: Props) {
   const [seed, setSeed] = useState<ProvablyFairSeed>(createInitialSeed);
 
@@ -157,12 +159,12 @@ export default function CasinoProGame({
 
       {/* Game */}
       <div className="flex-1 overflow-y-auto p-3">
-        {slug === "slot777" && <Slot777 {...sharedProps} onPlaceBet={onPlaceBetSlot} />}
+        {slug === "slot777" && <Slot777 {...sharedProps} minimumStakeFbu={minimumStakes.slot777} onPlaceBet={onPlaceBetSlot} />}
         {(slug === "crystal-mine" || slug === "crystal") && (
-          <CrystalGame {...sharedProps} onPlaceBet={onPlaceBetCrystal} />
+          <CrystalGame {...sharedProps} minimumStakeFbu={minimumStakes.crystal} onPlaceBet={onPlaceBetCrystal} />
         )}
-        {slug === "provably-dice" && <DiceGame {...sharedProps} onPlaceBet={onPlaceBetDice} />}
-        {slug === "plinko-pyramid" && <PlinkoGame {...sharedProps} onPlaceBet={onPlaceBetPlinko} />}
+        {slug === "provably-dice" && <DiceGame {...sharedProps} minimumStakeFbu={minimumStakes.dice} onPlaceBet={onPlaceBetDice} />}
+        {slug === "plinko-pyramid" && <PlinkoGame {...sharedProps} minimumStakeFbu={minimumStakes.plinko} onPlaceBet={onPlaceBetPlinko} />}
       </div>
     </div>
   );

@@ -48,6 +48,7 @@ interface AviatorGameProps {
   t: any;
   lang: "en" | "fr" | "sw";
   onBackToHome?: () => void;
+  minimumStakeFbu?: number;
 }
 
 /* --- Smoldering Burn Effect Component --- */
@@ -193,12 +194,14 @@ export default function AviatorGame({
   t,
   lang,
   onBackToHome = () => {},
+  minimumStakeFbu = 500,
 }: AviatorGameProps) {
   const tr = (sw: string, fr: string, en: string) => (lang === "sw" ? sw : lang === "fr" ? fr : en);
   // Game states: 'BETTING' | 'LAUNCHED' | 'BUSTED'
   const [gameState, setGameState] = useState<"BETTING" | "LAUNCHED" | "BUSTED">("BETTING");
   const [multiplier, setMultiplier] = useState(1.0);
-  const [betAmount, setBetAmount] = useState(2000);
+  const [betAmount, setBetAmount] = useState(minimumStakeFbu);
+  useEffect(() => { setBetAmount((prev) => Math.max(minimumStakeFbu, prev)); }, [minimumStakeFbu]);
   const [placedBetAmount, setPlacedBetAmount] = useState<number | null>(null);
   const [isCashedOut, setIsCashedOut] = useState(false);
   const [history, setHistory] = useState<number[]>([
@@ -248,6 +251,10 @@ export default function AviatorGame({
   // Handle placing a bet for the current betting round
   const handlePlaceBet = () => {
     if (gameState !== "BETTING" || placedBetAmount !== null) return;
+    if (betAmount < minimumStakeFbu) {
+      onAddNotification(`Minimum ya Aviator ni FBU ${minimumStakeFbu.toLocaleString()}.`, "error");
+      return;
+    }
 
     if (userBalance < betAmount) {
       onAddNotification(insufficientFundsMsg, "error");
@@ -760,7 +767,7 @@ export default function AviatorGame({
         <div className="flex items-center space-x-1.5">
           <button
             disabled={gameState !== "BETTING" || placedBetAmount !== null}
-            onClick={() => setBetAmount(Math.max(500, betAmount - 500))}
+            onClick={() => setBetAmount(Math.max(minimumStakeFbu, betAmount - 500))}
             className={`w-7 h-7 rounded-lg border flex items-center justify-center font-black cursor-pointer disabled:opacity-50 active:scale-95 transition-all text-xs ${
               theme === "light"
                 ? "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -775,7 +782,7 @@ export default function AviatorGame({
             type="number"
             disabled={gameState !== "BETTING" || placedBetAmount !== null}
             value={betAmount}
-            onChange={(e) => setBetAmount(Math.max(500, parseInt(e.target.value) || 500))}
+            onChange={(e) => setBetAmount(Math.max(minimumStakeFbu, parseInt(e.target.value) || 500))}
             className={`flex-1 text-center font-mono font-black text-xs border rounded-lg py-1 focus:outline-none transition-all ${
               theme === "light"
                 ? "bg-white border-slate-200 text-slate-800 focus:border-amber-500"

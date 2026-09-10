@@ -1776,6 +1776,11 @@ export default function App() {
       return;
     }
 
+    if (betStakeAmount < unlockBusinessRules.bet_slip_minimum_stake_fbu) {
+      addNotification(`Minimum ya bet slip ni FBU ${unlockBusinessRules.bet_slip_minimum_stake_fbu.toLocaleString()}.`, "error");
+      return;
+    }
+
     if (userBalance < betStakeAmount) {
       addNotification("Huna salio la kutosha kukamilisha jamvi hili!", "error");
       return;
@@ -2499,6 +2504,7 @@ export default function App() {
                         setUserBalance={setUserBalance}
                         onAddTransaction={handleAddTransaction}
                         theme={theme}
+                        minimumStakeFbu={unlockBusinessRules.aviator_minimum_stake_fbu}
                         onAddNotification={addNotification}
                         t={t}
                         lang={lang}
@@ -2562,6 +2568,7 @@ export default function App() {
                         setUserBalance={setUserBalance}
                         onAddTransaction={handleAddTransaction}
                         theme={theme}
+                        minimumStakeFbu={unlockBusinessRules.aviator_minimum_stake_fbu}
                         onAddNotification={addNotification}
                         lang={lang}
                         onBack={goBack}
@@ -2586,6 +2593,7 @@ export default function App() {
                         isPro={isPro}
                         setIsPro={setIsPro}
                         theme={theme}
+                        minimumStakeFbu={unlockBusinessRules.aviator_minimum_stake_fbu}
                         onAddNotification={addNotification}
                         onOpenAuth={() => setShowAuthModal(true)}
                         transactions={transactions}
@@ -2756,6 +2764,7 @@ export default function App() {
                         currentUser={currentUser}
                         setCurrentUser={setCurrentUser}
                         theme={theme}
+                        minimumStakeFbu={unlockBusinessRules.aviator_minimum_stake_fbu}
                         onAddNotification={addNotification}
                         onOpenAuth={() => setShowAuthModal(true)}
                         onBackToHome={goBack}
@@ -3046,9 +3055,10 @@ export default function App() {
                       </div>
                       <input
                         type="number"
+                        min={unlockBusinessRules.bet_slip_minimum_stake_fbu}
                         value={betStakeAmount}
                         onChange={(e) =>
-                          setBetStakeAmount(Math.max(500, parseInt(e.target.value) || 0))
+                          setBetStakeAmount(Math.max(unlockBusinessRules.bet_slip_minimum_stake_fbu, parseInt(e.target.value) || 0))
                         }
                         className={`w-full border rounded-lg px-2.5 py-1 text-center font-mono font-black focus:outline-none text-[11px] ${
                           theme === "light"
@@ -3428,9 +3438,10 @@ export default function App() {
                         <input
                           id="checkout-stake-input"
                           type="number"
+                          min={unlockBusinessRules.bet_slip_minimum_stake_fbu}
                           value={betStakeAmount}
                           onChange={(e) =>
-                            setBetStakeAmount(Math.max(500, parseInt(e.target.value) || 0))
+                            setBetStakeAmount(Math.max(unlockBusinessRules.bet_slip_minimum_stake_fbu, parseInt(e.target.value) || 0))
                           }
                           className={`w-full border rounded-lg px-3 py-1.5 text-center font-mono font-black focus:outline-none text-xs ${
                             theme === "light"
@@ -4930,6 +4941,12 @@ export default function App() {
               onBack={() => setSelectedCasinoGame(null)}
               theme={theme}
               lang={lang}
+              minimumStakes={{
+                slot777: unlockBusinessRules.slot777_minimum_stake_fbu,
+                crystal: unlockBusinessRules.crystal_minimum_stake_fbu,
+                dice: unlockBusinessRules.dice_minimum_stake_fbu,
+                plinko: unlockBusinessRules.plinko_minimum_stake_fbu,
+              }}
             />
           </Suspense>
         </div>

@@ -40,6 +40,13 @@ export interface BusinessRules {
   premium_membership_scale_factor: number;
   premium_membership_price_fbu: number;
   effective_premium_membership_price_fbu: number;
+  games_betting_minimum_scale_factor: number;
+  bet_slip_minimum_stake_fbu: number;
+  aviator_minimum_stake_fbu: number;
+  slot777_minimum_stake_fbu: number;
+  crystal_minimum_stake_fbu: number;
+  dice_minimum_stake_fbu: number;
+  plinko_minimum_stake_fbu: number;
 }
 
 // ─── Shared row → PublicProfile mapper ───────────────────────────────────────
@@ -368,6 +375,13 @@ const DEFAULT_RULES: BusinessRules = {
   premium_membership_scale_factor: 1,
   premium_membership_price_fbu: 15000,
   effective_premium_membership_price_fbu: 15000,
+  games_betting_minimum_scale_factor: 1,
+  bet_slip_minimum_stake_fbu: 500,
+  aviator_minimum_stake_fbu: 500,
+  slot777_minimum_stake_fbu: 100,
+  crystal_minimum_stake_fbu: 100,
+  dice_minimum_stake_fbu: 100,
+  plinko_minimum_stake_fbu: 100,
 };
 
 export async function fetchBusinessRules(): Promise<BusinessRules> {
@@ -392,6 +406,8 @@ export async function fetchBusinessRules(): Promise<BusinessRules> {
   const effectivePrice = basePrice * scale;
   const premiumBase = map["premium_membership_price_fbu"] ?? DEFAULT_RULES.premium_membership_price_fbu;
   const premiumScale = map["premium_membership_scale_factor"] ?? DEFAULT_RULES.premium_membership_scale_factor;
+  const gamesScale = map["games_betting_minimum_scale_factor"] ?? DEFAULT_RULES.games_betting_minimum_scale_factor;
+  const scaledMinimum = (key: string, fallback: number) => (map[key] ?? fallback) * gamesScale;
   return {
     monthly_cost_fbu: basePrice,
     tipster_share_fbu: effectivePrice * (1 - commissionRate),
@@ -401,6 +417,13 @@ export async function fetchBusinessRules(): Promise<BusinessRules> {
     premium_membership_scale_factor: premiumScale,
     premium_membership_price_fbu: premiumBase,
     effective_premium_membership_price_fbu: premiumBase * premiumScale,
+    games_betting_minimum_scale_factor: gamesScale,
+    bet_slip_minimum_stake_fbu: scaledMinimum("bet_slip_minimum_stake_fbu", 500),
+    aviator_minimum_stake_fbu: scaledMinimum("aviator_minimum_stake_fbu", 500),
+    slot777_minimum_stake_fbu: scaledMinimum("slot777_minimum_stake_fbu", 100),
+    crystal_minimum_stake_fbu: scaledMinimum("crystal_minimum_stake_fbu", 100),
+    dice_minimum_stake_fbu: scaledMinimum("dice_minimum_stake_fbu", 100),
+    plinko_minimum_stake_fbu: scaledMinimum("plinko_minimum_stake_fbu", 100),
   };
 }
 

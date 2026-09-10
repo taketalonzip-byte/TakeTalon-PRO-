@@ -41,6 +41,7 @@ interface Props {
   onBack: () => void;
   theme: Theme;
   lang?: Lang;
+  minimumStakes?: { slot777: number; crystal: number; dice: number; plinko: number };
 }
 
 type GameKind = "dice" | "wheel" | "slots" | "coin" | "over-under";
@@ -65,6 +66,7 @@ export default function CasinoGamePlay({
   onBack,
   theme,
   lang = "en",
+  minimumStakes = { slot777: 100, crystal: 100, dice: 100, plinko: 100 },
 }: Props) {
   // ── Michezo 4 mipya ya Provably Fair ─────────────────────────────────────
   if (PRO_SLUGS.has(slug)) {
@@ -80,6 +82,7 @@ export default function CasinoGamePlay({
           onBack={onBack}
           theme={theme}
           lang={lang}
+          minimumStakes={minimumStakes}
         />
       </Suspense>
     );
