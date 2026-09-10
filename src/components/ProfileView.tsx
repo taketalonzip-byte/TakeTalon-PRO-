@@ -410,9 +410,11 @@ export default function ProfileView({
 
     setIsPhotoLoading(true);
     try {
-      const res = await fetch("/api/profile-photo/switch", {
+      const accessToken = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!accessToken) throw new Error("Authenticated session token missing");
+      const res = await fetch("/api/cloudflare/profile-photo/switch", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
           user_id: key,
           photo_id: photoId,
@@ -475,9 +477,11 @@ export default function ProfileView({
 
     setIsPhotoLoading(true);
     try {
-      const res = await fetch("/api/profile-photo/delete", {
+      const accessToken = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!accessToken) throw new Error("Authenticated session token missing");
+      const res = await fetch("/api/cloudflare/profile-photo/delete", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
           user_id: key,
           photo_id: photoId,
@@ -523,9 +527,11 @@ export default function ProfileView({
 
     setIsPhotoLoading(true);
     try {
-      const res = await fetch("/api/profile-photo/restore", {
+      const accessToken = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!accessToken) throw new Error("Authenticated session token missing");
+      const res = await fetch("/api/cloudflare/profile-photo/restore", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
           user_id: key,
           photo_id: photoId,
