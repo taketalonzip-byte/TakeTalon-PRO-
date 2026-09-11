@@ -64,6 +64,10 @@ Public Cloudflare checks performed against `https://taketalon.pages.dev/`:
 - `/sitemap.xml` — HTTP 200, containing `/` and `/about/`;
 - `/api/health` — HTTP 200, database connected through a Cloudflare Pages Function;
 - `/api/cloudflare/supabase-status` — HTTP 200, Supabase status `ONLINE`;
+- `/api/sports/basketball/games` — HTTP 200 with live ESPN-shaped game data;
+- `/api/sports/tennis/games` — HTTP 200 with live ESPN-shaped game data;
+- `/api/sports/football/games` — HTTP 200 with football game data;
+- `/api/basketball/matches` and `/api/tennis/matches` — HTTP 200 with ESPN data;
 - canonical URL and structured metadata point to `https://taketalon.pages.dev/`.
 
 The `www.taketalon.pages.dev` host returned HTTP 404. No production custom domain was identified, so custom-domain URL preservation remains a blocker before any DNS cutover.
@@ -87,3 +91,5 @@ The `www.taketalon.pages.dev` host returned HTTP 404. No production custom domai
 ## New blocker requiring staged remediation
 
 The strongest remaining dependency is not merely an old file: production Cloudflare is configured to proxy unrecognized API requests to Render. This must be reduced route-by-route. Do not simply delete `BACKEND_URL` or change the catch-all fallback yet; doing so before every required route is dispatched through Cloudflare could break production. The safe next phase is to inventory every frontend API path against `functions/api`, migrate and verify missing paths, then remove the Render fallback only after a successful production canary matrix.
+
+The sports **read** routes are now verified on Cloudflare. The remaining sports routes identified by the first coverage scan are sync endpoints (`/api/basketball/sync` and `/api/tennis/sync`) that write sports cache tables, plus the dynamic football summary route which already has a Pages Function path. The withdrawal route remains intentionally outside this migration phase. Sync writes should be migrated only with explicit authenticated/service-role controls and idempotency verification; they must not be exposed as unrestricted public write endpoints.
