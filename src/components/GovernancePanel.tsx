@@ -1041,7 +1041,7 @@ export default function GovernancePanel({
                   }`}
                 >
                   <option value="USER">USER (Mchezaji wa kawaida)</option>
-                  <option value="ADMIN">ADMIN (Msimamizi wa Kawaida)</option>
+                  <option value="ADMIN">ADMIN (Finance Admin / Staff)</option>
                   <option value="SUPER_ADMIN">SUPER_ADMIN (Msimamizi Mkuu)</option>
                 </select>
 

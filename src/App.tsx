@@ -43,6 +43,7 @@ const SettingsView = lazy(() => import("./components/SettingsView"));
 const AgentView = lazy(() => import("./components/AgentView"));
 const NotificationsView = lazy(() => import("./components/NotificationsView"));
 const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
+const FinanceAdminPortal = lazy(() => import("./components/FinanceAdminPortal"));
 const GovernancePanel = lazy(() => import("./components/GovernancePanel"));
 const EconomicControlPanel = lazy(() => import("./components/EconomicControlPanel"));
 const FootballPage = lazy(() => import("./components/FootballPage"));
@@ -2178,6 +2179,17 @@ export default function App() {
           if (!isOffline && !isCheckingConnection) setShowSplash(false);
         }}
       />
+    );
+  }
+
+  // ADMIN is the first staff class: Finance Admin. Keep staff out of the
+  // consumer betting app entirely; SuperAdmin/Owner retain their existing app.
+  const isFinanceAdmin = currentUser?.isLoggedIn && String(currentUser?.role || "").toUpperCase() === "ADMIN";
+  if (isFinanceAdmin) {
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-[#07111f] text-white flex items-center justify-center">Loading Finance Admin Portal…</div>}>
+        <FinanceAdminPortal currentUser={currentUser} theme={theme} lang={lang} />
+      </Suspense>
     );
   }
 
