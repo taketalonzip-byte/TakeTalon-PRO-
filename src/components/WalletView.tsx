@@ -620,43 +620,16 @@ export default function WalletView({
         ? `Votre demande de retrait de FBU ${withdrawAmount.toLocaleString()} a été reçue et est en cours de traitement!`
         : `Your request to withdraw FBU ${withdrawAmount.toLocaleString()} has been received and is being processed!`;
 
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
-
   const handleWithdrawSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isWithdrawing) return;
-    if (userBalance < withdrawAmount) {
-      onAddNotification(withdrawErr, "error");
-      return;
-    }
-
-    setIsWithdrawing(true);
-    const previousBalance = userBalance;
-    setUserBalance((prev) => prev - withdrawAmount);
-
-    try {
-      if (profileId) {
-        const res = await fetch("/api/supabase/wallet-withdraw", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profile_id: profileId, amount: withdrawAmount }),
-        });
-        if (!res.ok || !res.headers.get("content-type")?.includes("application/json")) {
-          throw new Error("Authoritative withdrawal endpoint unavailable");
-        }
-      }
-      onAddTransaction("WITHDRAW", withdrawAmount, withdrawDesc);
-      setShowWithdrawModal(false);
-      onAddNotification(withdrawSuccessMsg, "success");
-    } catch (err) {
-      setUserBalance(previousBalance);
-      onAddNotification(
-        lang === "sw" ? "Imeshindwa kutoa pesa. Jaribu tena." : lang === "fr" ? "Échec du retrait. Veuillez réessayer." : "Withdrawal failed. Please try again.",
-        "error",
-      );
-    } finally {
-      setIsWithdrawing(false);
-    }
+    onAddNotification(
+      lang === "sw"
+        ? "Kipengele cha kutoa pesa bado hakijawa tayari. Hakuna salio lililobadilishwa."
+        : lang === "fr"
+          ? "Les retraits ne sont pas encore disponibles. Aucun solde n’a été modifié."
+          : "Withdrawals are not available yet. No balance was changed.",
+      "error",
+    );
   };
 
   const upgradeErr =
@@ -938,13 +911,15 @@ export default function WalletView({
           </button>
           <button
             id="withdraw-trigger-btn"
-            onClick={() => setShowWithdrawModal(true)}
-            className={`flex items-center justify-center space-x-1 py-1.5 rounded-lg font-bold text-[11px] cursor-pointer transition-colors active:scale-95 border ${
+            type="button"
+            disabled
+            title={lang === "sw" ? "Kipengele cha kutoa pesa bado hakijawa tayari" : "Withdrawals are not available yet"}
+            className={`flex items-center justify-center space-x-1 py-1.5 rounded-lg font-bold text-[11px] cursor-not-allowed border opacity-50 ${
               theme === "light"
-                ? "bg-white hover:bg-slate-50 border-slate-200/90 text-slate-800 shadow-xs"
+                ? "bg-white border-slate-200/90 text-slate-800 shadow-xs"
                 : theme === "blue"
-                  ? "bg-[#121c33] hover:bg-[#172540] border-[#1e355c] text-slate-200"
-                  : "bg-slate-900 hover:bg-slate-850 border-slate-800 text-slate-300"
+                  ? "bg-[#121c33] border-[#1e355c] text-slate-200"
+                  : "bg-slate-900 border-slate-800 text-slate-300"
             }`}
           >
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -2031,12 +2006,9 @@ export default function WalletView({
                 </button>
                 <button
                   type="submit"
-                  disabled={isWithdrawing}
                   className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-slate-950 font-display font-black text-xs uppercase shadow-md active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isWithdrawing
-                    ? (lang === "sw" ? "Inatuma..." : lang === "fr" ? "Envoi..." : "Processing...")
-                    : (lang === "sw" ? "Toa Pesa ↗" : lang === "fr" ? "Retirer ↗" : "Withdraw ↗")}
+                  {lang === "sw" ? "Toa Pesa ↗" : lang === "fr" ? "Retirer ↗" : "Withdraw ↗"}
                 </button>
               </div>
             </form>

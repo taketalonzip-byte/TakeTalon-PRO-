@@ -34,17 +34,22 @@ TakeTalon PRO is a modern sports betting and peer-to-peer prediction platform fe
    ```bash
    npm run dev
    ```
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
+   Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 4. **Production Build:**
    ```bash
    npm run build
    ```
 
-5. **Start Production Server:**
+5. **Preview the Production Build:**
    ```bash
    npm start
    ```
+
+Production is deployed as a **Cloudflare Pages** site at
+[https://taketalon.pages.dev/](https://taketalon.pages.dev/). The repository no longer
+builds or starts a separate Node web server; API traffic is served by the Cloudflare
+Pages Functions under `functions/api`.
 
 ## License
 

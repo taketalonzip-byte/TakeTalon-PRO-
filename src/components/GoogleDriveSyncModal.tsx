@@ -56,7 +56,7 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
 
   const [filesList, setFilesList] = useState<SyncFileStatus[]>([
     { name: 'App.tsx (Main App & Navigation)', path: 'src/App.tsx', status: 'pending' },
-    { name: 'server.ts (Backend & API Engine)', path: 'server.ts', status: 'pending' },
+    { name: 'Cloudflare Functions (Backend & API Engine)', path: 'functions/api', status: 'pending' },
     { name: 'types.ts (Data Models & Typings)', path: 'src/types.ts', status: 'pending' },
     { name: 'supabase.ts (Database & Storage Client)', path: 'src/lib/supabase.ts', status: 'pending' },
     { name: 'package.json (Dependencies & Scripts)', path: 'package.json', status: 'pending' },

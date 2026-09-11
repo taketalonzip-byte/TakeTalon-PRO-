@@ -199,15 +199,3 @@ export async function getBasketballCompetitionFixtures(
   return getBasketballFixtures([code.toUpperCase()], statusFilter);
 }
 
-/**
- * Trigger background basketball sync
- */
-export async function triggerBasketballSync(): Promise<boolean> {
-  try {
-    const res = await fetch("/api/basketball/sync", { method: "POST" });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-

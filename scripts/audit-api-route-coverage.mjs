@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const frontendRoots = ["src", "server.ts"];
+const frontendRoots = ["src"];
 const files = [];
 function walk(dir) {
   for (const entry of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {

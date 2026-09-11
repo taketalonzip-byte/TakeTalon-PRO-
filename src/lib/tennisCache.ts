@@ -175,20 +175,3 @@ async function fetchTennisFixturesApi(
     return { matches: [] };
   }
 }
-
-/**
- * Trigger backend sync with Supabase for tennis
- */
-export async function syncTennisWithBackend(tour = "atp"): Promise<boolean> {
-  try {
-    const res = await fetch("/api/tennis/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tour }),
-    });
-    const data = await res.json();
-    return Boolean(data?.ok);
-  } catch {
-    return false;
-  }
-}
