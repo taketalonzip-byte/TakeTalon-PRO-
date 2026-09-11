@@ -51,6 +51,14 @@ export const onRequest = async ({ request, env }: PagesRequestContext<PagesEnv>)
     }
   }
 
+  // Withdrawal is intentionally outside the current migration scope. Keep its
+  // legacy Render path as an isolated rollback surface, but do not proxy every
+  // unknown API request to Render. Unknown routes must fail closed so a missing
+  // Cloudflare migration cannot silently recreate a broad Render dependency.
+  if (incomingUrl.pathname !== "/api/supabase/wallet-withdraw") {
+    return Response.json({ ok: false, error: "API route is not available on this deployment." }, { status: 404 });
+  }
+
   const backendBase = (env.BACKEND_URL || "https://taketalon-pro.onrender.com").replace(/\/$/, "");
   const backendUrl = `${backendBase}${incomingUrl.pathname}${incomingUrl.search}`;
   const headers = new Headers(request.headers);
