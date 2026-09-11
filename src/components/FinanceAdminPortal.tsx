@@ -87,7 +87,7 @@ export default function FinanceAdminPortal({ currentUser, theme, lang }: Finance
   const summary = dashboard?.summary;
   const title = lang === "sw" ? "Finance Admin" : "Finance Admin";
 
-  return <div className={`min-h-screen ${isLight ? "bg-[#f4f7fa]" : "bg-[#162d45]"} ${primary} text-[12px]`}>
+  return <div style={{ fontFamily: "ui-sans-serif, system-ui, sans-serif" }} className={`min-h-screen font-sans antialiased ${isLight ? "bg-[#f4f7fa]" : "bg-[#162d45]"} ${primary} text-[12px]`}>
     <aside className={`fixed inset-y-0 left-0 z-20 hidden w-60 border-r lg:flex lg:flex-col ${isLight ? "bg-white border-slate-200" : "bg-[#1f3d5c] border-blue-400/20"}`}>
       <div className="h-14 px-4 flex items-center gap-2.5 border-b border-inherit"><div className="rounded-lg bg-blue-500/15 p-1.5" style={{ color: brand }}><ShieldCheck className="h-4 w-4" /></div><div><p className="text-[13px] font-black tracking-tight">TakeTalon</p><p className={`text-[9px] uppercase tracking-[.16em] ${muted}`}>Finance control</p></div></div>
       <div className="px-2.5 pt-5"><p className={`px-2.5 mb-1.5 text-[9px] font-black uppercase tracking-[.16em] ${muted}`}>Workspace</p>{nav.map(({ id, label, icon: Icon, count }) => <button key={id} onClick={() => { setSection(id); setQuery(""); }} className={`w-full px-2.5 py-2 mb-0.5 rounded-md flex items-center gap-2.5 text-left text-[11px] font-bold transition ${section === id ? "bg-[#3B6D99] text-white" : `${muted} hover:bg-blue-500/10`}`}><Icon className="h-3.5 w-3.5" /><span className="flex-1">{label}</span>{count !== undefined && <span className={`text-[9px] ${section === id ? "text-white/70" : muted}`}>{count}</span>}</button>)}</div>
