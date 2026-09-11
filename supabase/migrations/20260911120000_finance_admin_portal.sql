@@ -1,6 +1,7 @@
 -- TakeTalon PRO — Finance Admin Portal read model
--- Uses the canonical admin_get_unregistered_senders() read RPC already present
--- in the Cloudflare migration chain. No direct balance mutation is exposed.
+-- Compatible with the current TakeTalon schema:
+-- profiles, wallets, sms_deposit_logs and unregistered_senders.
+-- Read-only by design; no balance mutation is exposed.
 
 CREATE OR REPLACE FUNCTION public.finance_admin_dashboard(p_limit integer DEFAULT 25)
 RETURNS jsonb
@@ -27,17 +28,23 @@ BEGIN
   SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY t.created_at DESC), '[]'::jsonb)
   INTO v_transactions
   FROM (
-    SELECT t.id, t.profile_id, p.username, p.email, t.type, t.amount, t.status,
-           t.description, t.created_at, t.updated_at
-    FROM public.transactions t
-    LEFT JOIN public.profiles p ON p.id = t.profile_id
-    ORDER BY t.created_at DESC
+    SELECT l.id,
+           l.matched_profile_id AS profile_id,
+           p.username,
+           p.email,
+           'DEPOSIT'::text AS type,
+           l.parsed_amount AS amount,
+           upper(coalesce(l.status, 'PENDING')) AS status,
+           l.sms_reference AS description,
+           l.created_at,
+           l.processed_at AS updated_at
+    FROM public.sms_deposit_logs l
+    LEFT JOIN public.profiles p ON p.id = l.matched_profile_id
+    ORDER BY l.created_at DESC
     LIMIT v_limit
   ) t;
 
-  -- Keep the portal compatible with the current Cloudflare canonical sender
-  -- read model instead of querying the retired SMS table directly.
-  SELECT coalesce(jsonb_agg(to_jsonb(u)), '[]'::jsonb)
+  SELECT coalesce(jsonb_agg(to_jsonb(u) ORDER BY u.last_seen_at DESC), '[]'::jsonb)
   INTO v_unmatched
   FROM (
     SELECT *
@@ -49,9 +56,9 @@ BEGIN
     'wallet_count', (SELECT count(*) FROM public.wallets),
     'wallet_balance_total', coalesce((SELECT sum(balance) FROM public.wallets), 0),
     'wallet_reserved_total', coalesce((SELECT sum(reserved_balance) FROM public.wallets), 0),
-    'pending_transactions', coalesce((SELECT count(*) FROM public.transactions WHERE upper(status) = 'PENDING'), 0),
-    'completed_deposits', coalesce((SELECT count(*) FROM public.transactions WHERE upper(type) = 'DEPOSIT' AND upper(status) = 'COMPLETED'), 0),
-    'failed_transactions', coalesce((SELECT count(*) FROM public.transactions WHERE upper(status) IN ('FAILED', 'REVERSED')), 0),
+    'pending_transactions', coalesce((SELECT count(*) FROM public.sms_deposit_logs WHERE upper(coalesce(status, 'PENDING')) = 'PENDING'), 0),
+    'completed_deposits', coalesce((SELECT count(*) FROM public.sms_deposit_logs WHERE upper(coalesce(status, '')) IN ('COMPLETED', 'MATCHED', 'SUCCESS')), 0),
+    'failed_transactions', coalesce((SELECT count(*) FROM public.sms_deposit_logs WHERE upper(coalesce(status, '')) IN ('FAILED', 'REJECTED', 'REVERSED')), 0),
     'unmatched_deposit_groups', jsonb_array_length(v_unmatched)
   ) INTO v_summary;
 
