@@ -10,7 +10,6 @@ import { onRequest as profileRestore } from "./profile-photo/restore";
 import { onRequest as createPost } from "./supabase/create-post";
 
 interface PagesEnv {
-  BACKEND_URL?: string;
   SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
   VITE_SUPABASE_ANON_KEY?: string;
@@ -51,24 +50,7 @@ export const onRequest = async ({ request, env }: PagesRequestContext<PagesEnv>)
     }
   }
 
-  // Withdrawal is intentionally outside the current migration scope. Keep its
-  // legacy Render path as an isolated rollback surface, but do not proxy every
-  // unknown API request to Render. Unknown routes must fail closed so a missing
-  // Cloudflare migration cannot silently recreate a broad Render dependency.
-  if (incomingUrl.pathname !== "/api/supabase/wallet-withdraw") {
-    return Response.json({ ok: false, error: "API route is not available on this deployment." }, { status: 404 });
-  }
-
-  const backendBase = (env.BACKEND_URL || "https://taketalon-pro.onrender.com").replace(/\/$/, "");
-  const backendUrl = `${backendBase}${incomingUrl.pathname}${incomingUrl.search}`;
-  const headers = new Headers(request.headers);
-  headers.set("host", new URL(backendBase).host);
-  headers.delete("cf-connecting-ip");
-  headers.delete("cf-ray");
-  return fetch(new Request(backendUrl, {
-    method: request.method,
-    headers,
-    body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
-    redirect: "manual",
-  }));
+  // Render is not a production dependency. Routes outside the explicitly
+  // migrated Cloudflare surface fail closed until they are deliberately added.
+  return Response.json({ ok: false, error: "API route is not available on this deployment." }, { status: 404 });
 };
