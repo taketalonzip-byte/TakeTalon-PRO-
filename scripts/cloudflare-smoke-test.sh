@@ -75,8 +75,8 @@ check_status GET /api/cloudflare/admin/unregistered-senders 401 "admin sender-li
 check_status POST /api/cloudflare/admin/sms-gateway 401 "admin SMS auth guard"
 check_status POST /api/cloudflare/supabase/create-post 401 "post creation auth guard"
 check_status POST /api/profile-photo/upload 400 "profile photo input validation guard"
-check_status POST /api/supabase/wallet-withdraw 404 "withdrawal intentionally out of scope"
-check_status GET /api/not-migrated-route 404 "unknown route fail-closed"
+check_status POST /api/supabase/wallet-withdraw 410 "withdrawal intentionally out of scope"
+check_status GET /api/not-migrated-route 410 "unknown route fail-closed"
 
 printf '\nSUMMARY checks=%s passed=%s failed=%s\n' "$CHECKS" "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
