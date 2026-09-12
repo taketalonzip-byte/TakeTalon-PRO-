@@ -6,7 +6,12 @@ export interface FootballEnv {
 }
 
 const equivalents: Record<string, string[]> = {
-  PL: ["PL", "ENG_1"], PD: ["PD", "ESP_1"], SA: ["SA", "ITA_1"], BL1: ["BL1", "GER_1"], FL1: ["FL1", "FRA_1"],
+  PL: ["PL", "ENG_1"], ENG_1: ["ENG_1", "PL"],
+  PD: ["PD", "ESP_1"], ESP_1: ["ESP_1", "PD"],
+  SA: ["SA", "ITA_1"], ITA_1: ["ITA_1", "SA"],
+  BL1: ["BL1", "GER_1"], GER_1: ["GER_1", "BL1"],
+  FL1: ["FL1", "FRA_1"], FRA_1: ["FRA_1", "FL1"],
+  CL: ["CL"], UEL: ["UEL"], UECL: ["UECL"], KSA1: ["KSA1"],
 };
 const ESPN_ALIASES: Record<string, string> = { PL: "eng.1", PD: "esp.1", SA: "ita.1", BL1: "ger.1", FL1: "fra.1", CL: "uefa.champions", UEL: "uefa.europa", UECL: "uefa.europa.conf" };
 const normalizeCode = (value: string) => String(value || "").trim().toUpperCase().replace(/[.-]/g, "_");
